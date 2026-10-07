@@ -1,0 +1,12 @@
+{
+  "_comment": "Copy to mcp-local/config.json (git-ignored; the model's tools cannot write it). It is merged with the built-in policy in guard.py: you can add roots, block more paths, or make a built-in root read-only, but you cannot remove a built-in block. This example makes the whole D:, E: and F: drives read-only and keeps one working folder writable (the most specific root wins). Keys that start with '_' are ignored.",
+  "allowed_roots": [
+    {"path": "D:\\", "mode": "read_only"},
+    {"path": "E:\\", "mode": "read_only"},
+    {"path": "F:\\", "mode": "read_only"},
+    {"path": "D:\\Work", "mode": "read_write"}
+  ],
+  "blocked_globs": [
+    "*\\private-notes\\*"
+  ]
+}

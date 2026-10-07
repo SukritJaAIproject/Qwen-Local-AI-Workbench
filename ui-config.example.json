@@ -1,0 +1,6 @@
+{
+  "theme": "dark",
+  "mcpServers": "[{\"id\": \"websearch\", \"name\": \"Web search\", \"url\": \"http://127.0.0.1:8791/mcp\", \"enabled\": true}, {\"id\": \"local\", \"name\": \"This computer\", \"url\": \"http://127.0.0.1:8792/mcp/default\", \"enabled\": true}]",
+  "showThoughtInProgress": true,
+  "renderThinkingAsMarkdown": true
+}

@@ -1,0 +1,353 @@
+{
+ "conversations": [
+  {
+   "id": "ac000000-0000-4000-8000-000000000100",
+   "name": "New chat",
+   "lastModified": 1790300000000,
+   "currNode": "ac000000-0000-4000-8000-00000000010a",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000200",
+   "name": "Processing...",
+   "lastModified": 1790300000000,
+   "currNode": "ac000000-0000-4000-8000-000000000202",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000300",
+   "name": "Settings",
+   "lastModified": 1790300000000,
+   "currNode": "ac000000-0000-4000-8000-000000000302",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000400",
+   "name": "Cancel",
+   "lastModified": 1790300000000,
+   "currNode": "ac000000-0000-4000-8000-000000000402",
+   "reasoningEffort": "default"
+  }
+ ],
+ "messages": [
+  {
+   "id": "ac000000-0000-4000-8000-000000000100",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "ac000000-0000-4000-8000-000000000101"
+   ],
+   "timestamp": 1790300000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000101",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "user",
+   "content": "Settings",
+   "parent": "ac000000-0000-4000-8000-000000000100",
+   "children": [
+    "ac000000-0000-4000-8000-000000000102"
+   ],
+   "timestamp": 1790300000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000102",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "assistant",
+   "content": "Cancel",
+   "parent": "ac000000-0000-4000-8000-000000000101",
+   "children": [
+    "ac000000-0000-4000-8000-000000000103"
+   ],
+   "timestamp": 1790300000020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 12,
+    "prompt_ms": 80.0,
+    "predicted_n": 3,
+    "predicted_ms": 2000.0,
+    "predicted_per_second": 1.5
+   },
+   "reasoningContent": "Processing..."
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000103",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "user",
+   "content": "New chat",
+   "parent": "ac000000-0000-4000-8000-000000000102",
+   "children": [
+    "ac000000-0000-4000-8000-000000000104"
+   ],
+   "timestamp": 1790300000030,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000104",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "assistant",
+   "content": "Processing...",
+   "parent": "ac000000-0000-4000-8000-000000000103",
+   "children": [
+    "ac000000-0000-4000-8000-000000000105"
+   ],
+   "timestamp": 1790300000040,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 12,
+    "prompt_ms": 80.0,
+    "predicted_n": 3,
+    "predicted_ms": 2000.0,
+    "predicted_per_second": 1.5
+   }
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000105",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "user",
+   "content": "Processing...",
+   "parent": "ac000000-0000-4000-8000-000000000104",
+   "children": [
+    "ac000000-0000-4000-8000-000000000106"
+   ],
+   "timestamp": 1790300000050,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000106",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "assistant",
+   "content": "",
+   "parent": "ac000000-0000-4000-8000-000000000105",
+   "children": [
+    "ac000000-0000-4000-8000-000000000107"
+   ],
+   "timestamp": 1790300000060,
+   "toolCalls": "[{\"id\": \"call_acc_1\", \"type\": \"function\", \"function\": {\"name\": \"Settings\", \"arguments\": \"{\\\"q\\\": \\\"Cancel\\\"}\"}}]",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "reasoningContent": "New chat"
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000107",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "tool",
+   "content": "Processing...",
+   "parent": "ac000000-0000-4000-8000-000000000106",
+   "children": [
+    "ac000000-0000-4000-8000-000000000108"
+   ],
+   "timestamp": 1790300000070,
+   "toolCalls": "",
+   "toolCallId": "call_acc_1"
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000108",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "assistant",
+   "content": "Settings",
+   "parent": "ac000000-0000-4000-8000-000000000107",
+   "children": [
+    "ac000000-0000-4000-8000-000000000109"
+   ],
+   "timestamp": 1790300000080,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 12,
+    "prompt_ms": 80.0,
+    "predicted_n": 3,
+    "predicted_ms": 2000.0,
+    "predicted_per_second": 1.5
+   }
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000109",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "user",
+   "content": "Cancel",
+   "parent": "ac000000-0000-4000-8000-000000000108",
+   "children": [
+    "ac000000-0000-4000-8000-00000000010a"
+   ],
+   "timestamp": 1790300000090,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "ac000000-0000-4000-8000-00000000010a",
+   "convId": "ac000000-0000-4000-8000-000000000100",
+   "type": "text",
+   "role": "assistant",
+   "content": "New chat",
+   "parent": "ac000000-0000-4000-8000-000000000109",
+   "children": [],
+   "timestamp": 1790300000100,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 12,
+    "prompt_ms": 80.0,
+    "predicted_n": 3,
+    "predicted_ms": 2000.0,
+    "predicted_per_second": 1.5
+   }
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000200",
+   "convId": "ac000000-0000-4000-8000-000000000200",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "ac000000-0000-4000-8000-000000000201"
+   ],
+   "timestamp": 1790300000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000201",
+   "convId": "ac000000-0000-4000-8000-000000000200",
+   "type": "text",
+   "role": "user",
+   "content": "Cancel",
+   "parent": "ac000000-0000-4000-8000-000000000200",
+   "children": [
+    "ac000000-0000-4000-8000-000000000202"
+   ],
+   "timestamp": 1790300000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000202",
+   "convId": "ac000000-0000-4000-8000-000000000200",
+   "type": "text",
+   "role": "assistant",
+   "content": "Settings",
+   "parent": "ac000000-0000-4000-8000-000000000201",
+   "children": [],
+   "timestamp": 1790300000020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 12,
+    "prompt_ms": 80.0,
+    "predicted_n": 3,
+    "predicted_ms": 2000.0,
+    "predicted_per_second": 1.5
+   }
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000300",
+   "convId": "ac000000-0000-4000-8000-000000000300",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "ac000000-0000-4000-8000-000000000301"
+   ],
+   "timestamp": 1790300000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000301",
+   "convId": "ac000000-0000-4000-8000-000000000300",
+   "type": "text",
+   "role": "user",
+   "content": "New chat",
+   "parent": "ac000000-0000-4000-8000-000000000300",
+   "children": [
+    "ac000000-0000-4000-8000-000000000302"
+   ],
+   "timestamp": 1790300000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000302",
+   "convId": "ac000000-0000-4000-8000-000000000300",
+   "type": "text",
+   "role": "assistant",
+   "content": "Cancel",
+   "parent": "ac000000-0000-4000-8000-000000000301",
+   "children": [],
+   "timestamp": 1790300000020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 12,
+    "prompt_ms": 80.0,
+    "predicted_n": 3,
+    "predicted_ms": 2000.0,
+    "predicted_per_second": 1.5
+   }
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000400",
+   "convId": "ac000000-0000-4000-8000-000000000400",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "ac000000-0000-4000-8000-000000000401"
+   ],
+   "timestamp": 1790300000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000401",
+   "convId": "ac000000-0000-4000-8000-000000000400",
+   "type": "text",
+   "role": "user",
+   "content": "Processing...",
+   "parent": "ac000000-0000-4000-8000-000000000400",
+   "children": [
+    "ac000000-0000-4000-8000-000000000402"
+   ],
+   "timestamp": 1790300000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "ac000000-0000-4000-8000-000000000402",
+   "convId": "ac000000-0000-4000-8000-000000000400",
+   "type": "text",
+   "role": "assistant",
+   "content": "New chat",
+   "parent": "ac000000-0000-4000-8000-000000000401",
+   "children": [],
+   "timestamp": 1790300000020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 12,
+    "prompt_ms": 80.0,
+    "predicted_n": 3,
+    "predicted_ms": 2000.0,
+    "predicted_per_second": 1.5
+   }
+  }
+ ]
+}

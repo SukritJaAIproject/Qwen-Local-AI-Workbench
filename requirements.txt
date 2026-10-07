@@ -1,0 +1,15 @@
+# Packages for the main interpreter, C:\Python313\python.exe (hub, MCP servers, launcher helpers).
+# The hub itself is standard library only; these are needed by the document / knowledge tools.
+#   C:\Python313\python.exe -m pip install -r requirements.txt
+pymupdf>=1.24        # PDF text + page rendering for OCR (AGPL-3.0, see THIRD_PARTY.md)
+python-docx>=1.1
+openpyxl>=3.1
+defusedxml>=0.7
+numpy>=2.0
+pillow>=10.0
+
+# Separate environments (not installed by this file):
+#   Anaconda base python (%USERPROFILE%\anaconda3\python.exe) - Python tool kernel and Office bridge:
+#       jupyter_client, ipykernel, pandas, matplotlib, plotly, pywin32, psutil
+#   conda env "flexxfast" - speech-to-text service (stt/stt_server.py):
+#       faster-whisper>=1.2, ctranslate2, av (PyAV), numpy

@@ -1,0 +1,530 @@
+{
+ "conversations": [
+  {
+   "id": "48c869a1-61a0-4f52-9382-0628a5dc9f2a",
+   "name": "วิเคราะห์ตู้ชาร์จหลุดการเชื่อมต่อ (OCPP 1.6J)",
+   "lastModified": 1790130000000,
+   "currNode": "386060ed-6ee4-4c2b-9ce2-1e7d382116cf",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "c41269f1-b4db-49f8-8d28-7c7cb6423cb8",
+   "name": "สรุปรายงานประจำเดือน สถานีชาร์จภาคเหนือ",
+   "lastModified": 1790130000000,
+   "currNode": "5d2330eb-2a6b-4304-bd57-98fb867bc771",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "55a1b45b-c95b-41a1-924f-092cbbe7ec82",
+   "name": "Fix overlapping chart labels",
+   "lastModified": 1790130000000,
+   "currNode": "fa352048-3f94-4513-b846-53682046131a",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "fe657a77-4156-4040-8645-7b4235202781",
+   "name": "ร่างอีเมลแจ้งปิดปรับปรุงระบบ",
+   "lastModified": 1790130000000,
+   "currNode": "1feeb72e-33b2-4221-abdf-ef75599c7f31",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "7bba81ca-1654-436a-a5d8-e119844f95d8",
+   "name": "Explain MXFP4 quantization",
+   "lastModified": 1790130000000,
+   "currNode": "01d8a6b6-badc-46de-b1d9-fce83680165b",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "5efeb4d5-4c5a-4bcb-81d4-847b8bd60e38",
+   "name": "แปลงไฟล์วิดีโอเป็น GIF สำหรับสไลด์",
+   "lastModified": 1790130000000,
+   "currNode": "e624ab00-a856-420e-b3fe-0f46d8b6af10",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "c112cf76-fdd8-4dc9-9f7d-466d92a88b2d",
+   "name": "Model evaluation review",
+   "lastModified": 1790130000000,
+   "currNode": "e90bc723-c69d-492d-841e-d97b9398fd4a",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "c147d96b-6bb3-4f32-977e-a8404cf91d06",
+   "name": "ตั้งค่าซิงก์ไฟล์ผ่าน VPN อัตโนมัติ",
+   "lastModified": 1790130000000,
+   "currNode": "80e83485-4dcc-4983-ae94-5b1290abb70c",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "1780e635-ed37-4faa-984c-b64ec0526673",
+   "name": "Regex for Thai phone numbers",
+   "lastModified": 1790130000000,
+   "currNode": "68effe57-fc43-43b0-9ad5-d0785964172b",
+   "reasoningEffort": "default"
+  }
+ ],
+ "messages": [
+  {
+   "id": "14643332-8eb6-45d9-97dd-1ecdc1d80899",
+   "convId": "48c869a1-61a0-4f52-9382-0628a5dc9f2a",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "98bbe978-6d8d-4abd-a25a-9de72ea51e02"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "system",
+   "role": "system",
+   "content": "ตอบเป็นภาษาไทย กระชับ อ้างอิงมาตรฐาน OCPP เมื่อเกี่ยวข้อง",
+   "timestamp": 1790130000001,
+   "id": "98bbe978-6d8d-4abd-a25a-9de72ea51e02",
+   "convId": "48c869a1-61a0-4f52-9382-0628a5dc9f2a",
+   "parent": "14643332-8eb6-45d9-97dd-1ecdc1d80899",
+   "children": [
+    "ee041894-a751-4fab-8957-bd58dc65847f"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ตู้ชาร์จ EV150 หลุดการเชื่อมต่อบ่อยมาก ช่วยไล่สาเหตุจาก log OCPP ให้หน่อย แล้วเขียนโค้ดกรองสถานะ Faulted ให้ด้วย",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "ee041894-a751-4fab-8957-bd58dc65847f",
+   "convId": "48c869a1-61a0-4f52-9382-0628a5dc9f2a",
+   "parent": "98bbe978-6d8d-4abd-a25a-9de72ea51e02",
+   "children": [
+    "01f5bfb8-fb84-4642-82e4-55b759ce78f2"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้เลยครับ นี่คือภาพรวมของ **OCPP 1.6J** กับสิ่งที่ควรตรวจเมื่อตู้ชาร์จหลุดการเชื่อมต่อ\n\n## ขั้นตอนตรวจสอบ\n\n1. ดู `BootNotification` ครั้งล่าสุด ว่าตู้ได้ `Accepted` หรือไม่\n2. ตรวจช่วงห่างของ `Heartbeat` เทียบกับค่า `HeartbeatInterval`\n3. ไล่ `StatusNotification` ย้อนหลัง หา `Faulted` หรือ `Unavailable`\n\n> ถ้า heartbeat หายไปเกิน 3 รอบติดกัน ให้ถือว่าลิงก์มีปัญหาก่อน แล้วค่อยสงสัยตัวตู้\n\n### ตารางรหัสผิดพลาดที่พบบ่อย\n\n| errorCode | ความหมาย | สิ่งที่ควรทำ |\n|---|---|---|\n| `GroundFailure` | ไฟรั่วลงดิน | ตัดไฟ ตรวจสายดิน |\n| `OverCurrentFailure` | กระแสเกิน | ลดพิกัดการชาร์จ |\n| `ConnectorLockFailure` | ล็อกหัวชาร์จไม่ได้ | ตรวจกลไกล็อก |\n\nตัวอย่างการกรอง log ด้วย Python:\n\n```python\nimport json\n\ndef faulted(lines):\n    for line in lines:\n        msg = json.loads(line)\n        if msg[2] == \"StatusNotification\" and msg[3][\"status\"] == \"Faulted\":\n            yield msg[3][\"connectorId\"], msg[3][\"errorCode\"]\n```\n\nและรูปแบบข้อความที่ตู้ส่งมา:\n\n```json\n[2, \"19223201\", \"StatusNotification\", {\"connectorId\": 1, \"errorCode\": \"GroundFailure\", \"status\": \"Faulted\"}]\n```\n\nสรุปสั้นๆ: เริ่มจาก *ลิงก์* ก่อนเสมอ เพราะกว่าครึ่งของกรณีที่ตู้ \"หายไป\" มาจากเครือข่าย ไม่ใช่ตัวตู้ ดูรายละเอียดเพิ่มที่ [เอกสาร OCPP](https://www.openchargealliance.org/)",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "01f5bfb8-fb84-4642-82e4-55b759ce78f2",
+   "convId": "48c869a1-61a0-4f52-9382-0628a5dc9f2a",
+   "parent": "ee041894-a751-4fab-8957-bd58dc65847f",
+   "children": [
+    "e7f4b3ff-a2bd-4b9a-9c53-2b75fbbd9221"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "Compare OCPP 1.6J and 2.0.1 briefly.",
+   "timestamp": 1790130000020,
+   "toolCalls": "",
+   "extra": [],
+   "id": "e7f4b3ff-a2bd-4b9a-9c53-2b75fbbd9221",
+   "convId": "48c869a1-61a0-4f52-9382-0628a5dc9f2a",
+   "parent": "01f5bfb8-fb84-4642-82e4-55b759ce78f2",
+   "children": [
+    "386060ed-6ee4-4c2b-9ce2-1e7d382116cf"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "Sure. Here is a compact comparison of the two protocols:\n\n- **OCPP 1.6J** uses JSON over WebSocket and is what most chargers in the field speak today.\n- **OCPP 2.0.1** adds device management, better security profiles, and ISO 15118 support.\n\nMigration usually happens charger by charger, so a CSMS must speak both for years.",
+   "timestamp": 1790130000025,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "386060ed-6ee4-4c2b-9ce2-1e7d382116cf",
+   "convId": "48c869a1-61a0-4f52-9382-0628a5dc9f2a",
+   "parent": "e7f4b3ff-a2bd-4b9a-9c53-2b75fbbd9221",
+   "children": []
+  },
+  {
+   "id": "0caecb18-5689-431e-ab5a-50fc5066736d",
+   "convId": "c41269f1-b4db-49f8-8d28-7c7cb6423cb8",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "80feaf3f-a2c2-44d2-9b99-9e36252b9842"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: สรุปรายงานประจำเดือน สถานีชาร์จภาคเหนือ",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "80feaf3f-a2c2-44d2-9b99-9e36252b9842",
+   "convId": "c41269f1-b4db-49f8-8d28-7c7cb6423cb8",
+   "parent": "0caecb18-5689-431e-ab5a-50fc5066736d",
+   "children": [
+    "5d2330eb-2a6b-4304-bd57-98fb867bc771"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ สรุปรายงานประจำเดือน สถานีชาร์จภาคเหนือ",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "5d2330eb-2a6b-4304-bd57-98fb867bc771",
+   "convId": "c41269f1-b4db-49f8-8d28-7c7cb6423cb8",
+   "parent": "80feaf3f-a2c2-44d2-9b99-9e36252b9842",
+   "children": []
+  },
+  {
+   "id": "443ba056-4eac-4bbf-bb7c-ec246c08ac3c",
+   "convId": "55a1b45b-c95b-41a1-924f-092cbbe7ec82",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "74024e11-c111-4c97-a28f-65d6df99e193"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: Fix overlapping chart labels",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "74024e11-c111-4c97-a28f-65d6df99e193",
+   "convId": "55a1b45b-c95b-41a1-924f-092cbbe7ec82",
+   "parent": "443ba056-4eac-4bbf-bb7c-ec246c08ac3c",
+   "children": [
+    "fa352048-3f94-4513-b846-53682046131a"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ Fix overlapping chart labels",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "fa352048-3f94-4513-b846-53682046131a",
+   "convId": "55a1b45b-c95b-41a1-924f-092cbbe7ec82",
+   "parent": "74024e11-c111-4c97-a28f-65d6df99e193",
+   "children": []
+  },
+  {
+   "id": "56545ea9-d55f-40f3-ad95-cea61eaa8035",
+   "convId": "fe657a77-4156-4040-8645-7b4235202781",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "78e27a08-80c0-4d66-9e53-de20fd66d125"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: ร่างอีเมลแจ้งปิดปรับปรุงระบบ",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "78e27a08-80c0-4d66-9e53-de20fd66d125",
+   "convId": "fe657a77-4156-4040-8645-7b4235202781",
+   "parent": "56545ea9-d55f-40f3-ad95-cea61eaa8035",
+   "children": [
+    "1feeb72e-33b2-4221-abdf-ef75599c7f31"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ ร่างอีเมลแจ้งปิดปรับปรุงระบบ",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "1feeb72e-33b2-4221-abdf-ef75599c7f31",
+   "convId": "fe657a77-4156-4040-8645-7b4235202781",
+   "parent": "78e27a08-80c0-4d66-9e53-de20fd66d125",
+   "children": []
+  },
+  {
+   "id": "2fc96225-b08c-45e8-b1df-7432f30cd793",
+   "convId": "7bba81ca-1654-436a-a5d8-e119844f95d8",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "14d9de74-5cdc-49f9-a442-c7f299af71e4"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: Explain MXFP4 quantization",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "14d9de74-5cdc-49f9-a442-c7f299af71e4",
+   "convId": "7bba81ca-1654-436a-a5d8-e119844f95d8",
+   "parent": "2fc96225-b08c-45e8-b1df-7432f30cd793",
+   "children": [
+    "01d8a6b6-badc-46de-b1d9-fce83680165b"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ Explain MXFP4 quantization",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "01d8a6b6-badc-46de-b1d9-fce83680165b",
+   "convId": "7bba81ca-1654-436a-a5d8-e119844f95d8",
+   "parent": "14d9de74-5cdc-49f9-a442-c7f299af71e4",
+   "children": []
+  },
+  {
+   "id": "c261ecdf-96bf-4e33-bc51-7f4770fc4f88",
+   "convId": "5efeb4d5-4c5a-4bcb-81d4-847b8bd60e38",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "b644c3b8-bda9-4619-bee7-d333c70b3afa"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: แปลงไฟล์วิดีโอเป็น GIF สำหรับสไลด์",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "b644c3b8-bda9-4619-bee7-d333c70b3afa",
+   "convId": "5efeb4d5-4c5a-4bcb-81d4-847b8bd60e38",
+   "parent": "c261ecdf-96bf-4e33-bc51-7f4770fc4f88",
+   "children": [
+    "e624ab00-a856-420e-b3fe-0f46d8b6af10"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ แปลงไฟล์วิดีโอเป็น GIF สำหรับสไลด์",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "e624ab00-a856-420e-b3fe-0f46d8b6af10",
+   "convId": "5efeb4d5-4c5a-4bcb-81d4-847b8bd60e38",
+   "parent": "b644c3b8-bda9-4619-bee7-d333c70b3afa",
+   "children": []
+  },
+  {
+   "id": "b62d6c96-53cc-4f0b-82c9-e01ef47025f2",
+   "convId": "c112cf76-fdd8-4dc9-9f7d-466d92a88b2d",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "c617559c-22cf-4d47-904a-36dfc4f4b90e"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: Model evaluation review",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "c617559c-22cf-4d47-904a-36dfc4f4b90e",
+   "convId": "c112cf76-fdd8-4dc9-9f7d-466d92a88b2d",
+   "parent": "b62d6c96-53cc-4f0b-82c9-e01ef47025f2",
+   "children": [
+    "e90bc723-c69d-492d-841e-d97b9398fd4a"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ Model evaluation review",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "e90bc723-c69d-492d-841e-d97b9398fd4a",
+   "convId": "c112cf76-fdd8-4dc9-9f7d-466d92a88b2d",
+   "parent": "c617559c-22cf-4d47-904a-36dfc4f4b90e",
+   "children": []
+  },
+  {
+   "id": "6262e65b-0d9f-4504-a6e4-6fed4b884d4b",
+   "convId": "c147d96b-6bb3-4f32-977e-a8404cf91d06",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "f55e88c6-6456-4658-967d-8004cea6b37e"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: ตั้งค่าซิงก์ไฟล์ผ่าน VPN อัตโนมัติ",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "f55e88c6-6456-4658-967d-8004cea6b37e",
+   "convId": "c147d96b-6bb3-4f32-977e-a8404cf91d06",
+   "parent": "6262e65b-0d9f-4504-a6e4-6fed4b884d4b",
+   "children": [
+    "80e83485-4dcc-4983-ae94-5b1290abb70c"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ ตั้งค่าซิงก์ไฟล์ผ่าน VPN อัตโนมัติ",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "80e83485-4dcc-4983-ae94-5b1290abb70c",
+   "convId": "c147d96b-6bb3-4f32-977e-a8404cf91d06",
+   "parent": "f55e88c6-6456-4658-967d-8004cea6b37e",
+   "children": []
+  },
+  {
+   "id": "49ee02c6-3d7f-49c1-821f-542d0e273da7",
+   "convId": "1780e635-ed37-4faa-984c-b64ec0526673",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "9606ff54-d719-4807-bf5c-00bf1bdc0ebe"
+   ],
+   "timestamp": 1790130000000,
+   "toolCalls": ""
+  },
+  {
+   "type": "text",
+   "role": "user",
+   "content": "ช่วยเรื่อง: Regex for Thai phone numbers",
+   "timestamp": 1790130000010,
+   "toolCalls": "",
+   "extra": [],
+   "id": "9606ff54-d719-4807-bf5c-00bf1bdc0ebe",
+   "convId": "1780e635-ed37-4faa-984c-b64ec0526673",
+   "parent": "49ee02c6-3d7f-49c1-821f-542d0e273da7",
+   "children": [
+    "68effe57-fc43-43b0-9ad5-d0785964172b"
+   ]
+  },
+  {
+   "type": "text",
+   "role": "assistant",
+   "content": "ได้ครับ นี่คือคำตอบตัวอย่างสำหรับ Regex for Thai phone numbers",
+   "timestamp": 1790130000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 812,
+    "prompt_ms": 690.0,
+    "predicted_n": 214,
+    "predicted_ms": 142000.0,
+    "predicted_per_second": 1.51
+   },
+   "id": "68effe57-fc43-43b0-9ad5-d0785964172b",
+   "convId": "1780e635-ed37-4faa-984c-b64ec0526673",
+   "parent": "9606ff54-d719-4807-bf5c-00bf1bdc0ebe",
+   "children": []
+  }
+ ]
+}

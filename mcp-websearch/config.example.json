@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy to config.json next to server.py and restart the web-search MCP (projects/tools/restart_svc.ps1 -Name websearch). Without config.json the server uses 'builtin'.",
+  "_providers": {
+    "builtin": "no key needed - Wikipedia + DuckDuckGo Instant Answer only, not a general web search",
+    "brave": "Brave Search API (free tier available). Easiest: put the key in C:\\LLM\\secrets\\brave-search.key and keep provider 'builtin' - it switches to Brave automatically",
+    "tavily": "Tavily API key (built for LLM use)",
+    "serper": "Serper API key (Google results)",
+    "searxng": "your own SearXNG instance: set url instead of api_key"
+  },
+  "provider": "builtin",
+  "api_key": "",
+  "url": "http://127.0.0.1:8888"
+}

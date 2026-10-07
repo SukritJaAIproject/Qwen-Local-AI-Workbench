@@ -1,0 +1,10 @@
+{
+ "conversations": [
+  {"id": "rv000000-0000-4000-8000-00000000a001", "name": "raw html", "lastModified": 1790300000000, "currNode": "rv000000-0000-4000-8000-00000000a003", "reasoningEffort": "default"}
+ ],
+ "messages": [
+  {"id": "rv000000-0000-4000-8000-00000000a002", "convId": "rv000000-0000-4000-8000-00000000a001", "type": "root", "role": "system", "content": "", "parent": null, "children": ["rv000000-0000-4000-8000-00000000a004"], "timestamp": 1790300000000, "toolCalls": ""},
+  {"id": "rv000000-0000-4000-8000-00000000a004", "convId": "rv000000-0000-4000-8000-00000000a001", "type": "text", "role": "user", "content": "html please", "parent": "rv000000-0000-4000-8000-00000000a002", "children": ["rv000000-0000-4000-8000-00000000a003"], "timestamp": 1790300000010, "toolCalls": "", "extra": []},
+  {"id": "rv000000-0000-4000-8000-00000000a003", "convId": "rv000000-0000-4000-8000-00000000a001", "type": "text", "role": "assistant", "content": "Here is a form:\n\n<button>Settings</button> <button title=\"Cancel\">Save</button>\n\n<details><summary>Reasoning</summary>Cancel</details>\n\n```html\n<button>Save</button>\n```\n\n```mermaid\ngraph TD\n  A[Settings] --> B[Cancel]\n```\n", "parent": "rv000000-0000-4000-8000-00000000a004", "children": [], "timestamp": 1790300000020, "toolCalls": "", "model": "Qwen3.8-27B-UD-Q4_K_M"}
+ ]
+}

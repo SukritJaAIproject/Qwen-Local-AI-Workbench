@@ -1,0 +1,9 @@
+[
+ {
+  "name": "NVIDIA GeForce GT 1030",
+  "total_mib": 2048,
+  "free_mib": 1900,
+  "pci_bus_id": "00000000:07:00.0",
+  "id": "CUDA0"
+ }
+]

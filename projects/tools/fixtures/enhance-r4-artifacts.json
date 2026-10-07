@@ -1,0 +1,129 @@
+{
+ "conversations": [
+  {
+   "id": "enh-art-0001",
+   "name": "Artifacts: dashboard + CSV",
+   "lastModified": 1790200000000,
+   "currNode": "enh-art-0001-a2",
+   "reasoningEffort": "default"
+  }
+ ],
+ "messages": [
+  {
+   "id": "enh-art-0001-root",
+   "convId": "enh-art-0001",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "enh-art-0001-u0"
+   ],
+   "timestamp": 1790200000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "enh-art-0001-u0",
+   "convId": "enh-art-0001",
+   "type": "text",
+   "role": "user",
+   "content": "ขอหน้า HTML แดชบอร์ด ไอคอน SVG และแผนภาพ mermaid",
+   "parent": "enh-art-0001-root",
+   "children": [
+    "enh-art-0001-a0"
+   ],
+   "timestamp": 1790200000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "enh-art-0001-a0",
+   "convId": "enh-art-0001",
+   "type": "text",
+   "role": "assistant",
+   "content": "นี่คือตัวอย่างหน้า HTML สำหรับแดชบอร์ดสถานะตู้ชาร์จ ลองเปิดดูในแผงด้านข้างได้เลยครับ\n\n```html\n<!doctype html>\n<html><head><style>body{font-family:sans-serif;padding:16px} .ok{color:green}</style></head>\n<body><h1>สถานะตู้ชาร์จ</h1><p class=\"ok\">EV150-01: Available</p>\n<script>document.body.insertAdjacentHTML('beforeend','<p>rendered by script</p>')</script>\n</body></html>\n```\n\nและไอคอน SVG ของหัวชาร์จ:\n\n```svg\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 60\" width=\"200\"><rect x=\"5\" y=\"5\" width=\"90\" height=\"50\" rx=\"8\" fill=\"#d97757\"/><text x=\"50\" y=\"38\" font-size=\"18\" text-anchor=\"middle\" fill=\"#fff\">CCS2</text></svg>\n```\n\nลำดับข้อความ OCPP ตอนเริ่มชาร์จ:\n\n```mermaid\nsequenceDiagram\n  Charger->>CSMS: Authorize\n  CSMS-->>Charger: Accepted\n  Charger->>CSMS: StartTransaction\n```\n",
+   "parent": "enh-art-0001-u0",
+   "children": [
+    "enh-art-0001-u1"
+   ],
+   "timestamp": 1790200000015,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 512,
+    "prompt_ms": 400.0,
+    "predicted_n": 120,
+    "predicted_ms": 80000.0,
+    "predicted_per_second": 1.5
+   }
+  },
+  {
+   "id": "enh-art-0001-u1",
+   "convId": "enh-art-0001",
+   "type": "text",
+   "role": "user",
+   "content": "Now a CSV, a markdown report and a chart",
+   "parent": "enh-art-0001-a0",
+   "children": [
+    "enh-art-0001-a1"
+   ],
+   "timestamp": 1790200000020,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "enh-art-0001-a1",
+   "convId": "enh-art-0001",
+   "type": "text",
+   "role": "assistant",
+   "content": "Here is the fault summary as CSV and as a Markdown report.\n\n```csv\nstation,faults,uptime\nEV150-01,3,99.2\nEV150-02,0,100\n\"DC-7, Bangkok\",12,93.5\n```\n\n```markdown\n# Weekly report\n\n- **EV150-01**: 3 faults\n- *DC-7*: needs a firmware update\n\n| station | uptime |\n|---|---|\n| EV150-01 | 99.2 |\n```\n\nThe chart below was produced by the Python tool:\n\n![fig](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAoCAIAAADBrGu+AAAAXklEQVR4nO3PwQ2AIAAEQYohxo4oxVrthgb8+JADnGQL2CnnUZeuxA8A0gcA6QOA9AFA+gAgfbAb4L7aYwAAAAAAawLeDgEAAAAAzA34eggAAAAAYCxgtiGA9NDvAB0CzN5bYaGJvQAAAABJRU5ErkJggg==)\n\n```python\nimport pandas as pd\ndf = pd.read_csv(\"faults.csv\")\nprint(df.describe())\n```\n\nสรุปสั้นๆ คือตู้ **DC-7** มีปัญหามากที่สุด ควรอัปเดตเฟิร์มแวร์ก่อน แล้วตรวจสาย LAN อีกครั้ง\n",
+   "parent": "enh-art-0001-u1",
+   "children": [
+    "enh-art-0001-u2"
+   ],
+   "timestamp": 1790200000025,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 512,
+    "prompt_ms": 400.0,
+    "predicted_n": 120,
+    "predicted_ms": 80000.0,
+    "predicted_per_second": 1.5
+   }
+  },
+  {
+   "id": "enh-art-0001-u2",
+   "convId": "enh-art-0001",
+   "type": "text",
+   "role": "user",
+   "content": "สรุปอีกที",
+   "parent": "enh-art-0001-a1",
+   "children": [
+    "enh-art-0001-a2"
+   ],
+   "timestamp": 1790200000030,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "enh-art-0001-a2",
+   "convId": "enh-art-0001",
+   "type": "text",
+   "role": "assistant",
+   "content": "สรุปแบบสั้น: ตู้ที่หลุดบ่อยส่วนใหญ่เกิดจาก Heartbeat ขาดช่วงเกิน 3 เท่าของ HeartbeatInterval ครับ\n\n1. ตรวจ `BootNotification` ล่าสุด\n2. เทียบเวลา Heartbeat\n\nThen check the WebSocket ping interval on the CSMS side as well.",
+   "parent": "enh-art-0001-u2",
+   "children": [],
+   "timestamp": 1790200000035,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 512,
+    "prompt_ms": 400.0,
+    "predicted_n": 120,
+    "predicted_ms": 80000.0,
+    "predicted_per_second": 1.5
+   }
+  }
+ ]
+}

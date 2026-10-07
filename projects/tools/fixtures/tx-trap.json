@@ -1,0 +1,247 @@
+{
+ "conversations": [
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "name": "Settings",
+   "lastModified": 1790200000000,
+   "currNode": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0c",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b01",
+   "name": "Cancel",
+   "lastModified": 1790190000000,
+   "currNode": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b04",
+   "reasoningEffort": "default"
+  }
+ ],
+ "messages": [
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a02",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a03"
+   ],
+   "timestamp": 1790200000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a03",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "user",
+   "content": "Settings",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a02",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a04"
+   ],
+   "timestamp": 1790200000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a04",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "assistant",
+   "content": "Cancel",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a03",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a05"
+   ],
+   "timestamp": 1790200000020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 20,
+    "prompt_ms": 90.0,
+    "predicted_n": 3,
+    "predicted_ms": 2100.0,
+    "predicted_per_second": 1.43
+   }
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a05",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "user",
+   "content": "Delete",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a04",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a06"
+   ],
+   "timestamp": 1790200000030,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a06",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "assistant",
+   "content": "Reasoning",
+   "reasoningContent": "Processing...",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a05",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a07"
+   ],
+   "timestamp": 1790200000040,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 30,
+    "prompt_ms": 120.0,
+    "predicted_n": 5,
+    "predicted_ms": 3300.0,
+    "predicted_per_second": 1.52
+   }
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a07",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "user",
+   "content": "Search",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a06",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a08"
+   ],
+   "timestamp": 1790200000050,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a08",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "assistant",
+   "content": "",
+   "reasoningContent": "Settings",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a07",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a09"
+   ],
+   "timestamp": 1790200000060,
+   "toolCalls": "[{\"id\":\"call_trap_1\",\"type\":\"function\",\"function\":{\"name\":\"Save\",\"arguments\":\"{\\\"q\\\":\\\"Cancel\\\"}\"}}]",
+   "model": "Qwen3.8-27B-UD-Q4_K_M"
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a09",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "tool",
+   "content": "Delete",
+   "toolCallId": "call_trap_1",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a08",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0a"
+   ],
+   "timestamp": 1790200000061,
+   "toolCalls": ""
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0a",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "assistant",
+   "content": "Hello there",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a09",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0b"
+   ],
+   "timestamp": 1790200000070,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 40,
+    "prompt_ms": 150.0,
+    "predicted_n": 4,
+    "predicted_ms": 2800.0,
+    "predicted_per_second": 1.43
+   }
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0b",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "user",
+   "content": "Copy",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0a",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0c"
+   ],
+   "timestamp": 1790200000080,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b02",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b01",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b03"
+   ],
+   "timestamp": 1790190000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b03",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b01",
+   "type": "text",
+   "role": "user",
+   "content": "Stop",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b02",
+   "children": [
+    "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b04"
+   ],
+   "timestamp": 1790190000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0c",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a01",
+   "type": "text",
+   "role": "assistant",
+   "content": "Stop",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7a0b",
+   "children": [],
+   "timestamp": 1790200000090,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 50,
+    "prompt_ms": 160.0,
+    "predicted_n": 2,
+    "predicted_ms": 1400.0,
+    "predicted_per_second": 1.43
+   }
+  },
+  {
+   "id": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b04",
+   "convId": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b01",
+   "type": "text",
+   "role": "assistant",
+   "content": "Send",
+   "parent": "7a1f0c52-0b8e-4d7e-9a51-5b6f2c0e7b03",
+   "children": [],
+   "timestamp": 1790190000020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M",
+   "timings": {
+    "prompt_n": 10,
+    "prompt_ms": 60.0,
+    "predicted_n": 2,
+    "predicted_ms": 1400.0,
+    "predicted_per_second": 1.43
+   }
+  }
+ ]
+}

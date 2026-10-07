@@ -1,0 +1,174 @@
+/* ==========================================================================
+   Qwen3.8 design tokens — ใช้ร่วมกันทั้งแถบข้างของ hub และหน้าแชตใน iframe
+
+   แนวทาง: โทนอุ่นแบบกระดาษ/หมึก ตัวอักษรคำตอบเป็น serif และสีเน้นส้มอิฐ
+   ใช้ชุดเดียวกันทั้งสองฝั่ง เส้นแบ่งระหว่างแถบข้างกับหน้าแชตจึงกลืนเป็นชิ้นเดียว
+
+   วิธีเลือกธีม (ตัดสินที่ <html>):
+     data-theme="dark"  | data-theme="light"  บังคับธีม
+     ไม่มี data-theme                            ตาม prefers-color-scheme ของระบบ
+   ฝั่ง iframe ใช้ class="dark" ของ mode-watcher ด้วย จึงรองรับทั้งสองทาง
+   ========================================================================== */
+
+:root {
+  /* ---- พื้นผิว (light) ---- */
+  --qw-bg:            #faf9f5;   /* ผืนหลักของหน้าแชต */
+  --qw-bg-sidebar:    #f3f1ea;   /* แถบข้าง เข้มกว่าผืนหลักนิดเดียว */
+  --qw-bg-elev:       #ffffff;   /* กล่องพิมพ์ การ์ด ป๊อปโอเวอร์ */
+  --qw-bg-user:       #efece3;   /* กล่องข้อความของผู้ใช้ */
+  --qw-bg-hover:      #e9e6dc;   /* hover ในรายการ */
+  --qw-bg-active:     #e3dfd3;   /* รายการที่เลือกอยู่ */
+  --qw-bg-code:       #f3f1ea;
+  --qw-bg-inline-code:#ece9df;
+  --qw-scrim:         rgba(20, 20, 19, 0.38);
+
+  /* ---- เส้นขอบ ---- */
+  --qw-border:        rgba(31, 30, 29, 0.10);
+  --qw-border-strong: rgba(31, 30, 29, 0.18);
+  --qw-border-focus:  rgba(31, 30, 29, 0.30);
+
+  /* ---- ตัวอักษร ---- */
+  --qw-text:          #1f1e1d;
+  --qw-text-2:        #3d3d3a;
+  --qw-text-3:        #65635c;   /* 4.5:1 ขึ้นไปบนทุกพื้น รวม hover/active */
+  --qw-text-4:        #737168;   /* placeholder/ข้อความรอง — 4.6:1 บนผืนหลัก */
+
+  /* ---- สีเน้น ---- */
+  --qw-accent:        #c96442;   /* ส้มอิฐ — ปุ่มส่ง ไฮไลต์ โลโก้ */
+  --qw-accent-hover:  #b5573a;
+  --qw-accent-soft:   rgba(201, 100, 66, 0.12);
+  --qw-accent-fg:     #ffffff;
+  --qw-link:          #b5573a;
+  --qw-ok:            #5b8a4e;
+  --qw-warn:          #b7791f;
+  --qw-danger:        #c0392b;
+  --qw-danger-bg:     #c0392b;   /* พื้นปุ่มลบ ตัวอักษรขาว 5.4:1 */
+  --qw-focus-ring:    #b5573a;   /* ทึบ: วงโฟกัสต้องได้ 3:1 บนทุกพื้น (แบบโปร่งแสงได้แค่ 1.7:1) */
+
+  /* ---- ตัวอักษร ---- */
+  --qw-font-ui:    "Qw Thai UI", "Segoe UI Variable Text", "Segoe UI", "Leelawadee UI", "Noto Sans Thai",
+                   system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --qw-font-serif: "Source Serif 4", "Noto Serif Thai", "Iowan Old Style", Georgia,
+                   "Times New Roman", serif;
+  --qw-font-mono:  "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas,
+                   ui-monospace, "SFMono-Regular", monospace;
+
+  /* ขนาด (อิง 16px) */
+  --qw-fs-xs:   0.75rem;    /* 12 */
+  --qw-fs-sm:   0.8125rem;  /* 13 */
+  --qw-fs-base: 0.875rem;   /* 14 — UI */
+  --qw-fs-body: 1rem;       /* 16 — เนื้อความคำตอบ */
+  --qw-fs-lg:   1.125rem;
+  --qw-fs-greet: clamp(1.75rem, 1.2rem + 1.6vw, 2.5rem);
+  --qw-lh-body: 1.7;        /* ภาษาไทยมีวรรณยุกต์ซ้อน ต้องการระยะบรรทัดมากกว่าละติน */
+
+  /* ---- รูปทรง ---- */
+  --qw-r-xs:  6px;
+  --qw-r-sm:  8px;
+  --qw-r-md:  12px;
+  --qw-r-lg:  16px;
+  --qw-r-xl:  20px;
+  --qw-r-full: 999px;
+
+  --qw-shadow-sm:  0 1px 2px rgba(20, 20, 19, 0.05);
+  --qw-shadow-md:  0 4px 20px rgba(20, 20, 19, 0.06), 0 1px 3px rgba(20, 20, 19, 0.05);
+  --qw-shadow-lg:  0 12px 40px rgba(20, 20, 19, 0.12), 0 2px 6px rgba(20, 20, 19, 0.06);
+  --qw-shadow-composer: 0 4px 20px rgba(20, 20, 19, 0.045), 0 0 0 0.5px rgba(31, 30, 29, 0.08);
+
+  /* ---- ขนาดโครง ---- */
+  --qw-sidebar-w:     288px;
+  --qw-sidebar-w-min: 56px;
+  --qw-header-h:      52px;
+  --qw-content-w:     768px;   /* ความกว้างคอลัมน์ข้อความ */
+
+  --qw-ease: cubic-bezier(0.2, 0, 0, 1);
+  --qw-dur:  160ms;
+
+  color-scheme: light;
+}
+
+/* ---- dark ---------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --qw-bg:            #262624;
+    --qw-bg-sidebar:    #1f1e1d;
+    --qw-bg-elev:       #30302e;
+    --qw-bg-user:       #141413;
+    --qw-bg-hover:      #2d2c2a;
+    --qw-bg-active:     #353431;
+    --qw-bg-code:       #1c1b1a;
+    --qw-bg-inline-code:#353431;
+    --qw-scrim:         rgba(0, 0, 0, 0.55);
+    --qw-border:        rgba(222, 220, 209, 0.12);
+    --qw-border-strong: rgba(222, 220, 209, 0.20);
+    --qw-border-focus:  rgba(222, 220, 209, 0.34);
+    --qw-text:          #f4f2ec;
+    --qw-text-2:        #d8d6cd;
+    --qw-text-3:        #b0ada3;
+    --qw-text-4:        #a09d94;   /* 4.9:1 บน elev */
+    --qw-accent:        #d97757;
+    --qw-accent-hover:  #e3876a;
+    --qw-accent-soft:   rgba(217, 119, 87, 0.16);
+    --qw-accent-fg:     #ffffff;
+    --qw-link:          #e3906f;
+    --qw-ok:            #86b36f;
+    --qw-warn:          #d9a441;
+    --qw-danger:        #f08a80;
+    --qw-danger-bg:     #b8433a;
+    --qw-focus-ring:    #d97757;
+    --qw-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.25);
+    --qw-shadow-md:  0 4px 20px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --qw-shadow-lg:  0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --qw-shadow-composer: 0 4px 24px rgba(0, 0, 0, 0.22), 0 0 0 0.5px rgba(222, 220, 209, 0.10);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"],
+:root.dark:not([data-theme="light"]) {
+  --qw-bg:            #262624;
+  --qw-bg-sidebar:    #1f1e1d;
+  --qw-bg-elev:       #30302e;
+  --qw-bg-user:       #141413;
+  --qw-bg-hover:      #2d2c2a;
+  --qw-bg-active:     #353431;
+  --qw-bg-code:       #1c1b1a;
+  --qw-bg-inline-code:#353431;
+  --qw-scrim:         rgba(0, 0, 0, 0.55);
+  --qw-border:        rgba(222, 220, 209, 0.12);
+  --qw-border-strong: rgba(222, 220, 209, 0.20);
+  --qw-border-focus:  rgba(222, 220, 209, 0.34);
+  --qw-text:          #f4f2ec;
+  --qw-text-2:        #d8d6cd;
+  --qw-text-3:        #b0ada3;
+  --qw-text-4:        #a09d94;   /* 4.9:1 บน elev */
+  --qw-accent:        #d97757;
+  --qw-accent-hover:  #e3876a;
+  --qw-accent-soft:   rgba(217, 119, 87, 0.16);
+  --qw-accent-fg:     #ffffff;
+  --qw-link:          #e3906f;
+  --qw-ok:            #86b36f;
+  --qw-warn:          #d9a441;
+  --qw-danger:        #f08a80;
+  --qw-danger-bg:     #b8433a;
+  --qw-focus-ring:    #d97757;
+  --qw-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.25);
+  --qw-shadow-md:  0 4px 20px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --qw-shadow-lg:  0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --qw-shadow-composer: 0 4px 24px rgba(0, 0, 0, 0.22), 0 0 0 0.5px rgba(222, 220, 209, 0.10);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --qw-dur: 0ms; }
+}
+
+/* คอลัมน์ข้อความกว้างขึ้นบนจอใหญ่ — 768px บนจอ 1920 เหลือขอบว่างข้างละ ~430px
+   ผู้ใช้บอกว่าดูโหรงเหรง แต่กว้างเกิน ~960px บรรทัดยาวจนอ่านยาก จึงขยายเป็นขั้น
+   (ในหน้าแชต media query วัดจากความกว้างของ iframe ซึ่งแคบกว่าจอเท่ากับแถบข้าง) */
+@media (min-width: 1500px) {
+  :root { --qw-content-w: 880px; }
+}
+@media (min-width: 2100px) {
+  :root { --qw-content-w: 960px; }
+}

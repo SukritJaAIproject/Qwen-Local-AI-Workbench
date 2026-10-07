@@ -1,0 +1,23 @@
+[
+ {
+  "name": "NVIDIA RTX 1000 Ada Generation Laptop GPU",
+  "total_mib": 6140,
+  "free_mib": 5083,
+  "pci_bus_id": "00000000:01:00.0",
+  "id": "CUDA0"
+ },
+ {
+  "name": "NVIDIA GeForce RTX 4090",
+  "total_mib": 24564,
+  "free_mib": 24080,
+  "pci_bus_id": "00000000:2C:00.0",
+  "id": "CUDA1"
+ },
+ {
+  "name": "NVIDIA GeForce RTX 4090",
+  "total_mib": 24564,
+  "free_mib": 24080,
+  "pci_bus_id": "00000000:3D:00.0",
+  "id": "CUDA2"
+ }
+]

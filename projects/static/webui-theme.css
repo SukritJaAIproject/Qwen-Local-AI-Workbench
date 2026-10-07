@@ -1,0 +1,2204 @@
+/* ==========================================================================
+   webui-theme.css — หน้าตาทุกอย่างภายใน iframe (WebUI ของ llama.cpp)
+
+   ทำไมเขียนแบบนี้:
+   - แก้ซอร์สของ WebUI ไม่ได้ (SvelteKit ที่คอมไพล์แล้ว) จึงทับจากภายนอกเท่านั้น
+   - ขั้นแรก map ตัวแปร shadcn (--background, --primary …) ไปเป็น token ของเรา
+     ส่วนใหญ่ของแอป (dialog, popover, ปุ่ม) เปลี่ยนตามเองโดยไม่ต้องไล่ทีละชิ้น
+   - ขั้นสอง ปรับชิ้นที่ต้องการให้เหมือนแนวกระดาษ/หมึก: คำตอบ serif,
+     กล่องพิมพ์การ์ดมน ปุ่มส่งสีส้มอิฐ แถบเครื่องมือของข้อความที่เงียบลง
+
+   กฎความเจาะจง (specificity):
+   - Tailwind ของ WebUI อยู่ใน @layer → กฎที่ไม่มี layer ของเราชนะอยู่แล้ว
+     ยกเว้น utility ที่มี ! (important ใน layer ชนะ important นอก layer)
+     ตรงนั้นจึงเลี่ยงไปใช้ property อื่นแทน หรือถ้าเลี่ยงไม่ได้ เขียนเข้า @layer utilities
+     ของ WebUI เองแล้วชนะด้วย specificity (ดู dialog MCP ใน §7)
+   - style ของคอมโพเนนต์ Svelte (.markdown-content.svelte-xxx p) ไม่มี layer
+     จึงขึ้นต้นด้วย html:root เพื่อให้หนักกว่าเสมอ ไม่ต้องพึ่ง hash ของ Svelte
+   - ธีมของ highlight.js ถูกใส่ทีหลังเป็น <style> ท้าย head จึงต้องหนักกว่าเช่นกัน
+
+   attribute ที่ enhance.js ตั้งบน <html>:
+     data-theme · data-qw-font · data-qw-route · data-qw-embedded · data-qw-hero
+   ========================================================================== */
+
+
+/* ---------------------------------------------------------------------------
+   1. map ตัวแปรของ WebUI → token ของเรา
+   ค่าเป็น var(--qw-*) ซึ่งสลับตามธีมใน tokens.css อยู่แล้ว
+   จึงเขียนชุดเดียวใช้ได้ทั้งมืดและสว่าง (html.dark มาจาก mode-watcher)
+   --------------------------------------------------------------------------- */
+html:root,
+html.dark,
+html[data-theme="light"],
+html[data-theme="dark"] {
+  --radius: var(--qw-r-md);
+
+  --background: var(--qw-bg);
+  --foreground: var(--qw-text);
+  --card: var(--qw-bg-elev);
+  --card-foreground: var(--qw-text);
+  --popover: var(--qw-bg-elev);
+  --popover-foreground: var(--qw-text);
+
+  /* ปุ่มหลักใน dialog เป็นสีหมึก (มืด=สว่าง) ส่วนสีส้มเก็บไว้ให้ปุ่มส่งกับโลโก้เท่านั้น */
+  --primary: var(--qw-text);
+  --primary-foreground: var(--qw-bg);
+  --secondary: var(--qw-bg-active);
+  --secondary-foreground: var(--qw-text);
+  --muted: var(--qw-bg-hover);
+  --muted-foreground: var(--qw-text-3);
+  /* hover ของรายการในเมนู: ผสมจากสีตัวอักษรแบบโปร่ง ใช้ได้ทั้งบนพื้นหลักและบน popover */
+  --accent: color-mix(in srgb, var(--qw-text) 7%, transparent);
+  --accent-foreground: var(--qw-text);
+  /* พื้นของปุ่ม/ป้ายลบแบบเติมสี (ปุ่มของ WebUI ใส่ text-white! อยู่แล้ว ขาวบนพื้นนี้ได้ ≥5.3:1)
+     --qw-danger สว่างเกินจะรองตัวขาว จึงใช้เฉพาะกับ "ข้อความ" สีลบ — ดูกฎท้าย §7 */
+  --destructive: var(--qw-danger-bg);
+
+  --border: var(--qw-border);
+  --input: var(--qw-border-strong);
+  /* ring-* ของ Tailwind (focus-visible:ring-ring/50, border-ring …) ใช้สีโฟกัสแบบทึบ ≥3:1 */
+  --ring: var(--qw-focus-ring);
+
+  --sidebar: var(--qw-bg-sidebar);
+  --sidebar-foreground: var(--qw-text-2);
+  --sidebar-primary: var(--qw-accent);
+  --sidebar-primary-foreground: var(--qw-accent-fg);
+  --sidebar-accent: var(--qw-bg-hover);
+  --sidebar-accent-foreground: var(--qw-text);
+  --sidebar-border: var(--qw-border);
+  --sidebar-ring: var(--qw-focus-ring);
+
+  --code-background: var(--qw-bg-code);
+  --code-foreground: var(--qw-text);
+
+  --chart-1: var(--qw-accent);
+  --chart-2: var(--qw-ok);
+  --chart-3: var(--qw-warn);
+  --chart-4: var(--qw-link);
+  --chart-5: var(--qw-text-3);
+
+  --font-sans: var(--qw-font-ui);
+  --font-mono: var(--qw-font-mono);
+
+  /* เขียวของ Tailwind (จุด "โหลดแล้ว" ในเมนูโมเดล, ป้าย Tools ใน MCP …) สดเกินโทนอุ่น
+     map ทั้งสเกลไปที่ --qw-ok: เฉดอ่อน/เข้มสุดใช้เป็นพื้นป้าย จึงผสมจางกับพื้นการ์ด */
+  --color-green-50: color-mix(in srgb, var(--qw-ok) 12%, var(--qw-bg-elev));
+  --color-green-100: color-mix(in srgb, var(--qw-ok) 16%, var(--qw-bg-elev));
+  --color-green-400: var(--qw-ok);
+  --color-green-500: var(--qw-ok);
+  --color-green-600: var(--qw-ok);
+  --color-green-700: color-mix(in srgb, var(--qw-ok) 80%, var(--qw-text));
+  --color-green-900: color-mix(in srgb, var(--qw-ok) 18%, var(--qw-bg-elev));
+  --color-green-950: color-mix(in srgb, var(--qw-ok) 14%, var(--qw-bg-elev));
+
+  /* สีไวยากรณ์โค้ด: ผสมจาก token ให้เข้ากับโทนอุ่น แทนธีม GitHub ของ WebUI */
+  --qw-syn-keyword: var(--qw-accent);
+  --qw-syn-string: var(--qw-ok);
+  --qw-syn-number: var(--qw-warn);
+  --qw-syn-title: color-mix(in oklab, var(--qw-link) 55%, var(--qw-text));
+  --qw-syn-attr: color-mix(in oklab, var(--qw-warn) 45%, var(--qw-text));
+  --qw-syn-comment: var(--qw-text-4);
+  --qw-syn-punct: var(--qw-text-3);
+}
+/* ธีมสว่าง: สีเน้นบนพื้นโค้ดครีมได้แค่ ~3.2-3.6:1 ผสมหมึกเข้าไปให้ผ่าน 4.5:1 (โค้ด 13px)
+   ธีมมืดผ่านอยู่แล้วจึงไม่แตะ */
+html:root[data-theme="light"] {
+  --qw-syn-keyword: color-mix(in srgb, var(--qw-accent) 70%, var(--qw-text));
+  --qw-syn-string: color-mix(in srgb, var(--qw-ok) 70%, var(--qw-text));
+  --qw-syn-number: color-mix(in srgb, var(--qw-warn) 70%, var(--qw-text));
+  --qw-syn-comment: var(--qw-text-3);
+}
+
+
+/* ---------------------------------------------------------------------------
+   2. พื้นฐาน
+   --------------------------------------------------------------------------- */
+html:root body {
+  background: var(--qw-bg);
+  color: var(--qw-text);
+  font-family: var(--qw-font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* accent-soft (12-16%) จางเกินไปสำหรับไฮไลต์ข้อความยาว เพิ่มความเข้มจาก token เดียวกัน */
+html:root ::selection {
+  background: color-mix(in srgb, var(--qw-accent) 30%, transparent);
+}
+
+/* แถบเลื่อนบางและกลืนกับพื้น
+   - WebUI ตั้ง *{scrollbar-width:thin} ไว้แล้ว และ .scrollbar-hide = none (แถบแท็บ ฯลฯ)
+     เราจึงไม่แตะ scrollbar-width ไม่งั้นแถบที่ตั้งใจซ่อนจะโผล่
+   - ต้องใส่สีให้ทุก element เพราะ WebUI ตั้ง scrollbar-color: transparent ให้ * ตรงๆ (ไม่รับจากแม่)
+   - ไม่ใช้ ::-webkit-scrollbar: Chromium 121+ ข้ามทิ้งเมื่อมี scrollbar-color อยู่แล้ว */
+html:root,
+html:root * {
+  scrollbar-color: var(--qw-border-strong) transparent;
+}
+
+html:root :focus-visible {
+  outline-color: var(--qw-focus-ring);
+}
+
+
+/* ---------------------------------------------------------------------------
+   3. โหมดฝังใน shell — shell มีแถบข้าง/หัวของตัวเองแล้ว
+   ซ่อนแถบข้างของ WebUI, แถบแท็บ และการ์ด system message
+   (เปิด /?ui=1 ตรงๆ ยังเห็นครบ เพราะทำเฉพาะใต้ data-qw-embedded)
+   --------------------------------------------------------------------------- */
+/* ซ่อนทั้งแถบแม้ถูกสั่งขยาย: ค้นหา/แชตใหม่ใน shell ทำผ่าน enhance → shell อยู่แล้ว
+   และถ้าเปิด "alwaysShowSidebarOnDesktop" ไว้ แถบจะขยายค้างทับหน้าแชต */
+html[data-qw-embedded="1"] body > div > div > aside,
+html[data-qw-embedded="1"] nav[aria-label="Open conversations"],
+html[data-qw-embedded="1"] .chat-message:has([aria-label="System message with actions"]) {
+  display: none;
+}
+
+/* ตัดระยะที่เผื่อไว้ให้แถบแท็บ/แถบบนมือถือทิ้ง แชตใช้ความกว้างเต็ม iframe */
+html[data-qw-embedded="1"] .chat-screen {
+  --chat-tabs-offset: 0px;
+  padding-top: 0;
+}
+html[data-qw-embedded="1"] body > div > div > .flex-1 {
+  width: 100%;
+  min-width: 0;
+}
+/* ขอบบนของ iframe ชนหัวของ shell พอดี ข้อความที่เลื่อนขึ้นจึงโดนตัดเป็นเส้นตรง
+   ไล่เฉดบางๆ ให้จางหายเหมือนขอบล่างเหนือกล่องพิมพ์ (ตัวเลื่อนคือเอกสารเอง จึง sticky ได้)
+   z-index ต่ำกว่า dialog/popover ของ WebUI (z-50 ใน portal) */
+html[data-qw-embedded="1"] .chat-screen::before {
+  content: "";
+  position: sticky;
+  top: 0;
+  display: block;
+  height: 20px;
+  margin-bottom: -20px;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(var(--qw-bg), transparent);
+}
+
+
+/* ---------------------------------------------------------------------------
+   4. คอลัมน์ข้อความ
+   --------------------------------------------------------------------------- */
+html:root .chat-screen {
+  background: var(--qw-bg);
+}
+
+/* ระยะห่างระหว่างข้อความ: WebUI ใช้ 48px ทุกก้อน บวกแถวปุ่มที่ซ่อนไว้แต่ยังกินที่ (24px + ระยะของมัน)
+   ช่องว่างที่ตาเห็นจึงเป็น ~80px (จบคำตอบ→คำถามถัดไป) และ ~55px (คำถาม→คำตอบ) หลวมกว่าหน้าอ่านมาก
+   ให้แถวปุ่มเป็น "ช่องว่าง" ระหว่างรอบเอง ไม่ต้องบวกระยะเพิ่ม (ตัวเลขชิดแถวปุ่มอยู่ใน 4e)
+   → ตาเห็น ~35px และ ~30px, แถวปุ่มยังเต็ม 24px ชี้/กดได้เหมือนเดิม */
+html:root .chat-message-user {
+  margin-top: 0;
+}
+/* ข้อความแรกต้องห่างขอบบน: ปกติคือลูกแรก แต่ในโหมดฝัง system message (ลูกแรก) ถูกซ่อน
+   ข้อความแรกที่เห็นจึงเป็นตัวถัดจากมัน */
+html:root .chat-message:first-child .chat-message-user,
+html:root .chat-message:first-child [role="group"],
+html:root .chat-message:has([aria-label="System message with actions"]) + .chat-message .chat-message-user {
+  margin-top: 1.5rem;
+}
+/* ขยับขึ้นเข้าไปในระยะ leading บนของบรรทัดแรก (~6px ว่างเหนือตัวอักษร) แถวปุ่มของคำถามจึงไม่ห่างเกิน
+   จอสัมผัสเห็นแถวปุ่มตลอดจึงไม่ดึง (ดู @media (hover: none) ท้าย §9) */
+html:root .chat-message-assistant {
+  margin-top: -4px;
+}
+
+
+/* ---- 4a. ข้อความของโมเดล: ไม่มีกรอบ ตัวอักษรอ่านสบาย ------------------------ */
+html:root .chat-message-assistant {
+  color: var(--qw-text);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-body);
+  line-height: var(--qw-lh-body);
+}
+html[data-qw-font="serif"] .chat-message-assistant .agentic-text .markdown-content {
+  font-family: var(--qw-font-serif);
+  /* serif ของ Source Serif ตัวเล็กกว่า sans ที่ขนาดเดียวกัน ขยายเล็กน้อยให้สมดุล */
+  font-size: 1.03em;
+  /* น้ำหนักคำนวณได้ 400 อยู่แล้ว แต่ Source Serif 4 เป็น variable font มีแกน opsz
+     font-optical-sizing:auto เลือก opsz ≈ 16 (ร่าง "Text" เส้นหนา คอนทราสต์ต่ำ) จึงดูเหมือน semibold
+     ล็อก opsz 28 (ร่าง subhead เส้นบางลง) ระบุแค่ opsz จึงไม่ทับ wght — strong/หัวข้อ 600 ยังหนาตามเดิม
+     (Noto Serif Thai ไม่มีแกนนี้ ตัวไทยไม่เปลี่ยน) */
+  font-variation-settings: "opsz" 28;
+}
+/* ธีมมืด: ตัวอักษรสว่างบนพื้นมืดดูพองกว่าจริง (irradiation) และ -webkit-font-smoothing ไม่มีผลบน Windows
+   ลดความสว่างเนื้อความลงหนึ่งขั้น (text-2 ยังได้ ~10:1) หัวข้อ/strong/หัวตารางคง --qw-text ลำดับชั้นจึงชัดขึ้นด้วย
+   จับเฉพาะ .agentic-text > .markdown-content — ความคิด (reasoning) อยู่นอกนี้และคงสีจางของมัน */
+html:is([data-theme="dark"], .dark:not([data-theme="light"])) .chat-message-assistant .agentic-text > .markdown-content {
+  color: var(--qw-text-2);
+}
+
+html:root .markdown-content p {
+  margin-block: 0.9em;
+  line-height: var(--qw-lh-body);
+}
+html:root .markdown-content .markdown-block:first-child > p:first-child { margin-block-start: 0; }
+html:root .markdown-content .markdown-block:last-child > p:last-child { margin-block-end: 0; }
+
+html:root .markdown-content :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--qw-text);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  margin: 1.5em 0 0.5em;
+}
+html:root .markdown-content h1 { font-size: 1.5em; }
+html:root .markdown-content h2 { font-size: 1.25em; }
+html:root .markdown-content h3 { font-size: 1.1em; }
+html:root .markdown-content :is(h4, h5, h6) { font-size: 1em; }
+html:root .markdown-content .markdown-block:first-child > :is(h1, h2, h3, h4, h5, h6) { margin-top: 0.25em; }
+
+html:root .markdown-content strong { font-weight: 600; color: var(--qw-text); }
+
+html:root .markdown-content :is(ul, ol) {
+  margin: 0.6em 0 1em;
+  margin-inline-start: 1.4em;
+}
+html:root .markdown-content li {
+  margin-block: 0.3em;
+  padding-inline-start: 0.35em;
+}
+html:root .markdown-content li::marker { color: var(--qw-text-3); }
+html:root .markdown-content :is(ul, ol) :is(ul, ol) { margin-block: 0.25em; }
+
+html:root .markdown-content a {
+  color: var(--qw-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--qw-link) 45%, transparent);
+  /* WebUI ตั้ง break-all ซึ่งตัดคำไทยกลางพยางค์ ใช้ anywhere อย่างเดียวพอ */
+  word-break: normal;
+  overflow-wrap: anywhere;
+  transition: color var(--qw-dur) var(--qw-ease), text-decoration-color var(--qw-dur) var(--qw-ease);
+}
+html:root .markdown-content a:hover {
+  color: var(--qw-accent-hover);
+  text-decoration-color: currentColor;
+}
+
+html:root .markdown-content blockquote,
+html:root .markdown-content blockquote:hover {
+  margin: 1.1em 0;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid var(--qw-border-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--qw-text-2);
+  font-style: normal;
+  transform: none;
+}
+html:root .markdown-content blockquote::before { content: none; }
+html:root .markdown-content blockquote p { margin-block: 0.4em; }
+
+html:root .markdown-content hr {
+  height: 0;
+  border: 0;
+  border-top: 1px solid var(--qw-border);
+  background: none;
+  margin: 1.75em 0;
+}
+html:root .markdown-content hr::after { content: none; }
+
+html:root .markdown-content img {
+  border-radius: var(--qw-r-md);
+  box-shadow: none;
+  border: 0.5px solid var(--qw-border);
+}
+html:root .markdown-content img:hover { transform: none; box-shadow: none; }
+
+/* โค้ดในบรรทัด */
+html:root .markdown-content :not(pre) > code {
+  font-family: var(--qw-font-mono);
+  font-size: 0.875em;
+  background: var(--qw-bg-inline-code);
+  color: color-mix(in oklab, var(--qw-danger) 55%, var(--qw-text));
+  padding: 0.12em 0.38em;
+  border-radius: 5px;
+  border: 0.5px solid var(--qw-border);
+  white-space: break-spaces;
+}
+
+
+/* ---- 4a'. ความคิดของโมเดล (reasoning) และบล็อกยุบ/ขยาย: sans เล็ก สีจาง
+   แยกชัดจากคำตอบจริงที่เป็น serif (ไม่ใส่ serif เพราะจำกัดไว้ที่ .agentic-text) */
+html:root .chat-message-assistant [data-slot="collapsible-trigger"] {
+  border-radius: var(--qw-r-sm);
+  color: var(--qw-text-3);
+  transition: color var(--qw-dur) var(--qw-ease);
+}
+html:root .chat-message-assistant [data-slot="collapsible-trigger"]:hover { color: var(--qw-text); }
+html:root .chat-message-assistant [data-slot="collapsible-trigger"] .text-foreground\/80 {
+  color: inherit;
+  font-size: var(--qw-fs-sm);
+  font-weight: 500;
+}
+html:root .chat-message-assistant .reasoning-content .markdown-content {
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-base);
+  line-height: 1.65;
+  color: var(--qw-text-3);
+}
+html:root .chat-message-assistant [data-slot="collapsible-content"] .border-l {
+  border-left: 2px solid var(--qw-border-strong);
+}
+
+/* ---- 4b. บล็อกโค้ด ---------------------------------------------------------- */
+html:root .markdown-content .code-block-wrapper {
+  background: var(--qw-bg-code);
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);
+  box-shadow: none;
+}
+html:root .markdown-content .markdown-block:not(:first-child) .code-block-wrapper { margin-top: 0.9em; }
+html:root .markdown-content .markdown-block:not(:last-child) .code-block-wrapper { margin-bottom: 0.9em; }
+
+html:root .markdown-content .code-block-header {
+  padding: 0.4rem 0.5rem 0 1rem;
+  font-family: var(--qw-font-ui);
+}
+/* ชื่อภาษาเป็น mono ให้เข้าชุดกับโค้ดข้างล่าง (ชื่อภาษาเป็นคำโค้ด เช่น python, json) */
+html:root .markdown-content .code-language {
+  color: var(--qw-text-3);
+  font-family: var(--qw-font-mono);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+html:root .markdown-content :is(.copy-code-btn, .preview-code-btn, .toggle-source-btn) {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--qw-r-sm);
+  color: var(--qw-text-3);
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease);
+}
+html:root .markdown-content :is(.copy-code-btn, .preview-code-btn, .toggle-source-btn):hover {
+  color: var(--qw-text);
+  background: var(--accent);
+  transform: none;
+}
+html:root .markdown-content :is(.copy-code-btn, .preview-code-btn, .toggle-source-btn) svg {
+  width: 15px;
+  height: 15px;
+}
+html:root .markdown-content .code-block-scroll-container {
+  padding: 2.4rem 1.1rem 1rem;
+}
+html:root .markdown-content :is(pre, pre code),
+html:root .markdown-content .code-block-wrapper pre {
+  font-family: var(--qw-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+html:root .markdown-content pre code.hljs,
+html:root .markdown-content code.hljs {
+  background: transparent;
+  color: var(--qw-text);
+}
+
+/* สีไวยากรณ์ */
+html:root .hljs { color: var(--qw-text); background: transparent; }
+html:root :is(.hljs-keyword, .hljs-doctag, .hljs-template-tag, .hljs-template-variable, .hljs-type, .hljs-variable.language_, .hljs-meta .hljs-keyword) { color: var(--qw-syn-keyword); }
+html:root :is(.hljs-title, .hljs-title.class_, .hljs-title.function_, .hljs-section) { color: var(--qw-syn-title); }
+html:root :is(.hljs-string, .hljs-regexp, .hljs-meta .hljs-string, .hljs-addition) { color: var(--qw-syn-string); background: transparent; }
+html:root :is(.hljs-number, .hljs-literal, .hljs-built_in, .hljs-symbol, .hljs-bullet) { color: var(--qw-syn-number); }
+html:root :is(.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-selector-attr, .hljs-selector-class, .hljs-selector-id, .hljs-params, .hljs-meta, .hljs-name, .hljs-selector-tag) { color: var(--qw-syn-attr); }
+html:root :is(.hljs-comment, .hljs-code, .hljs-formula, .hljs-quote) { color: var(--qw-syn-comment); font-style: italic; }
+html:root :is(.hljs-punctuation, .hljs-operator, .hljs-subst) { color: var(--qw-syn-punct); }
+html:root .hljs-deletion { color: var(--qw-danger); background: transparent; }
+html:root :is(.hljs-emphasis, .hljs-strong) { color: inherit; }
+
+
+/* ---- 4c. ตาราง: เส้นบาง กรอบมน เลื่อนแนวนอนได้เมื่อกว้างเกินคอลัมน์ ---------- */
+html:root .markdown-content table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1.2em 0;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9375em;
+  line-height: 1.55;
+  transition: none;
+}
+html:root .markdown-content table:hover { box-shadow: none; }
+html:root .markdown-content :is(th, td) {
+  border: 0;
+  border-bottom: 0.5px solid var(--qw-border);
+  padding: 0.55em 0.95em;
+  text-align: left;
+  vertical-align: top;
+}
+html:root .markdown-content :is(th, td) + :is(th, td) {
+  border-left: 0.5px solid var(--qw-border);
+}
+html:root .markdown-content tbody tr:last-child td { border-bottom: 0; }
+/* 4% มองไม่เห็นบนพื้นมืด 7% ยังเบาในธีมสว่างแต่แยกหัวตารางออกได้ทั้งสองธีม */
+html:root .markdown-content th {
+  background: color-mix(in srgb, var(--qw-text) 7%, transparent);
+  font-weight: 600;
+  color: var(--qw-text);
+}
+html:root .markdown-content tr:nth-child(2n) { background: transparent; }
+html:root .markdown-content :is(th, td):hover { background: inherit; }
+html:root .markdown-content th:hover { background: color-mix(in srgb, var(--qw-text) 7%, transparent); }
+html:root .markdown-content .table-wrapper {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+
+/* ---- 4d. ข้อความของผู้ใช้: กล่องมน พื้นทึบ ไม่มีเส้น/เงา --------------------- */
+html:root .chat-message-user-bubble {
+  background: var(--qw-bg-user);
+  color: var(--qw-text);
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: var(--qw-r-lg);
+  padding: 10px 16px;
+}
+html:root .chat-message-user-bubble .markdown-content {
+  font-family: var(--qw-font-ui);
+  font-size: 15px;
+  line-height: 1.6;
+}
+html:root .chat-message-user-bubble .markdown-content p { margin-block: 0.5em; line-height: 1.6; }
+
+/* การ์ด system message (เห็นเฉพาะตอนเปิด WebUI ตรงๆ) ให้เข้าชุดแต่ดูรองลงมา */
+html:root [aria-label="System message with actions"] [data-slot="card"] {
+  background: transparent;
+  box-shadow: none;
+  border-radius: var(--qw-r-lg);
+  color: var(--qw-text-3);
+  font-size: var(--qw-fs-sm);
+}
+
+
+/* ---- 4e. สถิติ + ปุ่มของข้อความ: เงียบไว้ โผล่ชัดเมื่อชี้/โฟกัส ---------------
+   รวมแถวปุ่ม (ซ้าย) กับสถิติ (ขวา) ให้อยู่บรรทัดเดียวใต้คำตอบ ประหยัดที่แนวตั้ง
+   ใช้ grid dense: ชิ้นอื่นทุกชิ้นยังเต็มแถวตามเดิม */
+html:root .chat-message-assistant {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-auto-flow: row dense;
+  /* ข้อความล่าสุดมี min-height เกือบเต็มจอ ถ้าไม่ start แถวจะยืดจนปุ่มหล่นไปก้นจอ */
+  align-content: start;
+  column-gap: 12px;
+}
+html:root .chat-message-assistant > * { grid-column: 1 / -1; }
+/* margin 0: แถวอยู่ในระยะ leading ล่างของบรรทัดสุดท้ายพอดี (ไอคอนต่ำกว่า baseline ~14px)
+   ห้ามติดลบ — คำตอบที่จบด้วยบล็อกโค้ด/ตารางไม่มี leading ปุ่มจะทับขอบบล็อก */
+html:root .chat-message-assistant > .info {
+  grid-column: 2;
+  margin: 0;
+  justify-items: end;
+  align-self: center;
+}
+html:root .chat-message-assistant > .info > div { justify-content: flex-end; }
+html:root .chat-message-assistant > div:not(.info):not(.agentic-content):has(button[aria-label="Copy"]) {
+  grid-column: 1;
+  margin-top: 0;
+  align-self: center;
+}
+
+html:root :is(.chat-message-assistant, .chat-message-user) .info,
+html:root :is(.chat-message-assistant, .chat-message-user) .info .text-muted-foreground {
+  color: var(--qw-text-4);
+}
+html:root :is(.chat-message-assistant, .chat-message-user) .info button {
+  color: inherit;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+/* กลุ่มสถิติมี px-2 + ปุ่มละ px-1.5 กินที่จนบรรทัดเดียวล้นบนจอแคบ */
+html:root .info div.px-2 { padding-inline: 2px; }
+html:root .info div.px-2 > button { padding-inline: 4px; }
+/* ฝั่งผู้ใช้: แถวปุ่มชิดขวาใต้กล่องข้อความ (สถิติถูกซ่อน ด้านล่าง) */
+html:root .chat-message-user {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-auto-flow: row dense;
+  align-content: start;
+  justify-items: end;
+  column-gap: 4px;
+  /* แถวปุ่มชิดใต้กล่องข้อความ: ปุ่ม 28px ในแถว 24px เกินขึ้นไป 2px พอดีขอบกล่อง ไม่ต้องเว้นเพิ่ม */
+  row-gap: 0;
+}
+html:root .chat-message-user > * { grid-column: 1 / -1; }
+html:root .chat-message-user > div:not(.info):not([data-slot="card"]):has(button[aria-label="Copy"]) {
+  grid-column: 2;
+  align-self: center;
+  /* WebUI ใส่ max-w-[80%] ซึ่งคิดจากคอลัมน์ auto ที่กว้างเท่าแถวปุ่มพอดี → ปุ่มล้นขอบ 25px
+     จอแคบปุ่มลบหลุดนอกจอ กดไม่ได้ */
+  max-width: none;
+}
+/* สถิติของข้อความผู้ใช้ (เวลาประมวลผล prompt) เป็นแค่สิ่งรบกวน ซ่อนทุกอุปกรณ์ */
+html:root .chat-message-user > .info { display: none; }
+
+/* ปุ่มคัดลอก/แก้ไข/สร้างใหม่ … */
+html:root :is(.chat-message-assistant, .chat-message-user, [aria-label="System message with actions"]) button:is([aria-label="Copy"], [aria-label="Edit"], [aria-label="Regenerate"], [aria-label="Fork conversation"], [aria-label="Delete"], [aria-label="Continue"]) {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--qw-r-sm);
+  color: var(--qw-text-3);
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease);
+}
+html:root :is(.chat-message-assistant, .chat-message-user, [aria-label="System message with actions"]) button:is([aria-label="Copy"], [aria-label="Edit"], [aria-label="Regenerate"], [aria-label="Fork conversation"], [aria-label="Delete"], [aria-label="Continue"]):hover {
+  color: var(--qw-text);
+  background: var(--accent);
+}
+html:root :is(.chat-message-assistant, .chat-message-user) button:is([aria-label="Copy"], [aria-label="Edit"], [aria-label="Regenerate"], [aria-label="Fork conversation"], [aria-label="Delete"], [aria-label="Continue"]) svg {
+  width: 15px;
+  height: 15px;
+}
+html:root .chat-message-assistant button[aria-label="Delete"]:hover,
+html:root .chat-message-user button[aria-label="Delete"]:hover {
+  color: var(--qw-danger);
+}
+
+/* ซ่อนจนกว่าจะชี้ (เฉพาะอุปกรณ์ที่ชี้ได้ มือถือเห็นตลอดแต่จาง)
+   ข้อความล่าสุดของโมเดลเห็นเสมอ เหมือนแนวทางที่ต้องการ */
+@media (hover: hover) {
+  html:root :is(.chat-message-assistant, .chat-message-user) > .info,
+  html:root :is(.chat-message-assistant, .chat-message-user) > div:not(.info):not(.agentic-content):not([data-slot="card"]):has(button[aria-label="Copy"]) {
+    opacity: 0;
+    transition: opacity var(--qw-dur) var(--qw-ease);
+  }
+  html:root :is(.chat-message-assistant, .chat-message-user):is(:hover, :focus-within) > .info,
+  html:root :is(.chat-message-assistant, .chat-message-user):is(:hover, :focus-within) > div:not(.info):not(.agentic-content):not([data-slot="card"]):has(button[aria-label="Copy"]),
+  html:root .chat-message:last-child .chat-message-assistant > .info,
+  html:root .chat-message:last-child .chat-message-assistant > div:not(.info):not(.agentic-content):has(button[aria-label="Copy"]) {
+    opacity: 1;
+  }
+}
+
+
+/* ---- 4f. ปุ่มชื่อโมเดล (ในสถิติ และในกล่องพิมพ์): ปุ่มข้อความโปร่ง -------------
+   จับจากไอคอน package เพราะ desktop เป็น inline-grid แต่มือถือเป็น inline-flex */
+html:root :is(form, .info) button:has(svg.lucide-package) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  box-shadow: none;
+  border-radius: var(--qw-r-sm);
+  padding: 4px 8px;
+  color: var(--qw-text-2);
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease);
+}
+html:root .info button:has(svg.lucide-package) {
+  color: var(--qw-text-3);
+  padding: 2px 6px;
+  font-size: 11.5px;
+}
+html:root :is(form, .info) button:has(svg.lucide-package):hover,
+html:root :is(form, .info) button:has(svg.lucide-package)[data-state="open"] {
+  background: var(--accent);
+  color: var(--qw-text);
+}
+html:root :is(form, .info) button:has(svg.lucide-package) > svg.lucide-package { display: none; }
+html:root :is(form, .info) button:has(svg.lucide-package) :is(.font-medium, .font-semibold) { font-weight: 500; }
+/* ป้ายขนาด/ควอนต์ของโมเดล (27B, Q4_K_M, Instruct …) ทั้งในปุ่มและในเมนูเลือกโมเดล
+   เดิมเป็นกรอบ mono หลายอันต่อแถวดูรก เหลือเป็นข้อความรองตัวเล็ก (text-3 เพื่อให้ยังอ่านผ่าน AA) */
+html:root span.font-mono.rounded-md.border {
+  background: transparent;
+  border-color: transparent;
+  color: var(--qw-text-3);
+  border-radius: 4px;
+  font-family: var(--qw-font-ui);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 15px;
+  padding: 0 2px;
+}
+html:root :is(form, .info) button:has(svg.lucide-package) .text-amber-400 { color: var(--qw-warn); }
+
+
+/* ---- 4g. ที่ว่างท้ายบทสนทนา ----------------------------------------------------
+   WebUI ให้คำตอบสุดท้าย min-height ≈ 100dvh − ข้อความผู้ใช้ − กล่องพิมพ์ − --chat-form-padding-top(6rem)
+   เพื่อตอนกดส่ง เลื่อนข้อความใหม่ขึ้นไปชิดบนแล้วคำตอบไหลลงมาใต้มัน
+   แต่แชตที่เปิดกลับมาคำตอบสั้นกว่านั้น เหลือช่องว่าง 200-400px เหนือกล่องพิมพ์ */
+/* 1) ระยะเผื่อเหนือกล่องพิมพ์ (padding-top ของแถบ sticky, จอกว้าง) 6rem → 1.5rem
+   สูตร min-height ของ WebUI ใช้ตัวแปรเดียวกัน ส่วนที่หายไปจึงย้ายไปอยู่ใน min-height แทน
+   ผลรวมตอนกำลังตอบเท่าเดิม การเลื่อนตอนกดส่งจึงไม่เปลี่ยน (มือถือแถบนี้เป็น fixed ไม่กินที่ ไม่แตะ) */
+@media (min-width: 768px) {
+  html[data-qw-route="chat"] { --chat-form-padding-top: 1.5rem; }
+}
+/* 2) ปลด min-height ของคำตอบสุดท้ายเฉพาะตอนไม่มีปุ่มหยุด (= ไม่ได้กำลังตอบ)
+   ระหว่างตอบทุกอย่างเหมือนเดิม — setChatLoading(true) ของ WebUI เกิดก่อนสร้างข้อความใหม่ ปุ่มหยุดจึงมาก่อนเสมอ
+   .stop-button = ไอคอนหยุดในแถบแท็บ/รายการแชต (ยังอยู่ใน DOM แม้ถูกซ่อน) กันกรณีผู้ใช้พิมพ์ระหว่างรอ
+   แล้วปุ่มหยุดในกล่องพิมพ์กลายเป็นปุ่มส่ง; ตอบจบแล้วหดแบบนุ่ม ไม่กระตุก */
+html:root .chat-message:last-child .chat-message-assistant {
+  transition: min-height var(--qw-dur) var(--qw-ease);
+}
+html[data-qw-route="chat"]:not(:has(.stop-button, [data-slot="input-area"] button[class*="hover:bg-destructive"])) .chat-message:last-child .chat-message-assistant {
+  min-height: 0;
+}
+/* 3) มือถือ: กล่องพิมพ์เป็น fixed WebUI เผื่อที่ใต้ข้อความ pb-48 (192px) ตายตัว เกินกล่องพิมพ์ (~117px) ไปมาก
+   คิดจากความสูงจริงของฟอร์ม (--chat-form-height ที่ WebUI วัดเองด้วย ResizeObserver) + ช่องหายใจ 1.5rem */
+@media (max-width: 767px) {
+  html[data-qw-route="chat"] .chat-screen {
+    padding-bottom: calc(var(--chat-form-height, 7.5rem) + var(--chat-form-bottom-position, 0.5rem) + 1.5rem);
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   5. กล่องพิมพ์ — การ์ดมน เงานุ่ม ปุ่มส่งสีส้ม
+   จับที่ [data-slot=input-area] จึงได้ทั้งกล่องพิมพ์หลักและกล่องแก้ไขข้อความเดิม
+   --------------------------------------------------------------------------- */
+html:root [data-slot="input-area"] {
+  background: var(--qw-bg-elev);
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-xl);
+  box-shadow: var(--qw-shadow-composer);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: border-color var(--qw-dur) var(--qw-ease), box-shadow var(--qw-dur) var(--qw-ease);
+}
+/* โฟกัส = เส้นขอบเข้มขึ้นเท่านั้น ไม่มีวงแสงส้ม: กล่องพิมพ์โฟกัสตัวเองแทบตลอดเวลา (autofocus)
+   วงส้มจึงค้างรอบการ์ดจนดูเหมือนสถานะเตือน ส่วนวงโฟกัสจากคีย์บอร์ดของปุ่มข้างในยังอยู่ (ดูท้าย §5) */
+html:root [data-slot="input-area"]:focus-within {
+  border-color: var(--qw-border-focus);
+  box-shadow: var(--qw-shadow-composer);
+}
+html:root [data-slot="input-area"] > div {
+  box-shadow: none;
+  border-radius: inherit;
+}
+html:root [data-slot="input-area"] textarea {
+  font-family: var(--qw-font-ui);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--qw-text);
+  caret-color: var(--qw-accent);
+}
+html:root [data-slot="input-area"] textarea::placeholder {
+  color: var(--qw-text-4);
+  opacity: 1;
+}
+
+/* ปุ่ม + (แนบไฟล์/เครื่องมือ) */
+html:root [data-slot="input-area"] button.file-upload-button {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--qw-r-sm);
+  background: transparent;
+  border: 0.5px solid var(--qw-border-strong);
+  box-shadow: none;
+  color: var(--qw-text-2);
+}
+html:root [data-slot="input-area"] button.file-upload-button:hover,
+html:root [data-slot="input-area"] button.file-upload-button[data-state="open"] {
+  background: var(--accent);
+  color: var(--qw-text);
+}
+
+/* ปุ่มส่ง */
+html:root [data-slot="input-area"] button[type="submit"] {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--qw-accent);
+  color: var(--qw-accent-fg);
+  box-shadow: none;
+  transition: background-color var(--qw-dur) var(--qw-ease), opacity var(--qw-dur) var(--qw-ease);
+}
+html:root [data-slot="input-area"] button[type="submit"]:hover:not(:disabled) {
+  background: var(--qw-accent-hover);
+}
+html:root [data-slot="input-area"] button[type="submit"]:disabled,
+html:root [data-slot="input-area"] button[type="submit"][aria-disabled="true"] {
+  background: var(--qw-accent);
+  opacity: 0.45;
+}
+html:root [data-slot="input-area"] button[type="submit"] svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.25;
+}
+
+/* ปุ่มหยุด (แทนที่ปุ่มส่งระหว่างตอบ) และปุ่มข้ามการคิด
+   โหมดไทยแปล title เป็น "ข้ามการคิด" แล้วเก็บต้นฉบับไว้ใน data-qw-en-title จึงจับได้ทั้งสองแบบ */
+html:root [data-slot="input-area"] button[class*="hover:bg-destructive"],
+html:root [data-slot="input-area"] button:is([title="Skip reasoning"], [data-qw-en-title="Skip reasoning"]) {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--qw-bg-active);
+  border: 0.5px solid var(--qw-border-strong);
+  color: var(--qw-text);
+}
+html:root [data-slot="input-area"] button[class*="hover:bg-destructive"] svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  stroke: currentColor;
+}
+html:root [data-slot="input-area"] button[class*="hover:bg-destructive"]:hover {
+  background: var(--qw-bg-hover);
+  color: var(--qw-danger);
+}
+
+/* ปุ่มเลื่อนลงล่างสุด (ลอยเหนือกล่องพิมพ์) */
+html:root .chat-screen button:has(> svg.lucide-arrow-down) {
+  width: 32px;
+  height: 32px;
+  background: var(--qw-bg-elev);
+  border: 0.5px solid var(--qw-border-strong);
+  box-shadow: var(--qw-shadow-md);
+  color: var(--qw-text-2);
+  backdrop-filter: none;
+}
+html:root .chat-screen button:has(> svg.lucide-arrow-down):hover {
+  background: var(--qw-bg-active);
+  color: var(--qw-text);
+}
+
+/* กฎข้างบนตั้ง box-shadow/border ทับ ring ของ Tailwind (focus-visible:ring-[3px]) จนปุ่มพวกนี้
+   ไม่มีสัญญาณโฟกัสเลยเมื่อกด Tab — ใส่ outline ของเราคืน (ไม่ชนกับ box-shadow) */
+html:root [data-slot="input-area"] button:focus-visible,
+html:root :is(form, .info) button:has(svg.lucide-package):focus-visible,
+html:root .chat-screen button:has(> svg.lucide-arrow-down):focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: 2px;
+}
+
+/* วงแหวนแสดงการใช้ context (ซ้ายของปุ่มชื่อโมเดล)
+   ตอนว่าง (0% — แทบตลอดเวลา เพราะเปิดแชตเก่าค่าก็เริ่มที่ 0) รางวงกลมกลวงดูเหมือน radio ที่ยังไม่ถูกเลือก
+   → ว่างแล้วซ่อนรางทั้งวง (enhance.js ตั้ง tabindex=-1 ให้เมื่อว่าง) ชี้แล้วค่อยโผล่จางๆ ให้รู้ว่ามีอะไรอยู่
+   → มีค่าแล้วเหลือรางจางมาก + ส่วนโค้งสี text-4 สีเตือน/วิกฤตของ WebUI (amber/red) map ไป token ของเรา */
+html:root [data-context-gauge-trigger] {
+  color: var(--qw-text-4);
+  border-radius: var(--qw-r-full);
+}
+html:root [data-context-gauge-trigger] svg circle:first-child {
+  stroke-opacity: 0.22;
+  transition: stroke-opacity var(--qw-dur) var(--qw-ease);
+}
+html:root [data-context-gauge-trigger][tabindex="-1"] svg circle:first-child { stroke-opacity: 0; }
+html:root [data-context-gauge-trigger][tabindex="-1"]:hover svg circle:first-child { stroke-opacity: 0.22; }
+html:root [data-context-gauge-trigger] svg circle.text-muted-foreground { color: var(--qw-text-4); }
+html:root [data-context-gauge-trigger] svg circle.text-amber-400 { color: var(--qw-warn); }
+html:root [data-context-gauge-trigger] svg circle.text-red-400 { color: var(--qw-danger); }
+html:root [data-context-gauge-trigger]:focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ไล่เฉดเหนือกล่องพิมพ์ ข้อความที่เลื่อนผ่านจะจางหายแทนที่จะถูกตัดขาด
+   และปิดช่องว่างใต้การ์ดไม่ให้ข้อความโผล่ลอดมา */
+html:root .chat-screen-form-wrapper {
+  position: relative;
+  isolation: isolate;
+}
+html:root .chat-screen-form-wrapper::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -28px -16px -24px;
+  background: linear-gradient(to bottom, transparent 0, var(--qw-bg) 28px);
+  pointer-events: none;
+}
+
+
+/* ---------------------------------------------------------------------------
+   6. หน้าเริ่มแชต — ทักทายกลางจอ + ชิปลัดใต้กล่องพิมพ์ (ชิ้นที่ enhance.js ใส่)
+   --------------------------------------------------------------------------- */
+/* ซ่อน "Hello there" เดิมเฉพาะเมื่อ hero ของเราใส่สำเร็จแล้ว
+   ใช้ display ไม่ได้เพราะ WebUI ใส่ block! (important ใน layer) จึงยุบขนาดแทน */
+html[data-qw-hero="1"] [data-qw-welcome="orig"],
+html[data-qw-hero="1"] .chat-screen div.text-center:has(> h1),
+/* ระหว่างเปิดแชตเก่า WebUI ยังไม่มีข้อความจึงโชว์ "Hello there" แวบหนึ่ง ในแชตไม่ควรมีคำทักทาย */
+html[data-qw-embedded="1"][data-qw-route="chat"] [data-qw-welcome="orig"] {
+  visibility: hidden;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+html:root .qw-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto 1.75rem;
+  padding: 0 16px;
+  text-align: center;
+  pointer-events: none;
+}
+html:root .qw-hero-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  max-width: 100%;
+}
+html:root .qw-hero-mark {
+  display: inline-flex;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  color: var(--qw-accent);
+}
+html:root .qw-hero-mark svg { width: 100%; height: 100%; display: block; }
+html:root .qw-greeting {
+  margin: 0;
+  font-family: var(--qw-font-serif);
+  font-size: var(--qw-fs-greet);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--qw-text);
+  text-wrap: balance;
+}
+/* block ไม่ใช่ inline-flex: ใน flex ข้อความกลายเป็น item นิรนาม text-overflow ใช้ไม่ได้
+   ชื่อโปรเจกต์ยาวจึงโดนตัดกลางคำโดยไม่มี "…" (ป้ายนี้มีแต่ข้อความ ไม่ต้องใช้ flex) */
+html:root .qw-project-pill {
+  display: block;
+  max-width: min(100%, 36rem);
+  padding: 3px 11px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-full);
+  color: var(--qw-text-3);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html:root .qw-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: var(--qw-content-w);
+  margin: 14px auto 0;
+  padding: 0 4px;
+  /* กล่องแม่ของฟอร์มเป็น pointer-events:none (ให้คลิกทะลุไปที่ข้อความ) ต้องเปิดคืน */
+  pointer-events: auto;
+}
+html:root .qw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--qw-text-2);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-base);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease), border-color var(--qw-dur) var(--qw-ease);
+}
+html:root .qw-chip:hover {
+  background: var(--qw-bg-hover);
+  color: var(--qw-text);
+}
+html:root .qw-chip:active { background: var(--qw-bg-active); }
+html:root .qw-chip:focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: 2px;
+}
+html:root .qw-chip-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--qw-text-3);
+  transition: color var(--qw-dur) var(--qw-ease);
+}
+html:root .qw-chip:hover .qw-chip-icon { color: var(--qw-accent); }
+
+
+/* ---------------------------------------------------------------------------
+   7. popover / เมนู / dialog / tooltip / toast — ส่วนใหญ่ได้จากตัวแปรแล้ว
+   ที่นี่เติมเส้นขอบ มุมมน เงา ให้เป็นชุดเดียวกับการ์ดของเรา
+   --------------------------------------------------------------------------- */
+html:root :is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"], [data-slot="select-content"], [data-slot="context-menu-content"], [data-slot="hover-card-content"], [data-slot="command"]) {
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  border: 0.5px solid var(--qw-border);
+  border-radius: var(--qw-r-md);
+  box-shadow: var(--qw-shadow-lg);
+}
+html:root :is([data-slot="dropdown-menu-item"], [data-slot="select-item"], [data-slot="command-item"], [data-slot="context-menu-item"]) {
+  border-radius: var(--qw-r-sm);
+}
+html:root :is([data-slot="dropdown-menu-separator"], [data-slot="select-separator"], [data-slot="command-separator"]) {
+  background: var(--qw-border);
+}
+html:root :is([data-slot="dropdown-menu-label"]) { color: var(--qw-text-3); }
+
+html:root [data-slot="dialog-overlay"],
+html:root [data-slot="sheet-overlay"],
+html:root [data-slot="alert-dialog-overlay"] {
+  background: var(--qw-scrim);
+}
+html:root :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  background: var(--qw-bg-elev);
+  border: 0.5px solid var(--qw-border);
+  border-radius: var(--qw-r-lg);
+  box-shadow: var(--qw-shadow-lg);
+}
+html:root :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) [data-slot="dialog-header"] {
+  background: transparent;
+}
+html:root :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
+  font-family: var(--qw-font-ui);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+/* คำอธิบายภาษาไทยในหน้าต่าง (help ของหน้าตั้งค่า, คำยืนยัน) ขึ้นบรรทัดสุดท้ายด้วยคำเดียวบ่อย ขึ้นกับความกว้างจอ
+   ("…ที่จะถูก / ตัด" ที่ 375px) — ไล่แก้ทีละข้อความไม่จบ ให้เบราว์เซอร์เลี่ยงบรรทัดท้ายที่สั้นเกินเอง (ใช้จุดตัดคำเดิม
+   ของพจนานุกรมไทย ไม่ตัดกลางคำ) เฉพาะโหมดไทย หน้าอังกฤษจึงตัดบรรทัดเหมือนเดิมทุกพิกเซล */
+html:root[lang="th"] :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) p {
+  text-wrap: pretty;
+}
+/* แถบปุ่มท้าย dialog ตั้งค่าเป็น sticky แต่โปร่ง เนื้อหาเลื่อนทะลุหลังปุ่ม — ให้พื้นทึบ
+   sticky หยุดที่ขอบ content ของ dialog แต่ dialog มี padding ล่าง 24px (md:p-6) แถวถัดไปจึงโผล่ใต้ปุ่ม
+   เงาทึบยาว 32px ปิดช่องนั้นหมด (ส่วนเกินถูก overflow ของ dialog ตัดเอง, มือถือ p-0 ก็ไม่เป็นไร) */
+html:root [data-slot="dialog-content"] div.sticky.bottom-0 {
+  background: var(--qw-bg-elev);
+  border-top: 0.5px solid var(--qw-border);
+  padding-top: 12px;
+  box-shadow: 0 32px 0 var(--qw-bg-elev);
+  z-index: 2;
+}
+/* จอกว้าง หน้าต่างตั้งค่าสูงตายตัว (md:h-[calc(100vh-4rem)]) และกล่องเนื้อหาข้างใน (h-full) สูงเท่ากล่องหน้าต่างพอดี
+   หมวดยาวจึงล้นกล่องนั้นออกไปแทนที่จะยืดมัน ส่วนที่ล้นไม่ได้รับ padding ล่าง 24px ของหน้าต่าง (padding ต่อท้ายเฉพาะ
+   เนื้อหาในโฟลว์) แต่ sticky bottom-0 ยังหยุดเหนือ padding นั้น เลื่อนจนสุดแล้วแถบปุ่มจึงค้างทับบรรทัดท้าย 8px
+   ("การตั้งค่าเก็บไว้ใน localStorage…" ถูกบังครึ่งบรรทัด เป็นทั้งไทยและอังกฤษ) — ให้กล่องสูงตามเนื้อหา
+   (หมวดสั้นยังเต็มหน้าต่างเหมือนเดิมด้วย flex-grow) padding จึงต่อท้ายเนื้อหาจริงและแถบปุ่มถึงตำแหน่งของมันได้
+   จำกัดที่ md ขึ้นไป (จอแคบหน้าต่างสูงตามเนื้อหา h-full ไม่มีผล) และเฉพาะกล่องที่มีแถว .md:flex-row ของหน้าต่างตั้งค่า */
+@media (width >= 48rem) {
+  html:root [data-slot="dialog-content"] > div.h-full.flex-col:has(> .md\:flex-row) {
+    height: auto;
+    flex: 1 0 auto;
+  }
+}
+/* ปุ่ม X ของ dialog ใช้ focus:ring-2 (ไม่ใช่ focus-visible) และ dialog โฟกัสมันเองทุกครั้งที่เปิด
+   → กรอบส้มขึ้นทุกครั้ง ปิด ring แล้วแสดงโฟกัสจากคีย์บอร์ดเป็นพื้นจางรอบไอคอนแทน */
+html:root :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) button[data-dialog-close][class*="focus:ring-2"]:focus {
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  box-shadow: none;
+}
+html:root :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) button[data-dialog-close][class*="focus:ring-2"]:focus-visible {
+  opacity: 1;
+  border-radius: 4px;
+  /* พื้น + เงาสีเดียวกัน = สี่เหลี่ยมมนทึบ 26px (เงาอย่างเดียวจะเป็นวงแหวนกลวง) */
+  background: color-mix(in srgb, var(--qw-text) 10%, transparent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--qw-text) 10%, transparent);
+}
+/* จอแคบ dialog ตั้งค่าเป็น p-0 ปุ่ม X (absolute top-0 right-0) จึงไปชิดมุมมน 16px แล้วถูกตัดครึ่ง
+   ขยับเข้ามาในระยะขอบ 12px และขยายเป็นเป้ากด 32px (ไอคอนยังเท่าเดิม) ให้ตรงแนวกับหัวข้อ "Settings"
+   dialog ที่มี padding ของตัวเอง (MCP ฯลฯ) ไม่โดน เพราะจับเฉพาะคลาส p-0 */
+@media (max-width: 639px) {
+  html:root [data-slot="dialog-content"][class~="p-0"] button[data-dialog-close] {
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--qw-r-sm);
+  }
+  /* เป้ากดใหญ่แล้ว ใช้พื้นจางเต็มปุ่มพอ ไม่ต้องขยายด้วยเงา (เฉพาะ :focus-visible — แตะนิ้วไม่ขึ้น) */
+  html:root [data-slot="dialog-content"][class~="p-0"] button[data-dialog-close][class*="focus:ring-2"]:focus-visible {
+    box-shadow: none;
+  }
+}
+/* แถบแท็บของ dialog ตั้งค่า (จอแคบ) เป็น sticky bg-background (= --qw-bg) บนตัว dialog สี elev
+   กลายเป็นแถบสีเข้มคาดกลางหัว dialog — ใช้พื้นเดียวกับ dialog (ยังทึบอยู่ เนื้อหาเลื่อนลอดไม่ได้) */
+html:root [data-slot="dialog-content"] .sticky.bg-background {
+  background: var(--qw-bg-elev);
+}
+/* ลูกศรเลื่อนแถบแท็บเป็นวงโปร่ง bg-muted ลอยทับชื่อแท็บ อ่านชนกัน
+   ให้พื้นทึบสีเดียวกับ dialog + เงาทึบแผ่ออกด้านที่ชี้เข้าหาแท็บ ข้อความจึงจางหายก่อนถึงลูกศร */
+html:root [data-slot="dialog-content"] .group.relative > button.absolute.rounded-full:is(.left-2, .right-2) {
+  background: var(--qw-bg-elev);
+  color: var(--qw-text-2);
+  border: 0.5px solid var(--qw-border-strong);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html:root [data-slot="dialog-content"] .group.relative > button.absolute.rounded-full.right-2 {
+  box-shadow: 0 0 0 6px var(--qw-bg-elev), -18px 0 14px 4px var(--qw-bg-elev);
+}
+html:root [data-slot="dialog-content"] .group.relative > button.absolute.rounded-full.left-2 {
+  box-shadow: 0 0 0 6px var(--qw-bg-elev), 18px 0 14px 4px var(--qw-bg-elev);
+}
+/* หน้าต่าง MCP Servers สูงตายตัว calc(100vh-4rem) ทั้งที่การ์ดมีไม่กี่ใบ ครึ่งล่างว่างเปล่า
+   ความสูงเป็น utility แบบ ! ใน @layer utilities ซึ่ง !important นอก layer สู้ไม่ได้
+   จึงเขียนเข้า layer เดียวกันแล้วชนะด้วย specificity (class md:max-w-360! มีเฉพาะ dialog นี้) */
+@layer utilities {
+  @media (width >= 48rem) {
+    html:root [data-slot="dialog-content"][class*="md:max-w-360"] {
+      height: auto !important;
+      max-height: min(60rem, calc(100dvh - 4rem)) !important;
+    }
+  }
+}
+html:root [data-slot="sheet-content"] {
+  background: var(--qw-bg-sidebar);
+  border-color: var(--qw-border);
+}
+
+/* ช่องกรอกในฟอร์มของ WebUI */
+html:root :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]) {
+  background: var(--qw-bg);
+  border-color: var(--qw-border-strong);
+  border-radius: var(--qw-r-sm);
+  box-shadow: none;
+}
+html:root :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]):focus-visible {
+  border-color: var(--qw-border-focus);
+  box-shadow: 0 0 0 3px var(--qw-accent-soft);
+}
+
+/* ปุ่มทั่วไปของ WebUI: มุมมนเท่ากัน */
+html:root [data-slot="button"] { border-radius: var(--qw-r-sm); }
+
+/* สวิตช์/เช็กบ็อกซ์/ปุ่มตัวเลือกที่เปิดอยู่ใช้สีส้ม ให้รู้ทันทีว่าอะไรเปิด */
+html:root :is([data-slot="switch"], [data-slot="checkbox"], [role="radio"])[data-state="checked"] {
+  background: var(--qw-accent);
+  border-color: var(--qw-accent);
+  color: var(--qw-accent-fg);
+}
+/* radio ของ WebUI ผูกสีกับ data-checked: ซึ่ง bits-ui ไม่ได้ใส่ (ใส่แค่ data-state) จุดข้างในจึงเป็น
+   bg-primary-foreground (= สีพื้น) บนวงโปร่ง แทบแยกไม่ออกว่าข้อไหนถูกเลือก → จุดขาวทึบกลางวงส้ม */
+html:root [role="radio"][data-state="checked"] [data-slot="radio-group-indicator"] svg {
+  background: var(--qw-accent-fg);
+  fill: var(--qw-accent-fg);
+  stroke: none;
+  border-radius: 50%;
+}
+
+/* tooltip: พื้นหมึก ตัวอักษรกลับสี เล็กและกระชับ (ลูกศรเป็น div bg-primary = สีหมึกอยู่แล้ว) */
+html:root [data-slot="tooltip-content"] {
+  background: var(--qw-text);
+  color: var(--qw-bg);
+  border-radius: var(--qw-r-xs);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  padding: 4px 8px;
+  box-shadow: var(--qw-shadow-md);
+}
+
+/* toast (svelte-sonner) */
+html:root [data-sonner-toast] {
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);
+  box-shadow: var(--qw-shadow-lg);
+  font-family: var(--qw-font-ui);
+}
+
+/* ข้อความ/ไอคอนสีลบ ("Delete" ในเมนู ปุ่มถังขยะ คำเตือนใน alert) ต้องใช้ --qw-danger
+   --qw-danger-bg บนพื้นการ์ดมืดได้แค่ ~2.5:1 ตั้งตัวแปรใหม่บนตัวมันเอง utility เดิม
+   (color: var(--destructive), *:[svg]:!text-destructive ของลูก) จึงได้สีข้อความเองโดยไม่ต้องไล่ทับทีละตัว
+   พื้นจางตอนชี้ (bg-destructive/10) ก็ผสมจากสีนี้ ยังเป็นแดงจางอ่านออกเหมือนเดิม */
+html:root :is(.text-destructive, .hover\:text-destructive, .hover\:fill-destructive, .hover\:stroke-destructive, .group-hover\:fill-destructive, .group-hover\:stroke-destructive, [data-slot="alert-description"], [data-slot$="menu-item"][data-variant="destructive"]) {
+  --destructive: var(--qw-danger);
+}
+/* ปุ่มลบแบบเติมสีบางปุ่ม (เช่น "Delete" ใน Delete Server) ใช้คลาส text-destructive-foreground
+   ซึ่ง Tailwind ของ WebUI ไม่ได้สร้างกฎไว้ ตัวอักษรจึงรับสีหมึกจากแม่ (ธีมสว่าง = หมึกเข้มบนแดง ~3:1)
+   บังคับตัวขาวบนพื้นลบทุกปุ่ม (--qw-accent-fg = ขาวทั้งสองธีม, บน --qw-danger-bg ≥5.3:1) */
+html:root :is(.bg-destructive, .text-destructive-foreground) {
+  color: var(--qw-accent-fg);
+}
+
+
+/* ---------------------------------------------------------------------------
+   8. แถบข้างของ WebUI (เห็นเฉพาะตอนเปิด /?ui=1 ตรงๆ)
+   --------------------------------------------------------------------------- */
+html:root body > div > div > aside {
+  color: var(--qw-text-2);
+}
+html:root body > div > div > aside[class*="md:w-72"] {
+  background: var(--qw-bg-sidebar);
+}
+
+
+/* ---------------------------------------------------------------------------
+   9. มือถือ
+   --------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  html:root .chat-message-user-bubble { max-width: 88%; }
+
+  /* หน้าเริ่มแชต: ทักทาย + ชิปเป็นก้อนเดียวกัน อยู่กึ่งกลางพื้นที่เหนือกล่องพิมพ์
+     (เดิมทักทายลอยกลางจอ ชิปไปติดกล่องพิมพ์ มีช่องว่าง ~250px คั่นกลางดูเหมือนหลุด)
+     กล่อง fixed ที่ห่อทั้งหมด (ติดก้นจอ ลูก: hero + wrapper[ชิป, ฟอร์ม]) สูงเต็มจอแล้วเป็น flex column:
+     - wrapper โตด้วย flex-grow 0.5 — ผลรวม < 1 จึงได้แค่ครึ่งของที่ว่าง อีกครึ่งตกเป็น margin-top:auto ของ hero
+     - ในนั้นชิปดันฟอร์มลงก้นด้วย margin-bottom:auto → ว่างเหนือ hero = ว่างใต้ชิป ก้อนจึงอยู่กลางพอดี
+     - min-height ไม่ใช่ top:0: จอเตี้ย (คีย์บอร์ดเปิด) กล่องยังยึดก้นจอแล้วล้นขึ้นบน ฟอร์มไม่หลุดจอ
+       1rem = bottom-2 ของ WebUI + ระยะเท่ากันที่ขอบบน */
+  html[data-qw-hero="1"] div:has(> .chat-screen-form-wrapper) {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100dvh - 1rem);
+  }
+  html[data-qw-hero="1"] .qw-hero { margin: auto 0 24px; }
+  html[data-qw-hero="1"] div:has(> .chat-screen-form-wrapper) > .chat-screen-form-wrapper {
+    flex: 0.5 0 auto;
+  }
+  html:root .chat-screen-form-wrapper {
+    display: flex;
+    flex-direction: column;
+  }
+  html:root .chat-screen-form-wrapper > form {
+    /* ใน flex column, mx-auto ของฟอร์มจะหดความกว้างตามเนื้อหา ต้องบังคับเต็มแถว */
+    width: 100%;
+  }
+  /* ระยะขั้นต่ำเมื่อไม่มีที่ว่างเหลือ (margin auto ของชิปเป็น 0) */
+  html[data-qw-hero="1"] .chat-screen-form-wrapper > form { margin-top: 16px; }
+
+  /* ชิปเป็นแถบเลื่อนแนวนอนเต็มขอบจอ (ออกนอกระยะขอบ 8px ของกล่อง) ให้เห็นว่าไหลต่อออกไปได้
+     padding 8px = ชิปแรกตรงขอบซ้ายของกล่องพิมพ์พอดี, snap ให้หยุดที่ขอบชิปเสมอ ไม่ค้างครึ่งชิป
+     ขอบขวาจางเพราะแถบเลื่อนถูกซ่อน ไม่งั้นชิปที่โดนตัดดูเหมือนเลย์เอาต์พัง */
+  html:root .qw-chips {
+    order: -1;
+    flex: none;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 8px;
+    max-width: none;
+    margin: 0 -8px auto;
+    /* บน/ล่าง 4px: วงโฟกัส (2px + offset 2px) ไม่โดนขอบกล่องเลื่อนตัด */
+    padding: 4px 8px;
+    --qw-fade-start: 0px;
+    --qw-fade-end: 48px;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--qw-fade-start), #000 calc(100% - var(--qw-fade-end)), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 var(--qw-fade-start), #000 calc(100% - var(--qw-fade-end)), transparent 100%);
+  }
+  /* เบราว์เซอร์ที่ไม่มี scroll-driven animation: จางขวาตายตัว เว้น padding ขวาเท่าช่วงจาง
+     ชิปสุดท้ายจึงพ้นเงาเมื่อเลื่อนสุด */
+  @supports not (animation-timeline: scroll()) {
+    html:root .qw-chips { padding-right: 48px; }
+  }
+  /* มี scroll-driven animation: ความจางตามตำแหน่งเลื่อน — ขอบซ้ายเริ่มจางเมื่อเลื่อนออกจากต้น
+     ขอบขวาหายเมื่อถึงปลาย และถ้าชิปพอดีจอ (เลื่อนไม่ได้ timeline ไม่ทำงาน) ก็ไม่จางเลย */
+  @supports (animation-timeline: scroll()) {
+    html:root .qw-chips {
+      --qw-fade-end: 0px;
+      animation: qw-chips-fade linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+  html:root .qw-chips::-webkit-scrollbar { display: none; }
+  html:root .qw-chip { flex: none; height: 32px; scroll-snap-align: start; }
+
+  /* กันคอลัมน์ตารางถูกบีบจนคำไทยแตกทีละพยางค์ ให้เลื่อนแนวนอนแทน */
+  html:root .markdown-content :is(th, td) { min-width: 7.5em; }
+
+  /* ใต้คำตอบ: จอแคบวางสถิติเต็มแถวชิดซ้าย แล้วค่อยแถวปุ่ม ไม่บีบสองอย่างไว้บรรทัดเดียว */
+  html:root .chat-message-assistant > .info {
+    grid-column: 1 / -1;
+    justify-items: start;
+    margin-top: 6px;
+  }
+  html:root .chat-message-assistant > .info > div { justify-content: flex-start; }
+  html:root .chat-message-assistant > div:not(.info):not(.agentic-content):has(button[aria-label="Copy"]) {
+    margin-top: 2px;
+    margin-left: -6px;
+  }
+  html:root .qw-hero-mark { width: 28px; height: 28px; }
+}
+
+/* ความจางของแถบชิป (§9) ต้องลงทะเบียนชนิดเป็น <length> ไม่งั้นตัวแปรเปลี่ยนค่าแบบกระโดด ไม่ไล่ระดับ
+   0-8%: ขอบซ้ายค่อยๆ จางเข้ามา · 92-100%: ขอบขวาค่อยๆ หาย */
+@property --qw-fade-start { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --qw-fade-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@keyframes qw-chips-fade {
+  0% { --qw-fade-start: 0px; --qw-fade-end: 48px; }
+  8% { --qw-fade-start: 28px; }
+  92% { --qw-fade-end: 48px; }
+  100% { --qw-fade-start: 28px; --qw-fade-end: 0px; }
+}
+
+/* จอสัมผัส: ชี้ไม่ได้ ปุ่มคัดลอก/แก้ไขจึงต้องเห็นตลอด (จางไว้)
+   แถวปุ่มที่เห็นตลอดไม่ใช่ช่องว่างอีกต่อไป จึงเว้นระยะจากมันแทน (4 ปรับไว้สำหรับแถวที่ซ่อน):
+   ใต้แถวปุ่มของคำถาม 8px ก่อนคำตอบ, ใต้แถวปุ่มของคำตอบ 24px ก่อนคำถามถัดไป
+   (ระหว่างรอบห่างกว่าภายในรอบ คำถามจึงจับกลุ่มกับคำตอบของมันเอง) */
+@media (hover: none) {
+  html:root :is(.chat-message-assistant, .chat-message-user) > div:not(.info):not(.agentic-content):not([data-slot="card"]):has(button[aria-label="Copy"]) {
+    opacity: 0.85;
+  }
+  html:root .chat-message-user { margin-top: 24px; }
+  html:root .chat-message-assistant { margin-top: 8px; }
+}
+
+/* --qw-dur เป็น 0 อยู่แล้ว แต่ dialog/popover ของ WebUI ใช้ animation "enter" ของตัวเอง
+   ใช้ 0.01ms ไม่ใช่ none เพราะ bits-ui รอ animationend ก่อนถอด dialog ที่ปิด */
+@media (prefers-reduced-motion: reduce) {
+  html:root .markdown-content :is(blockquote, table, img, a) { transition: none; }
+  html:root :is([data-state], [data-slot$="-content"], [data-slot$="-overlay"]) {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
+  html:root,
+  html:root * { scroll-behavior: auto !important; }
+}
+
+/* ---- ท้ายรอบ 3 ------------------------------------------------------------ */
+/* กล่องยืนยันบนมือถือ: shadcn จัดกลาง header ใต้ 640px แต่หัวข้อถูกจัดชิดซ้ายไปแล้ว
+   ผลคือหัวข้อชิดซ้าย เนื้อความอยู่กลาง ดูเหมือนคนละกล่อง — ให้ชิดซ้ายทั้งหมด */
+@media (max-width: 639.98px) {
+  html:root [data-slot="alert-dialog-header"],
+  html:root [data-slot="alert-dialog-description"] {
+    text-align: left;
+  }
+}
+/* เปิด /?ui=1 เดี่ยวๆ (ไม่อยู่ใน shell) แถบแท็บของ WebUI ยังแสดง แต่ไม่มีพื้นหลัง
+   เนื้อแชตจึงเลื่อนลอดไปอยู่หลังชื่อแท็บ — ให้พื้นเดียวกับหน้า (ในโหมดฝังแถบนี้ถูกซ่อนอยู่แล้ว) */
+html:not([data-qw-embedded="1"]) nav[aria-label="Open conversations"] {
+  background: var(--qw-bg);
+}
+
+/* คอลัมน์ของหน้าแชตตามโทเคน --qw-content-w (768 → 880 → 960 ตามความกว้าง)
+   WebUI ล็อกไว้ที่ 768px ด้วยคลาส max-w-3xl ทั้งข้อความและกล่องพิมพ์ */
+html:root .chat-screen .max-w-3xl {
+  max-width: var(--qw-content-w);
+}
+/* เนื้อคำตอบมีเพดาน 48rem ของ WebUI เองอีกชั้น (สไตล์ประจำคอมโพเนนต์ ไม่ใช่คลาส max-w-3xl)
+   ถ้าไม่ปลดด้วย บล็อกโค้ดกับตารางจะแคบกว่าข้อความของผู้ใช้และกล่องพิมพ์บนจอใหญ่ */
+html:root .chat-message-assistant .agentic-content {
+  max-width: var(--qw-content-w);
+}
+
+
+/* ---------------------------------------------------------------------------
+   10. รอบ 4 (2026-09-30) — ชิ้นที่ enhance.js ใส่เพิ่ม (สัญญา K6-K9)
+   .qw-fast (ชิปโมเดลเร็ว) · .qw-art-btn / .qw-img-art (เปิดในแผง) · .qw-speak / .qw-speak-stop (อ่านออกเสียง)
+   · .qw-quote (ถามเรื่องนี้) — ไอคอนทุกตัวเป็น svg.qw-x-icon (stroke = currentColor)
+   --------------------------------------------------------------------------- */
+html:root .qw-x-icon { display: block; flex: none; }
+
+/* ---- ชิป "เร็ว (4B)": ปุ่มโปร่งแบบเดียวกับปุ่มโมเดลข้างๆ เปิดอยู่ = พื้นส้มจาง + ไอคอนส้มทึบ
+   ตัวอักษรยังเป็นสีหมึก: ส้มบนพื้นส้มจางได้แค่ ~4.4:1 ที่ 12px ไม่ผ่าน AA */
+html:root .qw-fast {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 9px 0 7px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-full);
+  background: transparent;
+  color: var(--qw-text-3);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease),
+    border-color var(--qw-dur) var(--qw-ease), opacity var(--qw-dur) var(--qw-ease);
+}
+html:root .qw-fast .qw-x-icon { width: 13px; height: 13px; }
+html:root .qw-fast:hover { background: var(--accent); color: var(--qw-text); }
+html:root .qw-fast[aria-pressed="true"] {
+  background: var(--qw-accent-soft);
+  border-color: color-mix(in srgb, var(--qw-accent) 55%, transparent);
+  color: var(--qw-text);
+}
+html:root .qw-fast[aria-pressed="true"] .qw-x-icon { color: var(--qw-accent); fill: currentColor; }
+html:root .qw-fast[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--qw-accent) 22%, transparent); }
+html:root .qw-fast[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+html:root .qw-fast[aria-disabled="true"]:hover { background: transparent; color: var(--qw-text-3); }
+html:root .qw-fast[aria-pressed="true"][aria-disabled="true"]:hover { background: var(--qw-accent-soft); color: var(--qw-text); }
+html:root .qw-fast[aria-busy="true"] { cursor: progress; }
+/* ขั้น "ถามก่อนโหลดโมเดลใหญ่" (กดครั้งแรกตอนโมเดลของโปรเจกต์ยังไม่โหลด): กรอบสีเตือน + ไอคอนสีเตือน
+   ตัวอักษรยังเป็นสีหมึก (ข้อความเต็มอยู่ใน toast ที่ shell อ่านออกเสียงให้) — กดซ้ำระหว่างนี้ = ยืนยัน
+   กรอบหนาขึ้นด้วยเงาด้านใน ไม่เปลี่ยนความกว้างเส้นขอบ (ชิปต้องไม่ขยับแม้ครึ่งพิกเซล) */
+html:root .qw-fast[data-armed="1"],
+html:root .qw-fast[data-armed="1"][aria-pressed="true"] {
+  border-color: var(--qw-warn);
+  box-shadow: inset 0 0 0 0.5px var(--qw-warn);
+  background: color-mix(in srgb, var(--qw-warn) 14%, transparent);
+  color: var(--qw-text);
+}
+html:root .qw-fast[data-armed="1"] .qw-x-icon { color: var(--qw-warn); fill: currentColor; }
+html:root .qw-fast[data-armed="1"]:hover { background: color-mix(in srgb, var(--qw-warn) 22%, transparent); }
+/* ป้ายลอยเหนือชิปตอนถามก่อนโหลด (position:fixed — enhance.js วางให้ชิดซ้ายของชิป) ไม่รับการกด ไม่บังการพิมพ์ */
+html:root .qw-fast-hint {
+  position: fixed;
+  z-index: 60;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 8px 12px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  box-shadow: var(--qw-shadow-md);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-sm);
+  font-weight: 400;
+  line-height: 1.5;
+  pointer-events: none;
+}
+html:root .qw-fast-hint[hidden] { display: none; }
+/* ข้อความสำหรับโปรแกรมอ่านจอเท่านั้น (live region ของชิป) */
+html:root .qw-sr {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+html:root .qw-fast:focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---- ปุ่มไอคอนในหัวบล็อกโค้ด (เปิดในแผง) และในแถวปุ่มใต้คำตอบ (อ่านออกเสียง/หยุด): ขนาด/สีเดียวกับปุ่มคัดลอกของ WebUI ---- */
+html:root .markdown-content .qw-art-btn,
+html:root .chat-message-assistant :is(.qw-speak, .qw-speak-stop) {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--qw-r-sm);
+  background: transparent;
+  color: var(--qw-text-3);
+  cursor: pointer;
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease);
+}
+html:root .markdown-content .qw-art-btn .qw-x-icon,
+html:root .chat-message-assistant :is(.qw-speak, .qw-speak-stop) .qw-x-icon { width: 15px; height: 15px; }
+html:root .markdown-content .qw-art-btn:hover,
+html:root .chat-message-assistant :is(.qw-speak, .qw-speak-stop):hover {
+  color: var(--qw-text);
+  background: var(--accent);
+}
+html:root .markdown-content .qw-art-btn:focus-visible,
+html:root .chat-message-assistant :is(.qw-speak, .qw-speak-stop):focus-visible,
+html:root .markdown-content .qw-img-art:focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: 1px;
+}
+/* กำลังอ่าน/หยุดชั่วคราว: ปุ่มเป็นสีส้ม ให้เห็นว่าข้อความไหนกำลังถูกอ่าน */
+html:root .chat-message-assistant .qw-speak:not([data-state="idle"]) { color: var(--qw-accent); }
+html:root .chat-message-assistant .qw-speak[data-state="paused"] .qw-x-icon,
+html:root .chat-message-assistant .qw-speak-stop .qw-x-icon { fill: currentColor; }
+/* แถวปุ่มของคำตอบที่กำลังอ่านต้องไม่จางหายตอนเมาส์ออก (ปุ่มหยุดต้องกดได้ตลอด) */
+@media (hover: hover) {
+  html:root .chat-message-assistant:has(.qw-speak:not([data-state="idle"])) > div:not(.info):not(.agentic-content):has(button[aria-label="Copy"]) {
+    opacity: 1;
+  }
+}
+
+/* ---- "เปิดในแผง" ใต้ภาพกราฟ: ป้ายเล็กบรรทัดถัดจากภาพ (block ใน <p> ของ markdown) ---- */
+html:root .markdown-content .qw-img-art {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  margin: 6px 0 0;
+  padding: 0 11px 0 9px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-full);
+  background: transparent;
+  color: var(--qw-text-3);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease);
+}
+html:root .markdown-content .qw-img-art .qw-x-icon { width: 14px; height: 14px; }
+html:root .markdown-content .qw-img-art:hover { background: var(--qw-bg-hover); color: var(--qw-text); }
+
+/* ---- ปุ่มลอย "ถามเรื่องนี้" ใต้ข้อความที่เลือก (position:fixed — enhance.js คำนวณตำแหน่ง) ---- */
+html:root .qw-quote {
+  position: fixed;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px 0 10px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-full);
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  box-shadow: var(--qw-shadow-md);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-sm);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--qw-dur) var(--qw-ease);
+}
+html:root .qw-quote[hidden] { display: none; }
+html:root .qw-quote .qw-x-icon { width: 15px; height: 15px; color: var(--qw-accent); }
+html:root .qw-quote:hover { background: var(--qw-bg-active); }
+html:root .qw-quote:focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: 2px;
+}
+
+/* จอสัมผัส: เป้ากดใหญ่ขึ้น (ชิปและป้ายภาพ ≥ 32px, ปุ่มถาม 36px) */
+@media (pointer: coarse) {
+  html:root .qw-fast { height: 30px; }
+  html:root .markdown-content .qw-img-art { height: 32px; }
+  html:root .qw-quote { height: 36px; padding: 0 15px 0 12px; }
+}
+
+/* ---- ฟอนต์โค้ดไม่รวมตัวอักษร (ligature) — แก้หลังรีวิว UX รอบ 4
+   --qw-font-mono ขึ้นต้นด้วย Cascadia Code ซึ่งเปิด ligature (ผ่าน calt) เป็นค่าเริ่มต้น: ซอร์สตาราง Markdown "|---|---|"
+   กลายเป็นเส้นกล่อง ├──┼──┤ และลูกศร mermaid "->>" / "-->>" กลายเป็นหัวลูกศรตัวเดียว — ผู้ใช้คัดลอก/เรียนจากซอร์สนี้
+   (Markdown กับ mermaid คือชนิดที่ "เปิดในแผง" ได้) จึงต้องเห็นตัวอักษรจริงทุกตัว
+   font-variant-ligatures:none ปิดทั้ง liga/clig/dlig/hlig และ calt; font-feature-settings ย้ำ calt/liga อีกชั้น
+   ครอบทุกที่ที่ใช้ฟอนต์โค้ด: บล็อก/โค้ดในบรรทัด, ชื่อภาษาในหัวบล็อก, .font-mono ของ WebUI (ป้ายโมเดล, บันทึก MCP ฯลฯ) */
+html:root :is(pre, code, kbd, samp, .font-mono, .code-language) {
+  font-variant-ligatures: none;
+  font-feature-settings: "calt" 0, "liga" 0;
+}
+
+
+/* ---------------------------------------------------------------------------
+   11. รอบ 5 (2026-09-30, R4) — กล่องตรวจทานในการ์ดอนุญาต local_confirm (enhance.js: confirmCards)
+   การ์ดของ WebUI บอกแค่ชื่อเครื่องมือ กล่องนี้แสดง review = โค้ด/คำสั่งที่จะรันจริงทั้งหมด ก่อนแถวปุ่ม
+   หลักการ: อ่านได้ครบทุกตัวอักษร (ไม่ตัด ไม่ซ่อนนอกขอบ), ตัวอักษรตรงตามลำดับจริง, อักขระซ่อนเด่นชัด
+   การ์ดของเครื่องมืออื่นไม่ถูกแตะ (ทุกกฎอยู่ใต้ .qw-review / .qw-confirm-card)
+   --------------------------------------------------------------------------- */
+html:root .qw-review {
+  margin: 0 0 12px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);
+  background: var(--qw-bg-code);
+  overflow: hidden;
+  font-family: var(--qw-font-ui);
+}
+/* หัวกล่อง: แถบเตือนจางๆ + ไอคอนตา — ตัวอักษรเป็นสีหมึก (สีเตือนบนพื้นจางไม่ผ่าน AA ในธีมสว่าง) */
+html:root .qw-review-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--qw-border);
+  background: color-mix(in srgb, var(--qw-warn) 13%, transparent);
+  color: var(--qw-text);
+  font-size: var(--qw-fs-sm);
+  font-weight: 600;
+  line-height: 1.5;
+}
+html:root .qw-review-head .qw-x-icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--qw-warn);
+}
+html:root .qw-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding: 7px 12px 0;
+  color: var(--qw-text-3);
+  font-size: var(--qw-fs-xs);
+  line-height: 1.5;
+}
+html:root .qw-review-lines { color: var(--qw-text-2); font-weight: 500; }
+html:root .qw-review-tok code {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--qw-bg-inline-code);
+  color: var(--qw-text);
+  font-family: var(--qw-font-mono);
+  font-size: 0.95em;
+}
+/* ข้อความสถานะ/คำเตือน: แถบซ้ายสีตามชนิด ตัวอักษรสีหมึก (danger ใช้สีตัวอักษร danger ของธีมซึ่งผ่าน AA บนพื้นโค้ด) */
+html:root .qw-review-note {
+  margin: 8px 12px 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--qw-border-strong);
+  border-radius: 0 var(--qw-r-xs) var(--qw-r-xs) 0;
+  background: color-mix(in srgb, var(--qw-text) 5%, transparent);
+  color: var(--qw-text-2);
+  font-size: var(--qw-fs-sm);
+  line-height: 1.55;
+}
+html:root .qw-review-note[data-kind="warn"] {
+  border-left-color: var(--qw-warn);
+  background: color-mix(in srgb, var(--qw-warn) 14%, transparent);
+  color: var(--qw-text);
+}
+html:root .qw-review-note[data-kind="danger"] {
+  border-left-color: var(--qw-danger);
+  background: color-mix(in srgb, var(--qw-danger) 12%, transparent);
+  color: var(--qw-text);
+  font-weight: 500;
+}
+/* ป้ายหัวข้อธรรมดา (เช่น "อาร์กิวเมนต์ที่โมเดลส่งมา:") ไม่ใช่คำเตือน */
+html:root .qw-review-note[data-kind="label"] {
+  padding: 0;
+  border-left: 0;
+  background: none;
+  color: var(--qw-text-3);
+  font-size: var(--qw-fs-xs);
+}
+html:root .qw-review[data-state="loading"] .qw-review-note { margin-bottom: 10px; }
+html:root .qw-review[data-state="unknown"] .qw-review-note { margin-bottom: 10px; }
+/* S3 (2026-09-30 ดึก) — review มาจากเซิร์ฟเวอร์ (enhance.js: rvShow/rvSrv) · โหลดไม่ได้ = หัวข้อแดง "อย่ากดอนุญาต"
+   ตัวอักษรใช้สี danger ของธีม (ผ่าน AA บนพื้นโค้ดทั้งสองธีม) หนากว่าคำเตือนอื่น เพราะเป็นข้อเดียวที่สั่งให้ "อย่ากด" */
+html:root .qw-review-note[data-kind="stop"] {
+  border-left-color: var(--qw-danger);
+  background: color-mix(in srgb, var(--qw-danger) 14%, transparent);
+  color: var(--qw-danger);
+  font-weight: 650;
+}
+/* เหตุผลใต้หัวข้อแดง: ข้อความธรรมดา (ไม่ใช่คำเตือนซ้อน) + รหัสเหตุผลของเซิร์ฟเวอร์เป็นโค้ดเล็ก */
+html:root .qw-review-note[data-kind="reason"] {
+  margin-top: 6px;
+  padding: 0 0 0 13px;
+  border-left: 0;
+  background: none;
+  color: var(--qw-text-2);
+}
+html:root .qw-review-why {
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--qw-bg-inline-code);
+  color: var(--qw-text);
+  font-family: var(--qw-font-mono);
+  font-size: 0.9em;
+}
+html:root .qw-review-note[data-kind="label"] + .qw-review-note[data-kind="label"],
+html:root .qw-review-note[data-kind="reason"] + .qw-review-note[data-kind="label"] { margin-top: 4px; padding-left: 13px; }
+html:root .qw-review[data-state="fail"] .qw-review-body > .qw-review-note:last-child { margin-bottom: 10px; }
+/* การ์ดที่โหลดรายละเอียดไม่ได้: ขอบแดงจาง + ปุ่ม "อนุญาตครั้งนี้" จาง/ไร้สี (ยังกดได้ — ไม่ไปยุ่งกับกลไกของ WebUI;
+   เซิร์ฟเวอร์ยังตรวจ token เองอยู่ดี) ปุ่มปฏิเสธคงเด่นเหมือนเดิม · ระหว่าง "กำลังโหลด" จางลงหน่อยแต่หน่วง 0.4 วิ
+   ก่อนเริ่มจาง คำตอบที่มาเร็ว (ปกติ) จะไม่ทำให้ปุ่มกระพริบ; กลับเป็นปกติทันทีเมื่อ review มาถึง */
+html:root .qw-confirm-card[data-qw-rv="fail"] {
+  border-color: color-mix(in srgb, var(--qw-danger) 55%, var(--qw-border));
+}
+html:root .qw-confirm-card button[data-slot="button"]:not(.bg-destructive):not([aria-label="More allow options"]) {
+  transition: opacity 0.12s ease, filter 0.12s ease;
+}
+html:root .qw-confirm-card[data-qw-rv="loading"] button[data-slot="button"]:not(.bg-destructive):not([aria-label="More allow options"]) {
+  opacity: 0.6;
+  transition: opacity 0.12s ease 0.4s;
+}
+html:root .qw-confirm-card[data-qw-rv="fail"] button[data-slot="button"]:not(.bg-destructive):not([aria-label="More allow options"]) {
+  opacity: 0.38;
+  filter: saturate(0);
+  box-shadow: none;
+}
+html:root .qw-confirm-card[data-qw-rv="fail"] button[data-slot="button"]:not(.bg-destructive):not([aria-label="More allow options"]):is(:hover, :focus-visible) {
+  opacity: 0.6;
+}
+/* ลดการเคลื่อนไหว: ไม่มีการเฟด แต่ยังหน่วง 0.4 วิ ก่อนจางตอนกำลังโหลด (กันปุ่มกระพริบ) — ตัวเลือกเท่ากัน อยู่ท้าย = ชนะ */
+@media (prefers-reduced-motion: reduce) {
+  html:root .qw-confirm-card[data-qw-rv] button[data-slot="button"]:not(.bg-destructive):not([aria-label="More allow options"]) {
+    transition-duration: 0s;
+  }
+}
+
+/* ตัวโค้ด: ฟอนต์โค้ด ตัดบรรทัดเมื่อยาวเกินกล่อง (ไม่มีส่วนไหนซ่อนนอกขอบขวา — ช่องว่างยาวๆ ก็กินพื้นที่จริง
+   ด้วย break-spaces โค้ดที่ถูกดันไปท้ายบรรทัดจึงโผล่ลงมาให้เห็น) เลื่อนแนวตั้งในกล่อง สูงสุดราวครึ่งจอ
+   bidi-override: แสดงตามลำดับที่โปรแกรมอ่านจริงจากซ้ายไปขวา — อักษรขวาไปซ้ายจะไม่สลับลำดับโค้ดรอบข้างให้ตาหลง */
+html:root pre.qw-review-code {
+  margin: 8px 0 0;
+  padding: 8px 12px 12px;
+  max-height: min(52vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* เงาบน/ล่างเมื่อยังมีเนื้อหาเลื่อนต่อได้ (แผ่นปิดสีพื้นเลื่อนตามเนื้อหา เงาอยู่กับที่) — บอกว่า "ยังไม่จบ" */
+  background:
+    linear-gradient(var(--qw-bg-code) 40%, transparent) center top / 100% 28px no-repeat local,
+    linear-gradient(transparent, var(--qw-bg-code) 60%) center bottom / 100% 28px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--qw-text) 22%, transparent), transparent) center top / 100% 12px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--qw-text) 22%, transparent), transparent) center bottom / 100% 12px no-repeat scroll;
+  color: var(--qw-text);
+  font-family: var(--qw-font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: break-spaces;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  tab-size: 4;
+  direction: ltr;
+  unicode-bidi: bidi-override;
+  text-align: left;
+  border-top: 0.5px solid var(--qw-border);
+}
+html:root pre.qw-review-code:focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: -2px;
+}
+/* หนึ่งบรรทัดของข้อความ = หนึ่งบล็อก ย่อหน้าแขวน 3ch: ส่วนที่ล้นกล่องแล้วเบราว์เซอร์ตัดลงมาจะเยื้องเข้าไป
+   ไม่ดูเหมือนบรรทัดใหม่ (บรรทัดจริงของโค้ดมีเลข "12│" ของเซิร์ฟเวอร์นำหน้าเสมอ) */
+html:root pre.qw-review-code .qw-rv-l {
+  display: block;
+  min-height: 1.6em;
+  padding-left: 3ch;
+  text-indent: -3ch;
+  direction: ltr;
+  unicode-bidi: bidi-override;          /* ไม่สืบทอดจาก pre — ต้องตั้งที่บล็อกที่มีตัวอักษรจริง */
+}
+/* เลขบรรทัด "12│ " ที่เซิร์ฟเวอร์ใส่ในข้อความ: หรี่ลงให้โค้ดเด่น (ยังเป็นตัวอักษรจริง คัดลอกไปครบ) */
+html:root pre.qw-review-code .qw-rv-ln { color: var(--qw-text-4); }
+/* บรรทัดคำเตือนของเซิร์ฟเวอร์ (⚠ … WARNING) */
+html:root pre.qw-review-code .qw-rv-warnline {
+  background: color-mix(in srgb, var(--qw-warn) 16%, transparent);
+  font-weight: 600;
+}
+/* diff: พื้นบรรทัดเพิ่ม/ลบจางๆ (ตัวอักษรคงสีหมึก อ่านง่ายทั้งสองธีม) */
+html:root pre.qw-review-code .qw-rv-add { background: color-mix(in srgb, var(--qw-ok) 15%, transparent); }
+html:root pre.qw-review-code .qw-rv-del { background: color-mix(in srgb, var(--qw-danger) 13%, transparent); }
+html:root pre.qw-review-code .qw-rv-hunk { color: var(--qw-text-3); }
+/* อักขระซ่อน «U+XXXX»: ป้ายสีอันตราย มีกรอบ — ต้องสะดุดตาแม้ในโค้ดยาว */
+html:root pre.qw-review-code .qw-rv-esc {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--qw-danger) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--qw-danger) 70%, transparent);
+  color: var(--qw-danger);
+  font-weight: 600;
+}
+/* เครื่องหมายตัดบรรทัดของเซิร์ฟเวอร์ (↩ ท้าย / ↪ หัวบรรทัดต่อ), ป้าย «TAB»/«N spaces» และช่องว่างยาวดิบ */
+html:root pre.qw-review-code .qw-rv-wrap { color: var(--qw-accent); font-weight: 600; }
+html:root pre.qw-review-code .qw-rv-mark {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--qw-warn) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--qw-warn) 60%, transparent);
+  font-weight: 600;
+}
+html:root pre.qw-review-code .qw-rv-ws {
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--qw-warn) 26%, transparent) 0 1ch, transparent 1ch 2ch);
+  border-radius: 2px;
+}
+/* การ์ดของ local_confirm: ซ่อนปุ่มลูกศร "ตัวเลือกการอนุญาตเพิ่มเติม" (อนุญาต local_confirm เสมอ / ทุกเครื่องมือของเซิร์ฟเวอร์)
+   local_confirm คือจุดที่คนต้องเห็นโค้ดก่อนรัน ถ้าอนุญาตเสมอ การ์ดครั้งต่อไปจะไม่ขึ้นเลยจนกว่าจะโหลดหน้าใหม่
+   (boot.js ถอดออกจากรายการ "อนุญาตเสมอ" ทุกครั้งที่เปิดหน้าอยู่แล้ว — นี่ปิดทางลัดระหว่างใช้งาน) เหลือ "อนุญาตครั้งนี้" กับ "ปฏิเสธ"
+   aria-label ของ WebUI ไม่ถูกตัวแปลเปลี่ยน (สัญญา 10b) จึงใช้เป็นตัวเลือกได้ทั้งสองภาษา */
+html:root .qw-confirm-card button[aria-label="More allow options"],
+html:root .qw-confirm-card .w-px:has(+ button[aria-label="More allow options"]) {
+  display: none;
+}
+/* รอบ 5 แก้หลังรีวิว (enhance.js: ALLOW-GUARD ฝั่ง UI) — ทางลัดที่ทำให้ local_confirm ไม่ถามคน:
+   รายการเมนู "อนุญาต local_confirm เสมอ" / "อนุญาตทุกเครื่องมือจาก <เซิร์ฟเวอร์ของเรา>" บนการ์ดของทุกเครื่องมือ = ซ่อน
+   (!important: bits-ui ใส่ display ของรายการเองผ่าน class) · ช่องติ๊ก "Always allow" ของแถว local_confirm ในหน้าตั้งค่า
+   (b10984 วาดเป็น role=checkbox — เผื่อ role=switch ไว้ด้วย) = จาง กดไม่ได้ (title ของช่องบอกเหตุผล — ช่องยังรับเมาส์
+   เพื่อโชว์ tooltip ส่วนตัวช่องติ๊กไม่รับ) */
+html:root [role="menuitem"].qw-allow-hidden {
+  display: none !important;
+}
+html:root .qw-allow-locked { cursor: not-allowed; }
+html:root .qw-allow-locked > :is([role="checkbox"], [role="switch"]) {
+  opacity: 0.4;
+  pointer-events: none;
+}
+/* ป้ายผลของ local_confirm ต่อท้ายชื่อบนแถวเครื่องมือในแชต (รันแล้ว / ไม่ได้รัน — เหตุผล / ล้มเหลว)
+   ตัวอักษรสีหมึกบนพื้นจางตามชนิด (สีสถานะบนพื้นจางไม่ผ่าน AA ในธีมสว่าง) ตัดบรรทัดได้บนจอแคบ */
+html:root .qw-cf-status {
+  display: inline-block;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);          /* ไม่ใช่ full: ป้ายไทยที่ตัดเป็นสองบรรทัดบนจอแคบต้องไม่กลายเป็นแคปซูลบิดๆ */
+  background: color-mix(in srgb, var(--qw-text) 6%, transparent);
+  color: var(--qw-text);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  line-height: 1.7;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+html:root .qw-cf-status[data-tone="ok"] {
+  border-color: color-mix(in srgb, var(--qw-ok) 60%, transparent);
+  background: color-mix(in srgb, var(--qw-ok) 15%, transparent);
+}
+html:root .qw-cf-status[data-tone="notrun"] {
+  border-color: color-mix(in srgb, var(--qw-warn) 65%, transparent);
+  background: color-mix(in srgb, var(--qw-warn) 18%, transparent);
+}
+html:root .qw-cf-status[data-tone="failed"] {
+  border-color: color-mix(in srgb, var(--qw-danger) 65%, transparent);
+  background: color-mix(in srgb, var(--qw-danger) 15%, transparent);
+}
+@media (max-width: 640px) {
+  html:root .qw-review-head { padding: 8px 10px; }
+  html:root .qw-review-meta { padding: 7px 10px 0; }
+  html:root .qw-review-note { margin: 8px 10px 0; }
+  html:root pre.qw-review-code { font-size: 12px; max-height: 36vh; padding: 8px 10px 10px; }
+}
+
+/* ---- batch 2a (fix, owner stack): ชิปสกิล (MCP prompt) ใช้สีเน้นของเรา ไม่ใช่ม่วงของ WebUI ------------------------
+   WebUI b10984 ใช้ utility สีม่วงของ Tailwind เฉพาะกับพรอมต์ของ MCP: กรอบชิปในกล่องพิมพ์/ในข้อความ (border-purple-200
+   bg-purple-500/10), ป้ายชื่ออาร์กิวเมนต์ (bg-purple-200/60 text-purple-700), ไฮไลต์ค่าอาร์กิวเมนต์ในเนื้อพรอมต์
+   (bg-purple-300/50 text-purple-900) และป้ายความสามารถ "prompts" ของเซิร์ฟเวอร์ (bg-purple-50 + ไอคอน text-purple-600)
+   ม่วงไม่อยู่ในภาษาภาพของเรา (ส้มอิฐ = สิ่งที่ผู้ใช้เลือก/ไฮไลต์) จึงแปลงเป็นโทเคน — ตัวหนังสือใช้สีหมึก (--qw-text) บนพื้น
+   ส้มจาง ไม่ใช้ส้มบนส้ม เพราะป้ายอาร์กิวเมนต์เป็นตัวอักษร 10px ต้องผ่าน AA ทั้งสองธีม
+   selector ต้องชนะ .dark\:…:is(.dark *) ของ WebUI (0,2,0) — html:root + คลาส = (0,2,1) */
+html:root {
+  /* สำรองสำหรับ utility สีม่วงตัวอื่นที่ WebUI อาจเพิ่มภายหลัง: ทั้งสเกลกลายเป็นเฉดของสีเน้น (อ่อน = ผสมขาว, เข้ม = ผสมดำ) */
+  --color-purple-50:  color-mix(in oklab, var(--qw-accent) 8%, white);
+  --color-purple-100: color-mix(in oklab, var(--qw-accent) 16%, white);
+  --color-purple-200: color-mix(in oklab, var(--qw-accent) 30%, white);
+  --color-purple-300: color-mix(in oklab, var(--qw-accent) 50%, white);
+  --color-purple-400: color-mix(in oklab, var(--qw-accent) 75%, white);
+  --color-purple-500: var(--qw-accent);
+  --color-purple-600: color-mix(in oklab, var(--qw-accent) 85%, black);
+  --color-purple-700: color-mix(in oklab, var(--qw-accent) 72%, black);
+  --color-purple-800: color-mix(in oklab, var(--qw-accent) 58%, black);
+  --color-purple-900: color-mix(in oklab, var(--qw-accent) 45%, black);
+  --color-purple-950: color-mix(in oklab, var(--qw-accent) 32%, black);
+}
+/* กรอบชิปพรอมต์ (ตอนโหลดและตอนพร้อม) */
+html:root .border-purple-200,
+html:root .dark\:border-purple-800 {
+  border-color: color-mix(in srgb, var(--qw-accent) 40%, transparent);
+}
+html:root .bg-purple-500\/10,
+html:root .dark\:bg-purple-500\/20 {
+  background-color: var(--qw-accent-soft);
+}
+/* ป้ายชื่ออาร์กิวเมนต์ใต้ชิป */
+html:root .bg-purple-200\/60,
+html:root .dark\:bg-purple-800\/40 {
+  background-color: color-mix(in srgb, var(--qw-accent) 16%, transparent);
+}
+/* ค่าอาร์กิวเมนต์ที่ถูกไฮไลต์ในเนื้อพรอมต์ (ชี้ป้ายแล้วค่าที่ตรงกันเข้มขึ้น — opacity ของ WebUI ยังทำงาน) */
+html:root .bg-purple-300\/50,
+html:root .dark\:bg-purple-700\/50 {
+  background-color: color-mix(in srgb, var(--qw-accent) 24%, transparent);
+}
+html:root .text-purple-700,
+html:root .dark\:text-purple-300,
+html:root .text-purple-900,
+html:root .dark\:text-purple-100 {
+  color: var(--qw-text);
+}
+/* ป้าย "prompts" ในการ์ดเซิร์ฟเวอร์ MCP: พื้นส้มจาง + ไอคอนสีเน้น (ไอคอน ไม่ใช่ตัวอักษร — ใช้สีเน้นได้) */
+html:root .bg-purple-50,
+html:root .dark\:bg-purple-950 {
+  background-color: var(--qw-accent-soft);
+}
+html:root .text-purple-600,
+html:root .dark\:text-purple-400 {
+  color: var(--qw-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   12. batch 2b (2026-10-01, owner ui) — สัญญา C4 (enhance.js ส่วน "batch 2b")
+   .qw-plan (ชิปวางแผนก่อน) · .qw-plan-bar (แถบบอกโหมดวางแผนเหนือการ์ดกล่องพิมพ์)
+   · .qw-mic-box > .qw-rec + .qw-mic (ไมค์: ป้ายเวลาอัด/ยกเลิก + ปุ่มเดียวที่สลับ เริ่ม → หยุดและถอดเสียง)
+   · .qw-mic-hint (ข้อความผิดพลาดลอยเหนือปุ่มไมค์) · .qw-at (รายการ @ไฟล์ของโปรเจกต์ ลอยเหนือกล่องพิมพ์)
+   ตัวอักษรบนพื้นส้ม: ใช้สีหมึกเสมอ (ขาวบน --qw-accent ได้แค่ ~3.9:1 ไม่ผ่าน AA ที่ 12-13px)
+   สถานะ "กำลังอัด" ใช้ --qw-danger-bg + ไอคอนขาว (≥ 5.3:1) — สีเดียวกับสัญลักษณ์อัดเสียงที่คนคุ้น
+   --------------------------------------------------------------------------- */
+/* ---- ชิป "วางแผนก่อน": หน้าตาชุดเดียวกับชิป "เร็ว (4B)" (ปุ่มโปร่ง เปิดอยู่ = พื้นส้มจาง + ไอคอนส้ม) ---- */
+html:root .qw-plan {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 9px 0 7px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-full);
+  background: transparent;
+  color: var(--qw-text-3);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease),
+    border-color var(--qw-dur) var(--qw-ease);
+}
+html:root .qw-plan .qw-x-icon { width: 13px; height: 13px; }
+html:root .qw-plan:hover { background: var(--accent); color: var(--qw-text); }
+html:root .qw-plan[aria-pressed="true"] {
+  background: var(--qw-accent-soft);
+  border-color: color-mix(in srgb, var(--qw-accent) 55%, transparent);
+  color: var(--qw-text);
+}
+html:root .qw-plan[aria-pressed="true"] .qw-x-icon { color: var(--qw-accent); }
+html:root .qw-plan[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--qw-accent) 22%, transparent); }
+html:root .qw-plan:focus-visible,
+html:root .qw-plan-bar-btn:focus-visible,
+html:root .qw-mic:focus-visible,
+html:root .qw-rec-x:focus-visible,
+html:root .qw-at-add:focus-visible {
+  outline: 2px solid var(--qw-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---- แถบโหมดวางแผน: แถวบนสุดของฟอร์ม (เหนือการ์ดกล่องพิมพ์) ข้อความ + อนุมัติแผน + ปิดโหมด ---- */
+html:root .qw-plan-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 8px;
+  padding: 6px 8px 6px 12px;
+  border: 0.5px solid color-mix(in srgb, var(--qw-accent) 45%, transparent);
+  border-radius: var(--qw-r-md);
+  background: var(--qw-accent-soft);
+  color: var(--qw-text);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-sm);
+  line-height: 1.45;
+}
+html:root .qw-plan-bar-ic { display: inline-flex; flex: none; color: var(--qw-accent); }
+html:root .qw-plan-bar-ic .qw-x-icon { width: 15px; height: 15px; }
+html:root .qw-plan-bar-t { flex: 1 1 220px; min-width: 0; }
+html:root .qw-plan-bar-acts { display: inline-flex; flex: none; align-items: center; gap: 6px; margin-left: auto; }
+html:root .qw-plan-bar-btn {
+  flex: none;
+  height: 26px;
+  padding: 0 11px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-full);
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+html:root .qw-plan-bar-btn:hover { background: var(--qw-bg-hover); }
+/* อนุมัติแผน = ทางหลัก: กรอบส้มทึบ + พื้นส้มจาง (ตัวอักษรหมึก) */
+html:root .qw-plan-go {
+  border-color: var(--qw-accent);
+  box-shadow: inset 0 0 0 0.5px var(--qw-accent);
+}
+html:root .qw-plan-bar-btn[hidden] { display: none; }
+
+/* ---- ไมค์ ---- */
+html:root .qw-mic-box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+html:root .qw-mic {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--qw-r-sm);
+  background: transparent;
+  color: var(--qw-text-3);
+  cursor: pointer;
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease);
+}
+html:root .qw-mic .qw-x-icon { width: 18px; height: 18px; }
+html:root .qw-mic:hover { background: var(--qw-bg-hover); color: var(--qw-text); }
+/* บริการถอดเสียงไม่ทำงาน (hub บอก): จางลงแต่ยังกดได้ — กดแล้วขึ้นคำอธิบาย */
+html:root .qw-mic-box[data-state="off"] .qw-mic { opacity: 0.5; }
+html:root .qw-mic-box[data-state="rec"] .qw-mic {
+  background: var(--qw-danger-bg);
+  color: var(--qw-accent-fg);          /* ขาวทั้งสองธีม */
+}
+html:root .qw-mic-box[data-state="rec"] .qw-mic:hover { background: var(--qw-danger-bg); filter: brightness(0.9); }
+html:root .qw-mic-box[data-state="rec"] .qw-mic .qw-x-icon { fill: currentColor; }
+html:root .qw-mic-box[data-state="asking"] .qw-mic { color: var(--qw-text); background: var(--qw-bg-hover); }
+html:root .qw-mic-box[data-state="busy"] .qw-mic { cursor: progress; color: var(--qw-text-3); }
+html:root .qw-mic[aria-busy="true"] .qw-x-icon { animation: qw-mic-pulse 1.2s ease-in-out infinite; }
+/* ป้ายระหว่างอัด/ถอดเสียง: จุดแดงกระพริบ + เวลา + ปุ่มยกเลิก */
+html:root .qw-rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 3px 0 10px;
+  border-radius: var(--qw-r-full);
+  background: color-mix(in srgb, var(--qw-danger-bg) 13%, transparent);
+  color: var(--qw-text);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+html:root .qw-rec[hidden] { display: none; }
+html:root .qw-mic-box[data-state="busy"] .qw-rec { background: var(--qw-bg-hover); }
+html:root .qw-rec-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--qw-danger-bg);
+  animation: qw-mic-pulse 1.2s ease-in-out infinite;
+}
+html:root .qw-mic-box[data-state="busy"] .qw-rec-dot { background: var(--qw-text-3); }
+html:root .qw-rec-time { font-variant-numeric: tabular-nums; min-width: 2.6em; }
+html:root .qw-rec[data-warn="1"] .qw-rec-time { color: var(--qw-danger); }
+html:root .qw-rec-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--qw-text-2);
+  cursor: pointer;
+}
+html:root .qw-rec-x .qw-x-icon { width: 14px; height: 14px; }
+html:root .qw-rec-x:hover { background: var(--qw-bg-active); color: var(--qw-text); }
+@keyframes qw-mic-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  html:root .qw-rec-dot,
+  html:root .qw-mic[aria-busy="true"] .qw-x-icon { animation: none; }
+}
+/* ข้อความผิดพลาดของไมค์: ลอยเหนือปุ่ม (enhance.js วางให้ชิดขวาของปุ่ม) ไม่รับการกด ไม่บังการพิมพ์ */
+html:root .qw-mic-hint {
+  position: fixed;
+  z-index: 60;
+  max-width: min(340px, calc(100vw - 16px));
+  padding: 8px 12px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-left: 3px solid var(--qw-danger-bg);
+  border-radius: var(--qw-r-md);
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  box-shadow: var(--qw-shadow-md);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-sm);
+  line-height: 1.5;
+  pointer-events: none;
+}
+html:root .qw-mic-hint[hidden] { display: none; }
+
+/* ---- รายการ @ไฟล์ของโปรเจกต์ (position:fixed เหนือการ์ดกล่องพิมพ์) ---- */
+html:root .qw-at {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  box-shadow: var(--qw-shadow-lg);
+  font-family: var(--qw-font-ui);
+}
+html:root .qw-at[hidden] { display: none; }
+html:root .qw-at-h {
+  flex: none;
+  padding: 8px 12px 6px;
+  border-bottom: 0.5px solid var(--qw-border);
+  color: var(--qw-text-3);
+  font-size: var(--qw-fs-xs);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html:root .qw-at-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px; }
+html:root .qw-at-list:empty { display: none; }
+html:root .qw-at-o {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: var(--qw-r-sm);
+  cursor: pointer;
+}
+html:root .qw-at-o:hover { background: var(--qw-bg-hover); }
+html:root .qw-at-o[aria-selected="true"] { background: var(--qw-bg-active); }
+html:root .qw-at-ic { display: inline-flex; color: var(--qw-text-3); }
+html:root .qw-at-ic .qw-x-icon { width: 16px; height: 16px; }
+html:root .qw-at-o[aria-selected="true"] .qw-at-ic { color: var(--qw-accent); }
+html:root .qw-at-n {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--qw-fs-base);
+  color: var(--qw-text);
+}
+html:root .qw-at-m { color: var(--qw-text-3); font-size: var(--qw-fs-xs); white-space: nowrap; }
+html:root .qw-at-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  color: var(--qw-text-2);
+  font-size: var(--qw-fs-sm);
+  line-height: 1.5;
+}
+html:root .qw-at-empty[hidden] { display: none; }
+html:root .qw-at-add {
+  height: 26px;
+  padding: 0 11px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-full);
+  background: transparent;
+  color: var(--qw-text);
+  font: inherit;
+  font-size: var(--qw-fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+html:root .qw-at-add:hover { background: var(--qw-bg-hover); }
+/* ตัวเลือก @ ของ WebUI ในสถานะ "ค้นหาไฟล์ไม่ได้" — enhance.js ปิดมันทันที ซ่อนไว้กันเห็นแวบเดียว */
+html:root[data-qw-embedded="1"] [data-qw-webui-mention] { display: none !important; }
+
+/* ---- กล่องพิมพ์แคบ (แถวเครื่องมือเป็น container ของ WebUI): ชิปเหลือแค่ไอคอน ป้ายยังอยู่สำหรับโปรแกรมอ่านจอ
+   ที่ 390px แถวกว้าง ~372px: "+" · ชิปเร็ว · วางแผน · ปุ่มโมเดล · ไมค์ · ส่ง ใส่ได้พอดีเมื่อชิปเป็นไอคอน ---- */
+@container (max-width: 520px) {
+  html:root .qw-plan,
+  html:root .qw-fast { width: 28px; padding: 0; }
+  html:root .qw-plan > span,
+  html:root .qw-fast > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  html:root .qw-rec { padding-left: 8px; gap: 4px; }
+  html:root .qw-mic-box { gap: 4px; }
+}
+/* ระหว่างอัดบนกล่องพิมพ์แคบ: ซ่อนปุ่มเลือกโมเดลชั่วคราว (ป้ายเวลา + ยกเลิกต้องมีที่) */
+@container (max-width: 440px) {
+  html:root:is([data-qw-mic="rec"], [data-qw-mic="busy"]) .conversation-chat-form [style*="container-type"] > div:not(.mr-auto):not(.qw-mic-box) {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  html:root .qw-plan { height: 30px; }
+  html:root .qw-plan-bar-btn,
+  html:root .qw-at-add { height: 32px; }
+  html:root .qw-rec-x { width: 30px; height: 30px; }
+  html:root .qw-at-o { min-height: 42px; }
+}
+@media (max-width: 640px) {
+  html:root .qw-plan-bar { padding: 6px 6px 6px 10px; font-size: var(--qw-fs-xs); }
+}
+
+/* ===========================================================================
+   13. batch 3 (2026-10-06, owner ui) — สัญญา D4(b) (enhance.js ส่วน "batch 3" ท้ายไฟล์)
+   .qw-compact = เส้นบอกเบาๆ เหนือการ์ดกล่องพิมพ์ ว่า hub สรุปช่วงต้นของบทสนทนานี้แล้ว (X-Qwen-Compacted)
+   หน้าตาเป็น "ตัวคั่น" กลางคอลัมน์ (เส้นบางสองข้าง + ข้อความเล็กสีจาง) ไม่ใช่กล่องเตือน — เป็นข้อมูล ไม่ใช่ปัญหา
+   ชี้/โฟกัส/แตะ = คำอธิบายลอยเหนือเส้น (.qw-compact-tip) · สีจาก token ล้วน
+   --------------------------------------------------------------------------- */
+html:root .qw-compact {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--qw-text-3);
+  font-family: var(--qw-font-ui);
+  font-size: var(--qw-fs-xs);
+  line-height: 1.4;
+}
+html:root .qw-compact-rule {
+  flex: 1 1 0;
+  min-width: 12px;
+  height: 0;
+  border-top: 0.5px solid var(--qw-border-strong);
+}
+html:root .qw-compact-b {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--qw-r-full);
+  background: transparent;
+  color: var(--qw-text-3);
+  font: inherit;
+  white-space: nowrap;
+  cursor: help;
+  transition: background-color var(--qw-dur) var(--qw-ease), color var(--qw-dur) var(--qw-ease);
+}
+html:root .qw-compact-b:hover,
+html:root .qw-compact-b[data-open="1"] { background: var(--qw-bg-hover); color: var(--qw-text-2); }
+html:root .qw-compact-b:focus-visible { outline: 2px solid var(--qw-focus-ring); outline-offset: 2px; }
+html:root .qw-compact-b .qw-x-icon { flex: none; width: 14px; height: 14px; }
+html:root .qw-compact-i { display: inline-flex; flex: none; opacity: 0.85; }
+html:root .qw-compact-i .qw-x-icon { width: 13px; height: 13px; }
+html:root .qw-compact-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+html:root .qw-compact-tip {
+  position: absolute;
+  z-index: 61;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  width: max-content;
+  max-width: min(380px, calc(100vw - 32px));
+  padding: 8px 12px;
+  border: 0.5px solid var(--qw-border-strong);
+  border-radius: var(--qw-r-md);
+  background: var(--qw-bg-elev);
+  color: var(--qw-text);
+  box-shadow: var(--qw-shadow-md);
+  font-size: var(--qw-fs-sm);
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+html:root .qw-compact-tip[hidden] { display: none; }
+@media (pointer: coarse) {
+  html:root .qw-compact-b { height: 32px; }
+}
+@media (forced-colors: active) {
+  html:root .qw-compact-rule { border-top: 1px solid CanvasText; }
+  html:root .qw-compact-tip { border: 1px solid CanvasText; }
+}

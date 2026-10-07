@@ -1,0 +1,282 @@
+{
+ "conversations": [
+  {
+   "id": "5d0e1a77-0000-4000-8000-000000000001",
+   "name": "Chat 9/29/2026, 12:52:23 PM",
+   "lastModified": 1790200000000,
+   "currNode": "5d0e1a77-0000-4000-8000-00000000c000",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-000000000002",
+   "name": "Chat 29/9/2569 00:05:09",
+   "lastModified": 1790199940000,
+   "currNode": "5d0e1a77-0000-4000-8000-00000000c001",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-000000000003",
+   "name": "Chat 2026. 9. 29. 오후 1:05:09",
+   "lastModified": 1790199880000,
+   "currNode": "5d0e1a77-0000-4000-8000-00000000c002",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-000000000004",
+   "name": "Chat about 9/29 plans",
+   "lastModified": 1790199820000,
+   "currNode": "5d0e1a77-0000-4000-8000-00000000c003",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-000000000005",
+   "name": "Chat 9/29/2026, 12:52:23 PM notes",
+   "lastModified": 1790199760000,
+   "currNode": "5d0e1a77-0000-4000-8000-00000000c004",
+   "reasoningEffort": "default"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-000000000006",
+   "name": "ปกติ ชื่อแชตไทย",
+   "lastModified": 1790199700000,
+   "currNode": "5d0e1a77-0000-4000-8000-00000000c005",
+   "reasoningEffort": "default"
+  }
+ ],
+ "messages": [
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000a000",
+   "convId": "5d0e1a77-0000-4000-8000-000000000001",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000b000"
+   ],
+   "timestamp": 1790200000000,
+   "toolCalls": ""
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000b000",
+   "convId": "5d0e1a77-0000-4000-8000-000000000001",
+   "type": "text",
+   "role": "user",
+   "content": "ทดสอบชื่อแชต 1",
+   "parent": "5d0e1a77-0000-4000-8000-00000000a000",
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000c000"
+   ],
+   "timestamp": 1790200000010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000c000",
+   "convId": "5d0e1a77-0000-4000-8000-000000000001",
+   "type": "text",
+   "role": "assistant",
+   "content": "OK",
+   "parent": "5d0e1a77-0000-4000-8000-00000000b000",
+   "children": [],
+   "timestamp": 1790200000020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000a001",
+   "convId": "5d0e1a77-0000-4000-8000-000000000002",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000b001"
+   ],
+   "timestamp": 1790199940000,
+   "toolCalls": ""
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000b001",
+   "convId": "5d0e1a77-0000-4000-8000-000000000002",
+   "type": "text",
+   "role": "user",
+   "content": "ทดสอบชื่อแชต 2",
+   "parent": "5d0e1a77-0000-4000-8000-00000000a001",
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000c001"
+   ],
+   "timestamp": 1790199940010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000c001",
+   "convId": "5d0e1a77-0000-4000-8000-000000000002",
+   "type": "text",
+   "role": "assistant",
+   "content": "OK",
+   "parent": "5d0e1a77-0000-4000-8000-00000000b001",
+   "children": [],
+   "timestamp": 1790199940020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000a002",
+   "convId": "5d0e1a77-0000-4000-8000-000000000003",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000b002"
+   ],
+   "timestamp": 1790199880000,
+   "toolCalls": ""
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000b002",
+   "convId": "5d0e1a77-0000-4000-8000-000000000003",
+   "type": "text",
+   "role": "user",
+   "content": "ทดสอบชื่อแชต 3",
+   "parent": "5d0e1a77-0000-4000-8000-00000000a002",
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000c002"
+   ],
+   "timestamp": 1790199880010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000c002",
+   "convId": "5d0e1a77-0000-4000-8000-000000000003",
+   "type": "text",
+   "role": "assistant",
+   "content": "OK",
+   "parent": "5d0e1a77-0000-4000-8000-00000000b002",
+   "children": [],
+   "timestamp": 1790199880020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000a003",
+   "convId": "5d0e1a77-0000-4000-8000-000000000004",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000b003"
+   ],
+   "timestamp": 1790199820000,
+   "toolCalls": ""
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000b003",
+   "convId": "5d0e1a77-0000-4000-8000-000000000004",
+   "type": "text",
+   "role": "user",
+   "content": "ทดสอบชื่อแชต 4",
+   "parent": "5d0e1a77-0000-4000-8000-00000000a003",
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000c003"
+   ],
+   "timestamp": 1790199820010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000c003",
+   "convId": "5d0e1a77-0000-4000-8000-000000000004",
+   "type": "text",
+   "role": "assistant",
+   "content": "OK",
+   "parent": "5d0e1a77-0000-4000-8000-00000000b003",
+   "children": [],
+   "timestamp": 1790199820020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000a004",
+   "convId": "5d0e1a77-0000-4000-8000-000000000005",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000b004"
+   ],
+   "timestamp": 1790199760000,
+   "toolCalls": ""
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000b004",
+   "convId": "5d0e1a77-0000-4000-8000-000000000005",
+   "type": "text",
+   "role": "user",
+   "content": "ทดสอบชื่อแชต 5",
+   "parent": "5d0e1a77-0000-4000-8000-00000000a004",
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000c004"
+   ],
+   "timestamp": 1790199760010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000c004",
+   "convId": "5d0e1a77-0000-4000-8000-000000000005",
+   "type": "text",
+   "role": "assistant",
+   "content": "OK",
+   "parent": "5d0e1a77-0000-4000-8000-00000000b004",
+   "children": [],
+   "timestamp": 1790199760020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M"
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000a005",
+   "convId": "5d0e1a77-0000-4000-8000-000000000006",
+   "type": "root",
+   "role": "system",
+   "content": "",
+   "parent": null,
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000b005"
+   ],
+   "timestamp": 1790199700000,
+   "toolCalls": ""
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000b005",
+   "convId": "5d0e1a77-0000-4000-8000-000000000006",
+   "type": "text",
+   "role": "user",
+   "content": "ทดสอบชื่อแชต 6",
+   "parent": "5d0e1a77-0000-4000-8000-00000000a005",
+   "children": [
+    "5d0e1a77-0000-4000-8000-00000000c005"
+   ],
+   "timestamp": 1790199700010,
+   "toolCalls": "",
+   "extra": []
+  },
+  {
+   "id": "5d0e1a77-0000-4000-8000-00000000c005",
+   "convId": "5d0e1a77-0000-4000-8000-000000000006",
+   "type": "text",
+   "role": "assistant",
+   "content": "OK",
+   "parent": "5d0e1a77-0000-4000-8000-00000000b005",
+   "children": [],
+   "timestamp": 1790199700020,
+   "toolCalls": "",
+   "model": "Qwen3.8-27B-UD-Q4_K_M"
+  }
+ ]
+}

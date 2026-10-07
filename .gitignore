@@ -1,0 +1,139 @@
+# Clone this repository into a fresh, empty C:\LLM (see README "Quick start").
+# If you ever turn an existing install folder into a working tree, review `git status`
+# before the first commit: the rules below cover the known runtime files, not everything
+# a machine can accumulate.
+
+# ---------------------------------------------------------------- secrets (never commit)
+secrets/*
+!secrets/README.md
+*.token
+*.key
+*_key.txt
+gateway_key.txt
+*.pem
+*.pfx
+.env
+.env.*
+
+# ---------------------------------------------------------------- logs and audit trails
+logs/
+*.log
+*.log.*
+audit.log
+mcp-local/tasklogs/
+mcp-websearch/run.log
+
+# ---------------------------------------------------------------- user data (chats, attachments, memory, usage, research)
+projects/data
+projects/projects.json
+projects/settings.json
+projects/backup/
+mcp-local/tasks.json
+mcp-local/scheduler_state.json
+mcp-local/paths*.json
+mcp-local/memory*/
+gateway_sessions*/
+*.sqlite
+*.db
+
+# ---------------------------------------------------------------- generated / machine-specific config
+gpu-choice.json
+gpu-choice.json.*
+gpu-profile.json
+models-preset.ini
+models-preset.user.ini
+ui-config.json
+mcp-local/config.json
+mcp-websearch/config.json
+skills/enabled.json
+*.state.json
+*.request
+*.ok
+
+# ---------------------------------------------------------------- models and binaries
+# no trailing slash: on the author's machine models\ is a junction to another drive
+/models
+/models-embed
+/drafts
+*.gguf
+*.safetensors
+*.bin
+*.onnx
+/llama.cpp
+/llama.cpp-*
+/tools/
+/dl/
+*.exe
+*.dll
+*.msi
+*.zip
+*.7z
+unins000.*
+
+# ---------------------------------------------------------------- browser profiles and screenshot output
+browser-profile/
+qwen-shot-*/
+qwen-verify-*/
+projects/tools/shots/
+projects/tools/demo/data/
+projects/tools/demo/raw/
+projects/tools/demo/tmp/
+projects/tools/demo/gpu/
+projects/tools/demo/doctor/
+projects/tools/demo/fixtures/
+projects/tools/demo/projects.json
+projects/tools/demo/settings.json
+projects/tools/demo/STOP
+
+# ---------------------------------------------------------------- separate local projects (not part of this repository)
+/gpumon/
+tests/fixtures/gpumon/
+tests/test_gpumon_*.py
+/creative-support/
+/install-support/
+
+# ---------------------------------------------------------------- the author's local notes, status reports and old scripts
+# (docs/DESIGN.md is the published copy of projects/tools/DESIGN.md)
+projects/tools/DESIGN.md
+/[A-Z]*-*.md
+/[A-Z]*-*.txt
+/*-STATUS.txt
+/*-REPORT.md
+/*-HANDOFF.md
+/*-SELECTION.txt
+/*-GUIDE.txt
+/MODEL-*.txt
+/CREATIVE-*.txt
+/README-INSTALLER.txt
+/*Creative-Studio*.cmd
+/*creative-studio*.ps1
+/Assemble-Video.cmd
+/assemble-video.ps1
+/Download-Missing-Models.cmd
+/GPU-Monitor.cmd
+/Open-Blender.cmd
+/serve-qwen*.ps1
+/start-big.ps1
+/start-fast.ps1
+/bench.ps1
+/client_example.py
+/gguf_header.py
+/egpu_runner.py
+
+# ---------------------------------------------------------------- downloads, scratch and caches
+*.part
+*.crdownload
+*.tmp
+*.bak
+*.bak-*
+/_*.py
+/_*.ps1
+projects/tools/_*.html
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
