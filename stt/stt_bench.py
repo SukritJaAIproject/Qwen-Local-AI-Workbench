@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-"""stt_bench.py — วัดความเร็ว/ความแม่นของบริการถอดเสียงที่รันอยู่ (ใช้ python ตัวไหนก็ได้ มีแต่ stdlib)
+"""stt_bench.py — Benchmark speed/accuracy of the active transcription service (runs on any Python, uses only standard library)
 
     C:\\Python313\\python.exe C:\\LLM\\stt\\stt_bench.py [--url http://127.0.0.1:8795] [--rounds 2] [--json out.json]
 
-ทำอะไร
-  1. สังเคราะห์เสียงตัวอย่างด้วยเสียง Windows ในเครื่อง (Microsoft Pattara = ไทย, Zira = อังกฤษ) ผ่าน tts_samples.ps1
-     ลงโฟลเดอร์ชั่วคราว — ไม่ดาวน์โหลดอะไร ข้อความต้นฉบับอยู่ในไฟล์นี้ (ตัวเลขเขียนเป็นคำ ตามที่ TTS อ่าน)
-  2. ส่งแต่ละไฟล์ให้ /v1/transcribe (Bearer token จาก secrets_util — ไม่พิมพ์ค่า) วัดเวลาทั้งคำขอ + เวลาที่บริการรายงาน
-  3. ความแม่น: ไทย = CER (ตัดช่องว่าง/วรรคตอน), อังกฤษ = WER — whisper เขียนตัวเลขเป็นเลขอารบิก ("398") ขณะที่ต้นฉบับ
-     เป็นคำ จึงมีค่าผิดพลาดขั้นต่ำจากเรื่องนี้เสมอ (อังกฤษ ~0.09-0.14 แม้ถอดถูกทุกคำ)
-รอบแรกของแต่ละไฟล์อาจรวมเวลาโหลดโมเดล (บริการปลดโมเดลตอนว่าง) — ดู round 2 เป็นค่าคงตัว
---gap N = รอ N วินาทีก่อนแต่ละคำขอ: บริการจอดโมเดล GPU ไว้ใน RAM หลังงาน 2 วินาที (คืน VRAM ให้โมเดลแชต) คำขอที่ยิงติดกัน
-จึงวัดได้แค่กรณี "ยังถือ GPU อยู่" — ผู้ใช้กดไมค์จริงห่างกันเป็นนาที ใช้ --gap 4 วัดเวลาที่ผู้ใช้เห็นจริง (รวมย้ายกลับ GPU)
+What it does:
+  1. Synthesize sample audio using local Windows TTS voices (Microsoft Pattara = Thai, Zira = English) via tts_samples.ps1
+     into a temporary folder — does not download anything. Source text is defined in this file (numbers written as words, matching TTS pronunciation).
+  2. Send each file to /v1/transcribe (Bearer token from secrets_util — never printed), measuring both total request duration + service-reported execution time.
+  3. Accuracy metrics: Thai = CER (whitespace/punctuation stripped), English = WER — whisper formats numbers as Arabic numerals ("398") while reference text
+     uses words, which introduces a small baseline discrepancy (English ~0.09-0.14 even when every word is transcribed correctly).
+The first round for each file may include model loading latency (service offloads model during idle) — refer to round 2 for steady-state performance.
+--gap N = wait N seconds before each request: service offloads GPU model to RAM after 2 seconds idle (releasing VRAM to chat models); back-to-back requests
+only measure the warm GPU state — users realistically trigger mic input minutes apart; use --gap 4 to measure real-world perceived latency (including reload to GPU).
 """
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ def wer(ref: str, hyp: str) -> float:
 
 
 def synthesize(outdir: str, samples=SAMPLES) -> dict:
-    """{ชื่อ: path WAV} — ใช้ tts_samples.ps1 (Windows PowerShell 5.1, เสียง OneCore ในเครื่อง) ข้ามเสียงที่ไม่มี"""
+    """{name: path WAV} — uses tts_samples.ps1 (Windows PowerShell 5.1, local OneCore voices); skips unavailable voices."""
     spec = os.path.join(outdir, "samples.json")
     with open(spec, "w", encoding="utf-8") as fh:
         json.dump(samples, fh, ensure_ascii=False)
@@ -119,7 +119,7 @@ def run(url: str, rounds: int = 2, wavs: dict | None = None, gap: float = 0.0) -
     for rnd in range(1, rounds + 1):
         for name, path in (wavs or {}).items():
             if gap > 0:
-                time.sleep(gap)                # ให้บริการจอดโมเดล GPU ก่อน (ดูหัวไฟล์)
+                time.sleep(gap)                # Allow service to offload GPU model first (see header)
             with open(path, "rb") as fh:
                 data = fh.read()
             status, obj, took = transcribe(url, data)
