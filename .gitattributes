@@ -1,0 +1,3 @@
+# start-qwen38.ps1 is kept with CRLF line endings for Windows PowerShell 5.1,
+# and the tests check it. Other files keep the line endings they are committed with.
+start-qwen38.ps1 text eol=crlf
