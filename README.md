@@ -1,5 +1,9 @@
 # Qwen Local AI Workbench
 
+[![Tests](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/actions/workflows/tests.yml/badge.svg)](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/actions/workflows/tests.yml)
+[![Latest release](https://img.shields.io/github/v/release/SukritJaAIproject/Qwen-Local-AI-Workbench)](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/latest)
+[![License](https://img.shields.io/github/license/SukritJaAIproject/Qwen-Local-AI-Workbench)](LICENSE)
+
 A fully local, privacy-first AI workbench for Windows, built around **llama.cpp** and **Qwen** models.
 It wraps the llama.cpp server and its built-in WebUI with a clean, chat-first interface in **Thai and English**,
 per-project workspaces, guarded tools over MCP, document and knowledge features, voice input, usage and
