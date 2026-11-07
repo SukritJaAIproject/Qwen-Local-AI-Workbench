@@ -38,7 +38,7 @@ This project grew on one Windows 11 laptop, so a few things are unusual (see *Ro
 
 ## Security problems
 
-Please don't post details of a vulnerability in a public issue. Open a short issue asking for a private contact channel, and the maintainer will reply.
+Please don't post details of a vulnerability in a public issue. Report it privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
