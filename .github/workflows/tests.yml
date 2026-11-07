@@ -1,0 +1,31 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      # The code and tests expect the install root at C:\LLM and Python at
+      # C:\Python313 (see issue #2), so point both paths at the runner's copies.
+      - name: Map the expected install paths
+        shell: pwsh
+        run: |
+          New-Item -ItemType Junction -Path C:\LLM -Target $env:GITHUB_WORKSPACE | Out-Null
+          New-Item -ItemType Junction -Path C:\Python313 -Target $env:pythonLocation | Out-Null
+      # Tests that need live services, a browser, Office or a GPU skip themselves.
+      - name: Run tests
+        run: C:\Python313\python.exe -m unittest discover -s C:\LLM\tests
