@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""batch 3 สัญญา D3 (owner hub) — รันชุดทดสอบ C:\\LLM\\tests แล้วจดผลสรุปลง C:\\LLM\\logs\\tests-last.json
+"""Batch 3 contract D3 (owner hub) — Run test suite C:\\LLM\\tests and record summary results to C:\\LLM\\logs\\tests-last.json
 
-ทำไม: หน้า "ตรวจระบบ" (GET /api/doctor) บอกได้ว่าชุดทดสอบรอบล่าสุดผ่านไหม — แต่ unittest ไม่จดผลไว้ที่ไหนเลย
-ไฟล์ผลมีแค่ตัวเลข + ชื่อเทสต์ที่ไม่ผ่าน (ไม่มีข้อความ log/traceback ซึ่งอาจมีข้อมูลของเครื่อง)
+Why: The "system diagnostics" page (GET /api/doctor) reports whether the latest test run passed — but unittest does not persist results anywhere.
+The result file contains only counts + names of failed tests (no log/traceback messages which might contain machine-specific information).
 
-รัน:  C:\\Python313\\python.exe C:\\LLM\\projects\\record_tests.py [--pattern "test_b3_*.py"]
-exit 0 = ผ่านทั้งหมด, 1 = มีข้อที่ไม่ผ่าน
+Run:  C:\\Python313\\python.exe C:\\LLM\\projects\\record_tests.py [--pattern "test_b3_*.py"]
+exit 0 = all passed, 1 = test failures present
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def write_result(doc, out=OUT):
     fd, tmp = tempfile.mkstemp(prefix=".tests-", suffix=".json", dir=str(out.parent))
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, out)        # เขียนแบบ atomic — hub อ่านได้ระหว่างนี้โดยไม่เจอไฟล์ครึ่งๆ
+    os.replace(tmp, out)        # Atomic write — hub can read concurrently without seeing partial files
 
 
 def main(argv):
