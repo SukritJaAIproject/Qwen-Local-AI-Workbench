@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas / คำถามและไอเดีย
+    url: https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/discussions
+    about: Ask how to set something up, or share your setup and ideas.
+  - name: Report a security problem / แจ้งปัญหาด้านความปลอดภัย
+    url: https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/security/advisories/new
+    about: Report vulnerabilities privately instead of in a public issue.
