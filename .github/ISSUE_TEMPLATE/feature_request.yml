@@ -1,0 +1,26 @@
+name: Feature request / ขอความสามารถใหม่
+description: An idea that would make the workbench more useful.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Thai or English are both fine. / เขียนเป็นภาษาไทยหรืออังกฤษก็ได้
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do? / ต้องการทำอะไร
+      description: The task or the problem behind the idea. / งานหรือปัญหาที่อยากแก้
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help? / อยากให้มีอะไร
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup (optional) / เครื่องที่ใช้ (ไม่บังคับ)
+      placeholder: "GPU, models you run, Windows version"
