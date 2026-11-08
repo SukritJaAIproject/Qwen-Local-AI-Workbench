@@ -3,16 +3,24 @@
 [![Tests](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/actions/workflows/tests.yml/badge.svg)](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/actions/workflows/tests.yml)
 [![Latest release](https://img.shields.io/github/v/release/SukritJaAIproject/Qwen-Local-AI-Workbench)](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/latest)
 [![License](https://img.shields.io/github/license/SukritJaAIproject/Qwen-Local-AI-Workbench)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2011-blue)](#requirements)
+[![Python](https://img.shields.io/badge/python-3.13-blue)](#requirements)
 
 A fully local, privacy-first AI workbench for Windows, built around **llama.cpp** and **Qwen** models.
 It wraps the llama.cpp server and its built-in WebUI with a clean, chat-first interface in **Thai and English**,
-per-project workspaces, guarded tools over MCP, document and knowledge features, voice input, usage and
-health dashboards, and automatic GPU placement for an internal laptop GPU plus an external RTX 4090.
+per-project workspaces, guarded tools over MCP, a built-in browser, document and knowledge features, voice
+input, usage and health dashboards, and automatic GPU placement across the internal GPU and a Thunderbolt eGPU.
 
 Models, chats, files, embeddings, OCR and speech-to-text all run on `127.0.0.1`. Data leaves the machine only
 when a web tool runs: web search, page fetch, the isolated browser, the built-in browser panel or a
-deep-research job. The web-search tools
-are enabled in every project by default, and each tool call shows up in the chat.
+deep-research job. The web-search tools are enabled in every project by default, and each tool call shows up
+in the chat.
+
+> **ภาษาไทย:** Qwen Local AI Workbench คือชุดเครื่องมือ AI ที่ทำงานบนเครื่องของคุณทั้งหมด (Windows 11 + GPU NVIDIA)
+> สร้างบน llama.cpp และโมเดล Qwen มีหน้าแชตภาษาไทย/อังกฤษ แยกพื้นที่ทำงานเป็นโปรเจกต์ เครื่องมืออ่านและสร้างเอกสาร
+> ค้นข้อมูลในไฟล์ พิมพ์ด้วยเสียง เบราว์เซอร์ในตัว และการจัดวางโมเดลลง GPU อัตโนมัติ ข้อมูลไม่ออกจากเครื่อง
+> ยกเว้นตอนใช้เครื่องมือค้นเว็บ วิธีติดตั้งอยู่ที่ [Quick start](#quick-start) (ภาษาอังกฤษ) ส่วนหน้าจอสลับไทย/อังกฤษได้ด้วย
+> `Alt+Shift+L`
 
 ![Chat in a project: a summary table and action list built from a project file](docs/screenshots/01-chat-en-dark.png)
 
@@ -20,6 +28,12 @@ are enabled in every project by default, and each tool call shows up in the chat
 > day to day and has a large test suite, but it is not a packaged product: paths assume `C:\LLM`, several
 > helper environments are expected at fixed places, and most code comments are written in Thai.
 > See [Known limitations](#roadmap-and-known-limitations).
+
+> **New in v1.1.0** (November 2026): a built-in browser panel beside the chat, a message queue with Auto Continue
+> and reconnectable replies, chat backups on the server, llama.cpp agent mode (on by default), per-project Bypass
+> permissions, video generation through a local Creative Studio, web search without an API key (DDGS) and an
+> optional Docker sandbox for Python. Details and upgrade notes are in the
+> [release notes](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/tag/v1.1.0).
 
 ## Contents
 
@@ -35,6 +49,7 @@ are enabled in every project by default, and each tool call shows up in the chat
 - [Security notes](#security-notes)
 - [Running the tests](#running-the-tests)
 - [Roadmap and known limitations](#roadmap-and-known-limitations)
+- [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
 
@@ -48,10 +63,10 @@ are enabled in every project by default, and each tool call shows up in the chat
 - **Bilingual UI.** Thai and English, switchable with one click or `Alt+Shift+L`; the llama.cpp WebUI's own menus
   are translated too (about 700 strings), while chat content is never touched.
 - **Tools you can trust.** The local MCP server's tools (files, shell, Python, Office, media and its isolated
-  browser) go through a policy guard. Running code or commands, overwriting or editing files and creating scripts
-  need a two-step confirmation that shows you exactly what will run. The built-in browser panel and llama.cpp's
-  built-in agent tools (on by default; `-Agent:$false` turns them off) have lighter gates, and Bypass permissions
-  skips the approvals; see [Security notes](#security-notes).
+  browser) go through a policy guard, and anything that changes the machine needs a two-step confirmation that
+  shows you exactly what will run. Two newer paths have lighter gates: llama.cpp's built-in agent tools (on by
+  default; `-Agent:$false` turns them off) and the browser panel. Bypass permissions turns the prompts off per
+  project; see [Security notes](#security-notes).
 - **Documents and knowledge.** Read PDF/DOCX/XLSX/PPTX/CSV, OCR scanned Thai and English pages, create DOCX, XLSX,
   PPTX, PDF, CSV and Markdown files, and search project files by keyword and by meaning.
 - **Deep research** in the background with a cited Markdown/DOCX report.
@@ -71,7 +86,8 @@ are enabled in every project by default, and each tool call shows up in the chat
 
 All but the last screenshot come from a demo hub with synthetic projects, chats and numbers
 (see [`projects/tools/demo`](projects/tools/demo/README.md)). The last one is from an earlier test run on the
-author's machine.
+author's machine. The pictures were taken for v1.0; the browser panel, message queue and Bypass permissions
+switch added in v1.1 are not pictured yet.
 
 | | |
 |---|---|
@@ -336,6 +352,7 @@ Other measurements from the same machine:
 | | Required | Notes |
 |---|---|---|
 | OS | Windows 11 | Developed on 10.0.26200; launcher and stop scripts are Windows PowerShell 5.1 |
+| Git | any recent Git for Windows | Only needed to clone and update the code |
 | GPU | NVIDIA, recent driver | Developed with driver 596.71. 6 GB runs the 4B model well; the 27B needs about 20 GB of VRAM for interactive speed |
 | llama.cpp | b10984 Windows CUDA 12.4 build in `C:\LLM\llama.cpp-b10984` | The UI layer is mapped to this build's WebUI; newer builds may need selector updates (see DESIGN.md §4) |
 | Python | 3.13 installed to `C:\Python313` + `requirements.txt` | Choose "Customize installation" and set that location: the launcher, `restart_svc.ps1` and the tests call `C:\Python313\python.exe`. Hub is standard library only; document tools need PyMuPDF, python-docx, openpyxl, defusedxml, NumPy, Pillow; the default web-search provider needs DDGS |
@@ -385,9 +402,15 @@ Other measurements from the same machine:
    `http://127.0.0.1:8100`. A fresh install has no projects yet: create one on that page, then open it to chat on
    its own port. The UI starts in Thai unless you copied `settings.example.json`; switch with the ไทย | EN toggle
    or `Alt+Shift+L`. Use `-Unattended` for scripted starts (no prompts, no browser; exit code 0 = ready).
-6. Stop everything with `powershell -NoProfile -ExecutionPolicy Bypass -File C:\LLM\stop-qwen38.ps1`. It stops the
+6. Check that everything is up: open **Doctor** (`http://127.0.0.1:8100/?manage=1#doctor`, or the account menu).
+   Every service should be green; each problem comes with a suggested fix.
+7. Stop everything with `powershell -NoProfile -ExecutionPolicy Bypass -File C:\LLM\stop-qwen38.ps1`. It stops the
    processes listening on the stack's ports, then **every** remaining `llama-server.exe` and any Python process
    running `scheduler.py`, so stop other llama.cpp servers you run yourself first.
+
+To update later, stop the stack, run `git pull` in `C:\LLM`, run the `pip install` line from step 2 again and start
+the launcher; the [release notes](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases) list
+anything else a version needs.
 
 Optional: web search works without a key (DDGS). To use Brave Search instead, put an API key in
 `C:\LLM\secrets\brave-search.key`, set `{"provider": "brave"}` in `mcp-websearch\config.json`, and restrict the
@@ -442,6 +465,9 @@ C:\LLM
 ├── secrets_util.py           shared token, Origin/Host checks, secret scrubbing
 ├── requirements.txt          packages for C:\Python313
 ├── *.example.*               config templates (copy without ".example")
+├── CONTRIBUTING.md           development setup and pull-request notes; also SECURITY.md, CODE_OF_CONDUCT.md,
+│                             THIRD_PARTY.md and LICENSE
+├── .github\                  tests workflow (GitHub Actions on Windows), issue and pull-request templates
 ├── projects\
 │   ├── hub.py                project hub: API + manage page (8100), per-project proxies (8101-8179)
 │   ├── hub_i18n_parts.py     shell and manage-page templates, Thai/English strings (hot-reloaded)
@@ -535,15 +561,18 @@ The model can run tools on your computer, so the stack is built around keeping i
 - **Clean service environments.** The launcher starts long-running services through WMI so they do not inherit
   the environment (and any tokens) of the shell that launched them.
 
-Residual risks you should know about: a command you approve can do anything your account can do; with agent mode
-on, llama-server's built-in tools can read, change and run whatever your account can once their permission prompt is
-accepted; with Bypass permissions on, every approval (the two-step confirmation included) happens without you;
-**new files of non-executable types (documents, text,
-data, HTML and so on) can be created in any writable root without confirmation** — overwrites, edits and new
-scripts or executables need approval; the secrets folder inherits broad permissions until you restrict it (see
-[secrets/README.md](secrets/README.md)); the MCP token is stored in the browser's local storage for the project
-origins; the Python tool runs on the host unless the optional Docker sandbox is set up; sign-ins you make in the
-built-in browser panel stay in that project's browser profile.
+Residual risks you should know about:
+
+- A command you approve can do anything your account can do.
+- With agent mode on, llama-server's built-in tools can read, change and run whatever your account can once their
+  permission prompt is accepted; with Bypass permissions on, every approval (the two-step confirmation included)
+  happens without you.
+- **New files of non-executable types (documents, text, data, HTML and so on) can be created in any writable root
+  without confirmation**; overwrites, edits and new scripts or executables need approval.
+- The secrets folder inherits broad permissions until you restrict it (see [secrets/README.md](secrets/README.md)).
+- The MCP token is stored in the browser's local storage for the project origins.
+- The Python tool runs on the host unless the optional Docker sandbox is set up.
+- Sign-ins you make in the built-in browser panel stay in that project's browser profile.
 
 ## Running the tests
 
@@ -561,11 +590,16 @@ browser end-to-end suites `QWEN_B3_E2E` and `QWEN_UI_E2E` (set to `1`).
 The suite was written for the author's layout (`C:\LLM`, `C:\Python313`, the Anaconda and `flexxfast`
 interpreters, a `D:` drive); on a machine set up differently some tests skip and a few may fail.
 
+The same suite runs on a Windows runner in [GitHub Actions](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/actions/workflows/tests.yml)
+for every push and pull request (the badge at the top); the few modules that need the local stack (OCR, the
+Anaconda kernel, the embedding service) are skipped there.
+
 ## Roadmap and known limitations
 
 - **Fixed paths.** The code assumes `C:\LLM`, `C:\Python313`, `%USERPROFILE%\anaconda3` (or the
   `QWEN_PY_KERNEL_PYTHON` / `QWEN_OFFICE_PYTHON` overrides), a conda env named `flexxfast` and
-  `D:\LLM\models-embed`. A configurable install root is the first thing to fix for other machines.
+  `D:\LLM\models-embed`. A configurable install root is the first thing to fix for other machines
+  ([#2](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/issues/2)).
 - **Windows only.** Launcher, Office bridge, WMI process handling and keep-awake are Windows-specific.
 - **Tied to one llama.cpp WebUI build.** The UI layer injects into the WebUI of b10984; newer builds may move
   elements. The DOM map in [docs/DESIGN.md](docs/DESIGN.md) is the place to update.
@@ -577,10 +611,25 @@ interpreters, a `D:` drive); on a machine set up differently some tests skip and
 - **Small models need explicit cues.** The 4B model calls the knowledge search reliably when the question mentions
   files or documents; a bare question about project data may get "no data".
 - **Compaction on a shared GPU.** If the small summarizer model has to share VRAM with a busy 27B, the first reply
-  after compaction can be slow; the UI does not yet show summarizing progress.
+  after compaction can be slow; the UI does not yet show summarizing progress
+  ([#3](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/issues/3)).
 - **Language of the code.** Most comments, log messages and parts of the engineering notes are in Thai.
-- **Planned:** configurable paths, broader sandboxing, compaction progress and a summary viewer in the UI, and
-  evaluation of speculative decoding drafts and newer models on the RTX 4090.
+- **Planned:** configurable paths (#2), broader sandboxing, compaction progress and a summary viewer in the UI
+  (#3), and evaluation of speculative decoding drafts and newer models on the RTX 4090. Open items live in the
+  [issue tracker](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/issues).
+
+## Contributing
+
+Issues and pull requests are welcome, in Thai or English. [CONTRIBUTING.md](CONTRIBUTING.md) has the development
+setup and pull-request notes, and issues labelled
+[good first issue](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/labels/good%20first%20issue) are a
+good place to start; translating the remaining Thai comments into English is an easy way to help. Questions and
+ideas go in [Discussions](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/discussions). Please report
+security problems privately as described in [SECURITY.md](SECURITY.md). This project follows the
+[Contributor Covenant](CODE_OF_CONDUCT.md).
+
+Thanks to [Hamzaisadev](https://github.com/Hamzaisadev) for the first outside contributions: the English
+translations in #4, #5 and #6.
 
 ## Acknowledgements
 
