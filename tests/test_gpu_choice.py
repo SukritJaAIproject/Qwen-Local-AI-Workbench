@@ -22,7 +22,7 @@ if HERE not in sys.path:                  # รันเดี่ยวได้
     sys.path.insert(0, HERE)
 import gpu_profile as gp  # noqa: E402
 from test_gpu_profile import (REAL_MODELS, ID27, IDCODER, IDOSS, ID4B, MMPROJ, RTX1000, RTX4090,  # noqa: E402
-                              RTX4060TI, TmpDir, gpus, real_models)
+                              RTX4060TI, TmpDir, gpus, real_models, router_ids)
 
 FIX = os.path.join(HERE, "fixtures", "gpu")
 K1000, K4090, K4060 = RTX1000[0], RTX4090[0], RTX4060TI[0]
@@ -644,7 +644,9 @@ class GenerateChoiceTests(TmpDir):
         d = {x["id"]: x for x in prof["devices"]}
         self.assertEqual(d["CUDA1"]["key"], K4090)
         self.assertEqual(d["CUDA1"]["budget_mib"], 24564 - 1024)
-        self.assertEqual(set(prof["models"]), {ID27, IDCODER, IDOSS, ID4B})
+        # ทุกโมเดลในโฟลเดอร์จริงอยู่ในโปรไฟล์ (รวมตัวที่เพิ่มทีหลัง) และ 4 ตัวที่เทสต์นี้เลือก GPU ให้ต้องอยู่ครบ
+        self.assertEqual(set(prof["models"]), router_ids(REAL_MODELS))
+        self.assertLessEqual({ID27, IDCODER, IDOSS, ID4B}, set(prof["models"]))
         self.assertIn("65536_vision", prof["models"][ID27]["need_gib"])
         self.assertEqual(prof["choice"]["path"], p)
         self.assertEqual(prof["choice"]["models"][ID4B], "cpu")
@@ -826,19 +828,30 @@ class ModelCatalogTests(unittest.TestCase):
                "need_gib": {"32768": 6.22, "65536": 8.61}, "short": "Qwen3-4B"},
     }
 
-    def check(self, cat):
-        self.assertEqual(set(cat), set(self.WANT))
+    def check(self, cat, folder=None):
+        """folder = โฟลเดอร์โมเดลจริง: มีโมเดลอื่นนอกจาก 4 ตัวนี้ได้ (ต้องตรงกับไฟล์ที่มี) แต่ตัวเลขของ 4 ตัวต้องเท่าเดิม"""
+        if folder is None:
+            self.assertEqual(set(cat), set(self.WANT))
+        else:
+            self.assertEqual(set(cat), router_ids(folder))
+            self.assertLessEqual(set(self.WANT), set(cat))
         for mid, want in self.WANT.items():
             for k, v in want.items():
                 self.assertEqual(cat[mid][k], v, (mid, k))
             self.assertEqual(cat[mid]["primary"], mid == ID27)
+        # โมเดลที่เพิ่มทีหลังต้องไม่แย่งตำแหน่งโมเดลหลัก (fine-tune จากฐานเดียวกันอาจมี basename "Qwen3.8-27B" ด้วย)
+        self.assertEqual([mid for mid in cat if cat[mid]["primary"]], [ID27])
+        for mid, c in cat.items():
+            self.assertGreater(c["weights_gib"], 0, mid)
+            self.assertGreater(c["need_gib"]["32768"], c["weights_gib"], mid)
+            self.assertGreaterEqual(c["need_gib"]["65536"], c["need_gib"]["32768"], mid)
 
     def test_numbers_from_model_info(self):
         self.check(gp.model_catalog(models=real_models()))
 
     @unittest.skipUnless(HAVE_REAL, "ไม่มีโฟลเดอร์โมเดลจริง")
     def test_numbers_from_real_folder(self):
-        self.check(gp.model_catalog(REAL_MODELS))
+        self.check(gp.model_catalog(REAL_MODELS), folder=REAL_MODELS)
 
     def test_fits_the_way_plan_decides(self):
         # 27B + ดูรูปที่ 64K พอดีงบ 4090 (23 GB) แต่ไม่พอดี 4060 Ti — ตัวเลขชุดเดียวกับที่ plan() ใช้

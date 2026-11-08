@@ -95,7 +95,7 @@ class _TokenMixin:
 class BootConfigTokenTests(_TokenMixin, unittest.TestCase):
     def test_entries_carry_bearer_header_as_json_string(self):
         rows = hub.mcp_servers(dict(PROJECT))
-        self.assertEqual([r["id"] for r in rows], ["websearch", "local", "local-full"])
+        self.assertEqual([r["id"] for r in rows], ["websearch", "local", "local-full", "project-chats", "browser"])
         for r in rows:
             with self.subTest(id=r["id"]):
                 self.assertIsInstance(r["headers"], str)       # WebUI: typeof headers == "string" เท่านั้น
@@ -103,6 +103,7 @@ class BootConfigTokenTests(_TokenMixin, unittest.TestCase):
                 self.assertIs(r["useProxy"], False)
         self.assertIn("/fast/sectest", rows[1]["url"])
         self.assertIn("/mcp/sectest", rows[2]["url"])
+        self.assertEqual(rows[3]["url"], "http://127.0.0.1:%d/_qwen/chats/mcp" % PROJECT["port"])
 
     def test_props_variant_has_no_token(self):
         rows = hub.mcp_servers(dict(PROJECT), with_auth=False)
@@ -130,7 +131,7 @@ class BootConfigTokenTests(_TokenMixin, unittest.TestCase):
             self.assertIn("mcp-local-full:" + name, pol["ask"])
         self.assertNotIn("mcp-local:local_read", pol["ask"])
         self.assertEqual(pol["allow"], [])
-        self.assertEqual(hub.BOOT_VERSION, 3)
+        self.assertEqual(hub.BOOT_VERSION, 5)
 
     def test_shell_embeds_token_only_inside_boot_config(self):
         with mock.patch.object(hub, "upstream_models", return_value=[]), \
@@ -457,6 +458,7 @@ const out = scen.map(function (s) {
   const win = { __QWEN_BOOT__: s.boot, matchMedia: function () { return { matches: true, addEventListener: function () {} }; },
                 dispatchEvent: function () {}, localStorage: ls };
   const ctx = { window: win, localStorage: ls, CustomEvent: function () {},
+                URL: URL, location: s.origin ? new URL(s.origin) : undefined,
                 document: { documentElement: { setAttribute: function () {}, style: {} } } };
   vm.createContext(ctx);
   vm.runInContext(src, ctx);
@@ -490,10 +492,47 @@ class BootJsMergeTests(_TokenMixin, unittest.TestCase):
     def test_new_browser(self):
         (st,) = self.run_boot([{"store": {}, "boot": self.boot()}])
         sv = self.servers(st)
-        self.assertEqual(sorted(sv), ["local", "local-full", "websearch"])
+        self.assertEqual(sorted(sv), ["browser", "local", "local-full", "project-chats", "websearch"])
         self.assertTrue(all(s["headers"] == self.bearer(self.token) and s["useProxy"] is False for s in sv.values()))
-        self.assertEqual(st["qwen-boot-version"], "3")
+        self.assertEqual(st["qwen-boot-version"], "5")
         self.assertEqual(json.loads(st["LlamaUi.alwaysAllowedTools"]), [])
+
+    def test_project_chat_mcp_keeps_the_current_loopback_hostname(self):
+        origin = "http://localhost:%d" % PROJECT["port"]
+        (store,) = self.run_boot([{"store": {}, "boot": self.boot(), "origin": origin}])
+        servers = self.servers(store)
+        self.assertTrue(servers["project-chats"]["url"].startswith(origin + "/"))
+        servers["project-chats"]["enabled"] = False
+        servers["project-chats"]["url"] = "http://127.0.0.1:%d/_qwen/chats/mcp" % PROJECT["port"]
+        cfg = json.loads(store["LlamaUi.config"])
+        cfg["mcpServers"] = json.dumps(list(servers.values()))
+        store["LlamaUi.config"] = json.dumps(cfg)
+        (again,) = self.run_boot([{"store": store, "boot": self.boot(), "origin": origin}])
+        self.assertTrue(self.servers(again)["project-chats"]["url"].startswith(origin + "/"))
+        self.assertFalse(self.servers(again)["project-chats"]["enabled"])
+
+    def test_browser_mcp_keeps_the_current_loopback_hostname(self):
+        # 2026-10-19: เบราว์เซอร์ในตัวอยู่บนพอร์ตนี้เอง (/_qwen/browser/mcp) — ต้อง same-origin เหมือนแชตในโปรเจกต์
+        origin = "http://localhost:%d" % PROJECT["port"]
+        (store,) = self.run_boot([{"store": {}, "boot": self.boot(), "origin": origin}])
+        servers = self.servers(store)
+        self.assertEqual(servers["browser"]["url"], origin + "/_qwen/browser/mcp")
+        self.assertIs(servers["browser"]["enabled"], True)
+        self.assertEqual(servers["browser"]["headers"], self.bearer(self.token))
+
+    def test_v4_browser_gets_the_browser_mcp_and_keeps_choices(self):
+        # เบราว์เซอร์ที่เปิดหน้าแชตไว้ตั้งแต่รุ่น 4: ได้ MCP "browser" เพิ่ม (เปิดไว้) โดยตัวเดิมที่ผู้ใช้ปิดยังปิดอยู่
+        old = [dict(r) for r in hub.mcp_servers(dict(PROJECT)) if r["id"] != "browser"]
+        for r in old:
+            if r["id"] == "websearch":
+                r["enabled"] = False
+        store = {"LlamaUi.config": json.dumps({"mcpServers": json.dumps(old)}), "qwen-boot-version": "4"}
+        (st,) = self.run_boot([{"store": store, "boot": self.boot()}])
+        sv = self.servers(st)
+        self.assertIn("browser", sv)
+        self.assertIs(sv["browser"]["enabled"], True)
+        self.assertIs(sv["websearch"]["enabled"], False)
+        self.assertEqual(st["qwen-boot-version"], "5")
 
     def test_upgrade_keeps_user_choices(self):
         old = [{"id": "websearch", "name": "w", "url": "http://127.0.0.1:8791/mcp", "enabled": False},
@@ -510,7 +549,7 @@ class BootJsMergeTests(_TokenMixin, unittest.TestCase):
         self.assertIs(sv["local"]["useProxy"], False)
         self.assertEqual(sv["local"]["headers"], self.bearer(self.token))
         self.assertEqual(sv["mine"], old[2])                         # ของผู้ใช้ไม่แตะ ไม่ได้โทเคนไปด้วย
-        self.assertEqual(st["qwen-boot-version"], "3")
+        self.assertEqual(st["qwen-boot-version"], "5")
         self.assertEqual(json.loads(st["LlamaUi.alwaysAllowedTools"]), ["mcp-local:local_do"])  # เลือกเองแล้ว ไม่ถอน
         self.assertEqual(json.loads(st["LlamaUi.config"])["theme"], "light")
 
@@ -548,7 +587,7 @@ class BootJsMergeTests(_TokenMixin, unittest.TestCase):
         sv = self.servers(st)
         self.assertEqual(sv["local"]["headers"], self.bearer(self.token))
         self.assertNotIn("headers", sv["websearch"])
-        self.assertEqual(st["qwen-boot-version"], "3")
+        self.assertEqual(st["qwen-boot-version"], "5")
 
     def test_legacy_permission_key_counts_as_user_choice(self):
         (st,) = self.run_boot([{"store": {"LlamaCppWebui.alwaysAllowedTools": '["x"]'}, "boot": self.boot()}])

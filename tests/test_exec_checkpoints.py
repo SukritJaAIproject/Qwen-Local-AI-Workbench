@@ -401,7 +401,8 @@ class FastSurfaceTests(_Scoped):
         help_text = tools_fast.help_text()
         for word in ("checkpoints", "undo", "python"):
             self.assertIn(word, help_text)
-        self.assertIn("[ยืนยัน]", dict((r[0], r[2]) for r in tools_fast.DO_ROWS)["python"])
+        # python: "[sandbox/ยืนยัน]" ตั้งแต่มี Docker sandbox (2026-10-08) — รันใน sandbox ได้ทันที ไม่งั้นต้องยืนยัน
+        self.assertRegex(dict((r[0], r[2]) for r in tools_fast.DO_ROWS)["python"], r"\[(?:sandbox/)?ยืนยัน\]")
         self.assertIn("[ยืนยัน]", dict((r[0], r[2]) for r in tools_fast.DO_ROWS)["undo"])
 
     def test_fast_checkpoints_and_undo(self):

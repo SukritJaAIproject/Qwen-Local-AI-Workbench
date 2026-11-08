@@ -26,9 +26,13 @@ The UI also asks the browser for *Leelawadee UI* (a Windows system font) by name
 | [defusedxml](https://github.com/tiran/defusedxml), [NumPy](https://numpy.org), [Pillow](https://python-pillow.org) | safe XML parsing, vectors for semantic search, images | PSF-2.0, BSD-3-Clause, MIT-CMU (HPND) |
 | [jupyter_client](https://github.com/jupyter/jupyter_client) / ipykernel, pandas, matplotlib, plotly (Anaconda) | per-project Python interpreter tool | BSD-3-Clause, BSD-3-Clause, PSF-based (matplotlib), MIT |
 | [pywin32](https://github.com/mhammond/pywin32), [psutil](https://github.com/giampaolo/psutil) | Office bridge (COM) and process checks | PSF-2.0, BSD-3-Clause |
-| Microsoft Edge (Chromium) | headless screenshot harness and the isolated browser tool | proprietary (Microsoft) |
+| [DDGS](https://github.com/deedy5/ddgs) 9.16 with [primp](https://github.com/deedy5/primp) 2.0, [lxml](https://lxml.de), [click](https://github.com/pallets/click) | default web-search provider (`mcp-websearch/general_search.py`) | MIT, MIT, BSD-3-Clause, BSD-3-Clause |
+| [certifi](https://github.com/certifi/python-certifi) (optional) | CA roots for the built-in browser's DNS-over-HTTPS fallback | MPL-2.0 |
+| Docker Desktop (optional), the `python:3.13-slim` base image and Debian's `fonts-noto-core` | Python sandbox image, built locally from `mcp-local/python-sandbox` | Docker's subscription terms; Python (PSF-2.0) and Debian package licenses; SIL OFL 1.1 |
+| Microsoft Edge (Chromium) | headless screenshot harness, the isolated browser tool and the built-in browser panel | proprietary (Microsoft) |
 | Microsoft Office (optional) | live Excel / Word / PowerPoint bridge | proprietary (Microsoft) |
-| FFmpeg (optional) | media tools (trim, resize, GIF, extract audio) | LGPL-2.1+ or GPL, depending on the build you install |
+| FFmpeg (optional) | media tools (trim, resize, GIF, extract audio); `.webm` to `.mp4` for generated videos | LGPL-2.1+ or GPL, depending on the build you install |
+| [ComfyUI](https://github.com/comfyanonymous/ComfyUI) (optional) with the Wan 2.2 TI2V 5B model, its text encoder and VAE | video generation through `mcp-local/tools_creative.py`; the Creative Studio setup itself is a separate project | GPL-3.0 (ComfyUI); Wan 2.2: Apache-2.0, check the model card of the files you download |
 
 ## Models (not included)
 

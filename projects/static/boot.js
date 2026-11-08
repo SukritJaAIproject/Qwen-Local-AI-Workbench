@@ -49,7 +49,18 @@
     // MCP: เซิร์ฟเวอร์ที่เราเป็นเจ้าของ (ตาม id) ถูกแทนเมื่อเลขรุ่นขยับ
     // ตัวที่ผู้ใช้เพิ่มเองผ่านหน้าตั้งค่าของ WebUI ต้องอยู่ครบ ไม่หายไปกับการอัปเดต
     // enabled ของตัวเราที่ผู้ใช้เคยเปิด/ปิดเองคงไว้ (ขยับเลขรุ่นเพื่อเปลี่ยน URL/โทเคน ไม่ใช่เพื่อเปิดของที่ผู้ใช้ปิด)
-    var ours = BOOT.mcpServers || [];
+    var ours = (BOOT.mcpServers || []).map(function (server) {
+      // MCP ที่อยู่บนพอร์ตนี้เอง (แชตในโปรเจกต์ / เบราว์เซอร์ในตัว) ต้องใช้ชื่อโฮสต์เดียวกับหน้าที่เปิด = same-origin
+      if (!server || (server.id !== 'project-chats' && server.id !== 'browser')) return server;
+      try {
+        var url = new URL(server.url);
+        if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && url.port === location.port) {
+          url.hostname = location.hostname;
+          return Object.assign({}, server, { url: url.href });
+        }
+      } catch (e) {}
+      return server;
+    });
     var ownById = {};
     ours.forEach(function (s) { if (s && s.id) ownById[s.id] = s; });
     var storedVer = parseInt(localStorage.getItem(VER_KEY) || "0", 10) || 0;
@@ -85,6 +96,7 @@
         var o = s && ownById[s.id];
         if (!o) return;
         if (o.headers && s.headers !== o.headers) { s.headers = o.headers; synced = true; }
+        if ((s.id === 'project-chats' || s.id === 'browser') && s.url !== o.url) { s.url = o.url; synced = true; }
         if (s.useProxy) { s.useProxy = false; synced = true; }
       });
       if (synced) { cfg.mcpServers = JSON.stringify(current); changed = true; }

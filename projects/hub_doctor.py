@@ -235,17 +235,60 @@ def gpu_info(timeout=2.2):
     return rows, None
 
 
+def _docker_registered():
+    """มีคีย์ registry ของ Docker Desktop ไหม (HKLM = ติดตั้งทั้งเครื่อง, HKCU = ติดตั้งเฉพาะผู้ใช้) — None = ตรวจไม่ได้
+
+    ไฟล์ของ Docker Desktop ยังอยู่ครบแต่คีย์ SOFTWARE\\Docker Inc.\\Docker Desktop หายไป:
+    Docker Desktop.exe เปิดได้แต่หา backend ไม่เจอ ("getting backend binary path: cannot find registry key")
+    engine จึงไม่ขึ้น — แบบนี้เปิดใหม่ไม่ช่วย ต้องติดตั้งใหม่
+    """
+    try:
+        import winreg
+    except ImportError:
+        return None
+    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        try:
+            winreg.CloseKey(winreg.OpenKey(hive, r"SOFTWARE\Docker Inc.\Docker Desktop"))
+            return True
+        except OSError:
+            continue
+    return False
+
+
+# [2026-10-21] Python sandbox ปิด (mcp-local\python-sandbox.json ไม่ได้ตั้ง "enabled": true หรือไม่มีไฟล์) = เครื่องมือ
+# Python ไม่แตะ Docker เลย (python_sandbox.active() คืน None → โค้ดรันบนเครื่องหลังผู้ใช้กดอนุญาต) จึงไม่แนะนำให้ติดตั้ง/เปิด Docker
+SANDBOX_CONFIG = Path(__file__).resolve().parent.parent / "mcp-local" / "python-sandbox.json"
+
+
+def sandbox_enabled(path=None):
+    """เปิด Python sandbox ไว้ไหม — อ่านแบบเดียวกับ python_sandbox.active(): "enabled" ต้องเป็น true เท่านั้น"""
+    try:
+        doc = json.loads(Path(path or SANDBOX_CONFIG).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(doc, dict) and doc.get("enabled") is True
+
+
 def docker_status():
     """ใช้ Docker ได้ไหม (CLI + engine pipe) — ไม่รันคำสั่ง docker (อาจค้างหลายวินาทีถ้า engine ไม่ตอบ)"""
+    if not sandbox_enabled():
+        return {"usable": False, "off": True,
+                "reason_th": "ปิด Python sandbox ไว้ · โค้ด Python รันบนเครื่องหลังผู้ใช้กดอนุญาต",
+                "reason_en": "the Python sandbox is off · Python code runs on this PC after you approve it"}
     cli = shutil.which("docker")
-    desktop = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Docker" / "Docker" / "Docker Desktop.exe"
+    desktops = (Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Docker" / "Docker" / "Docker Desktop.exe",
+                Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "DockerDesktop" / "Docker Desktop.exe")
     pipe = os.path.exists(r"\\.\pipe\docker_engine")
     if cli and pipe:
         return {"usable": True, "reason_th": "พร้อมใช้", "reason_en": "ready"}
-    if not cli and not desktop.is_file():
+    if not cli and not any(d.is_file() for d in desktops):
         return {"usable": False, "reason_th": "ยังไม่ได้ติดตั้ง Docker", "reason_en": "Docker is not installed"}
     if not pipe:
-        return {"usable": False, "reason_th": "ติดตั้ง Docker Desktop ไว้แต่ engine ไม่ทำงาน",
+        if _docker_registered() is False:
+            return {"usable": False, "broken": True,
+                    "reason_th": "การติดตั้ง Docker Desktop ไม่สมบูรณ์ (ไม่มีคีย์ใน registry จึงเปิด engine ไม่ได้)",
+                    "reason_en": "the Docker Desktop installation is incomplete (its registry key is missing, so the engine cannot start)"}
+        return {"usable": False, "stopped": True, "reason_th": "ติดตั้ง Docker Desktop ไว้แต่ engine ไม่ทำงาน",
                 "reason_en": "Docker Desktop is installed but its engine is not running"}
     return {"usable": False, "reason_th": "ไม่พบคำสั่ง docker ใน PATH", "reason_en": "the docker CLI is not on PATH"}
 
@@ -372,8 +415,11 @@ FIX = {
                      "The embedding model file is missing (D:\\LLM\\models-embed) — document search is keyword-only"),
     "stt": ("พูดแทนพิมพ์ (STT 8795) ไม่ทำงาน → powershell -File C:\\LLM\\start-qwen38.ps1 -RestartStt",
             "Speech-to-text (STT 8795) is down → powershell -File C:\\LLM\\start-qwen38.ps1 -RestartStt"),
-    "stt_model": ("STT หาโมเดลไม่เจอ — ต่อดิสก์ E: (USB) ที่เก็บโมเดลไว้ แล้วสั่ง start-qwen38.ps1 -RestartStt",
-                  "STT cannot find its model — plug in drive E: (USB) and run start-qwen38.ps1 -RestartStt"),
+    # [2026-10-20] โมเดล STT ย้ายมาอยู่ D:\LLM\models-stt แล้ว (C:\LLM\stt\models ชี้ไปที่นั่น) ไม่ต้องพึ่งดิสก์ E: อีก
+    "stt_model": ("STT หาโมเดลไม่เจอ → รัน C:\\LLM\\Download-Missing-Models.cmd หรือตรวจโฟลเดอร์ D:\\LLM\\models-stt "
+                  "แล้วสั่ง start-qwen38.ps1 -RestartStt",
+                  "STT cannot find its model → run C:\\LLM\\Download-Missing-Models.cmd or check D:\\LLM\\models-stt, "
+                  "then run start-qwen38.ps1 -RestartStt"),
     "scheduler": ("ตัวตั้งเวลา (heartbeat/จัดความจำ) ไม่ทำงาน → powershell -File C:\\LLM\\projects\\tools\\restart_svc.ps1 -Name scheduler",
                   "The scheduler (heartbeat/memory jobs) is not running → restart_svc.ps1 -Name scheduler"),
     "gateway": ("Remote Prompt Gateway (8780) ไม่ทำงาน → เปิดตัวเปิดใหม่ (start-qwen38.ps1 -Unattended)",
@@ -383,8 +429,8 @@ FIX = {
                  "Some project ports do not answer → restart_svc.ps1 -Name hub (wait for running replies to finish first)"),
     "disk": ("ดิสก์ %s เหลือ %.1f GB → ลบ/ย้ายไฟล์ที่ไม่ใช้ หรือรีบูต (pagefile ของ C: คืนพื้นที่ได้ ~20 GB)",
              "Drive %s has %.1f GB free → free up space or reboot (C: pagefile shrinks back ~20 GB)"),
-    "drive_e": ("ไม่พบดิสก์ E: (USB) — log OCPP, HF cache และโมเดล STT อยู่ที่นั่น ต่อดิสก์ก่อนใช้พูดแทนพิมพ์",
-                "Drive E: (USB) is missing — OCPP logs, the HF cache and the STT model live there"),
+    "drive_e": ("ไม่พบดิสก์ E: (USB) — log OCPP อยู่ที่นั่น ต่อดิสก์ก่อนใช้งานที่ต้องอ่าน log เหล่านั้น",
+                "Drive E: (USB) is missing — the OCPP logs live there; plug it in before working with them"),
     "commit": ("หน่วยความจำ commit เหลือ %.1f GB → ปิดโปรแกรมที่ไม่ใช้ หรือปลดโมเดลที่ไม่ได้ใช้ (งานขนานอาจตายด้วย MemoryError)",
                "Only %.1f GB of commit memory is free → close programs or unload idle models (parallel jobs may fail)"),
     "gpu_hot": ("GPU ร้อน %d °C → ตรวจการระบายอากาศ/ลดงาน (เครื่องจะลดความเร็วเอง)",
@@ -393,10 +439,25 @@ FIX = {
                     "nvidia-smi found no GPU → check the NVIDIA driver (models fall back to the slow CPU)"),
     "token": ("ไม่มีไฟล์โทเคนของบริการในเครื่อง → เปิดตัวเปิด (start-qwen38.ps1) เพื่อสร้างใหม่",
               "The local services token file is missing → run the launcher (start-qwen38.ps1) to create it"),
-    "brave": ("ยังไม่มี Brave Search key → ค้นเว็บใช้ได้แค่แหล่งพื้นฐาน วาง key เองที่ C:\\LLM\\secrets\\brave-search.key",
-              "No Brave Search key → web search is limited; put your key in C:\\LLM\\secrets\\brave-search.key"),
-    "docker": ("Docker ใช้ไม่ได้ (%s) → ติดตั้ง Docker Desktop ใหม่เอง (ต้องกด UAC/ยอมรับเงื่อนไข) — ระหว่างนี้ python รันบนเครื่องพร้อมขอยืนยัน",
-               "Docker is not usable (%s) → reinstall Docker Desktop yourself (UAC + licence); python runs on the host with approval meanwhile"),
+    # [2026-10-20] ค่าเริ่มต้นของ MCP ค้นเว็บเป็น DDGS (ค้นเว็บทั่วไป ไม่ต้องใช้ key) — เตือนเฉพาะเมื่อ provider ที่ใช้จริง
+    # (ที่ MCP 8791 รายงาน) เป็นโหมดจำกัด builtin เพราะไม่มี Brave key ให้สลับไปใช้
+    "brave": ("ค้นเว็บอยู่ในโหมดจำกัด (Wikipedia + DuckDuckGo Instant Answer) → ลบ \"provider\": \"builtin\" ออกจาก "
+              "C:\\LLM\\mcp-websearch\\config.json เพื่อใช้ DDGS (ไม่ต้องใช้ key) หรือวาง Brave key ที่ "
+              "C:\\LLM\\secrets\\brave-search.key",
+              "Web search is in the limited mode (Wikipedia + DuckDuckGo instant answers) → remove \"provider\": \"builtin\" "
+              "from C:\\LLM\\mcp-websearch\\config.json to use DDGS (no key), or put a Brave key in "
+              "C:\\LLM\\secrets\\brave-search.key"),
+    "docker": ("Docker ใช้ไม่ได้ (%s) → ติดตั้ง Docker Desktop เอง (ต้องกด UAC/ยอมรับเงื่อนไข) — ระหว่างนี้ python รันบนเครื่องพร้อมขอยืนยัน",
+               "Docker is not usable (%s) → install Docker Desktop yourself (UAC + licence); python runs on the host with approval meanwhile"),
+    "docker_reinstall": ("Docker ใช้ไม่ได้ (%s) → ติดตั้ง Docker Desktop ใหม่เอง (ต้องกด UAC/ยอมรับเงื่อนไข) "
+                         "— ระหว่างนี้ python รันบนเครื่องพร้อมขอยืนยัน",
+                         "Docker is not usable (%s) → reinstall Docker Desktop yourself (UAC + licence); "
+                         "python runs on the host with approval meanwhile"),
+    # ติดตั้งไว้แล้วแต่ engine ไม่ทำงาน (ปิดโปรแกรมไว้/ไม่ได้ตั้งให้เปิดตอนล็อกอิน) ไม่ต้องติดตั้งใหม่ — แค่เปิด Docker Desktop
+    "docker_start": ("Docker ใช้ไม่ได้ (%s) → เปิด Docker Desktop จากเมนู Start แล้วรอให้ engine ทำงาน "
+                     "— ระหว่างนี้ python รันบนเครื่องพร้อมขอยืนยัน",
+                     "Docker is not usable (%s) → start Docker Desktop from the Start menu and wait for its engine; "
+                     "python runs on the host with approval meanwhile"),
     "tests": ("ชุดทดสอบรอบล่าสุดไม่ผ่าน %d ข้อ → C:\\Python313\\python.exe -m unittest discover -s C:\\LLM\\tests",
               "The last test run had %d failures → C:\\Python313\\python.exe -m unittest discover -s C:\\LLM\\tests"),
 }
@@ -742,12 +803,14 @@ class Doctor:
                 add("gpu_hot", g["temp_c"])
         if not rep["keys"]["local_token"]:
             add("token")
-        if not rep["keys"]["brave_key"]:
+        if not rep["keys"]["brave_key"] and st.get("mcp_web", {}).get("provider") == "builtin":
             add("brave")
-        if not rep["docker"].get("usable"):
+        if not rep["docker"].get("usable") and not rep["docker"].get("off"):   # off = ไม่ใช้ Docker (ปิด sandbox)
+            dk = rep["docker"]
+            th, en = FIX["docker_start" if dk.get("stopped") else "docker_reinstall" if dk.get("broken") else "docker"]
             out.append({"id": "docker", "severity": FIX_SEVERITY["docker"],
-                        "th": FIX["docker"][0] % rep["docker"].get("reason_th", ""),
-                        "en": FIX["docker"][1] % rep["docker"].get("reason_en", "")})
+                        "th": th % rep["docker"].get("reason_th", ""),
+                        "en": en % rep["docker"].get("reason_en", "")})
         t = rep["tests"]
         if t and ((t.get("failures") or 0) + (t.get("errors") or 0)) > 0:
             add("tests", (t.get("failures") or 0) + (t.get("errors") or 0))
@@ -838,7 +901,8 @@ def report_text(rep, lang="th"):
               "- Local token file: %s · Brave key: %s · Gateway key: %s")
              % (yn(k.get("local_token")), yn(k.get("brave_key")), yn(k.get("gateway_key"))))
     dk = rep.get("docker") or {}
-    L.append("- Docker: %s (%s)" % (yn(dk.get("usable")), dk.get("reason_th" if th else "reason_en")))
+    state = (("ไม่ได้ใช้" if th else "not used") if dk.get("off") else yn(dk.get("usable")))
+    L.append("- Docker: %s (%s)" % (state, dk.get("reason_th" if th else "reason_en")))
     t = rep.get("tests")
     if t:
         L.append(("- ชุดทดสอบล่าสุด %s: รัน %s ข้อ ไม่ผ่าน %s ผิดพลาด %s ข้าม %s" if th else

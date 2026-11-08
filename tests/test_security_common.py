@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import atexit
 import importlib
+import importlib.machinery
 import importlib.util
 import json
 import os
@@ -87,15 +88,48 @@ def _cleanup():
     shutil.rmtree(_BASE, ignore_errors=True)
 
 
+def _from_dir(mod, folder: str) -> bool:
+    f = getattr(mod, "__file__", None)
+    return bool(f) and (os.path.normcase(os.path.realpath(os.path.dirname(f)))
+                        == os.path.normcase(os.path.realpath(folder)))
+
+
+def _import_from(folder: str, name: str):
+    """import name จากไฟล์ใน folder เท่านั้น (ไม่ขึ้นกับลำดับของ sys.path) และลงทะเบียนใน sys.modules ด้วยชื่อเดิม
+
+    แก้ 2026-10-20: โปรเจกต์อื่นในเครื่อง (เช่นตัวมอนิเตอร์ GPU) มี server.py ชื่อซ้ำกับ mcp-local และเทสต์ของมัน
+    แทรกโฟลเดอร์ตัวเองไว้หน้าสุดของ sys.path — รันรวมแบบที่ไม่มีเทสต์ไหน import server ของ mcp-local มาก่อน
+    importlib.import_module("server") จึงไปได้ไฟล์ของโปรเจกต์นั้น แล้วล้มด้วย
+    "attempted relative import with no known parent package"
+    """
+    cached = sys.modules.get(name)
+    if cached is not None and _from_dir(cached, folder):
+        return cached
+    spec = importlib.machinery.PathFinder.find_spec(name, [folder])
+    if spec is None:
+        raise ImportError("ไม่พบโมดูล %s ใน %s" % (name, folder), name=name)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    try:
+        spec.loader.exec_module(mod)
+    except BaseException:
+        if cached is not None:
+            sys.modules[name] = cached     # เหมือน import ปกติ: ล้มแล้วไม่ทิ้งโมดูลครึ่งๆ ไว้ใน cache
+        else:
+            sys.modules.pop(name, None)
+        raise
+    return mod
+
+
 def import_local(name: str):
     """import โมดูลของ mcp-local (จากโฟลเดอร์ที่เลือกด้วย SEC_TEST_MCP_LOCAL) แล้วชี้ path ไปที่ temp"""
     saved = sys.argv
     sys.argv = [saved[0]]              # server.py อ่าน sys.argv[1] เป็นพอร์ตตอน import
     try:
-        mod = importlib.import_module(name)
+        mod = _import_from(MCP_LOCAL, name)
     finally:
         sys.argv = saved
-    guard = importlib.import_module("guard")
+    guard = _import_from(MCP_LOCAL, "guard")
     from pathlib import Path
     guard.AUDIT_PATH = Path(AUDIT_LOCAL)
     guard.PROJECT_DATA = Path(PROJECT_DATA)

@@ -1,13 +1,14 @@
 {
-  "_comment": "Copy to config.json next to server.py and restart the web-search MCP (projects/tools/restart_svc.ps1 -Name websearch). Without config.json the server uses 'builtin'.",
+  "_comment": "Copy to config.json next to server.py and restart the web-search MCP (projects/tools/restart_svc.ps1 -Name websearch). Without config.json the server uses 'ddgs'.",
   "_providers": {
-    "builtin": "no key needed - Wikipedia + DuckDuckGo Instant Answer only, not a general web search",
-    "brave": "Brave Search API (free tier available). Easiest: put the key in C:\\LLM\\secrets\\brave-search.key and keep provider 'builtin' - it switches to Brave automatically",
+    "ddgs": "default, no key needed - general web search through DDGS (pip install ddgs); supports domains, recency_days, region and search_type=news",
+    "builtin": "limited mode - Wikipedia + DuckDuckGo Instant Answer only, not a general web search; switches to Brave automatically when C:\\LLM\\secrets\\brave-search.key exists",
+    "brave": "Brave Search API (free tier available): put the key in api_key or in C:\\LLM\\secrets\\brave-search.key",
     "tavily": "Tavily API key (built for LLM use)",
     "serper": "Serper API key (Google results)",
     "searxng": "your own SearXNG instance: set url instead of api_key"
   },
-  "provider": "builtin",
+  "provider": "ddgs",
   "api_key": "",
   "url": "http://127.0.0.1:8888"
 }

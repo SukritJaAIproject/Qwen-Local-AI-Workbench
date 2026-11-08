@@ -10,7 +10,8 @@ per-project workspaces, guarded tools over MCP, document and knowledge features,
 health dashboards, and automatic GPU placement for an internal laptop GPU plus an external RTX 4090.
 
 Models, chats, files, embeddings, OCR and speech-to-text all run on `127.0.0.1`. Data leaves the machine only
-when a web tool runs: web search, page fetch, the isolated browser or a deep-research job. The web-search tools
+when a web tool runs: web search, page fetch, the isolated browser, the built-in browser panel or a
+deep-research job. The web-search tools
 are enabled in every project by default, and each tool call shows up in the chat.
 
 ![Chat in a project: a summary table and action list built from a project file](docs/screenshots/01-chat-en-dark.png)
@@ -46,12 +47,18 @@ are enabled in every project by default, and each tool call shows up in the chat
   thinking mode, and its own isolated tool scope.
 - **Bilingual UI.** Thai and English, switchable with one click or `Alt+Shift+L`; the llama.cpp WebUI's own menus
   are translated too (about 700 strings), while chat content is never touched.
-- **Tools you can trust.** Files, shell, Python, Office, media and browser tools go through a policy guard. Running
-  code or commands, overwriting or editing files and creating scripts need a two-step confirmation that shows you
-  exactly what will run.
+- **Tools you can trust.** The local MCP server's tools (files, shell, Python, Office, media and its isolated
+  browser) go through a policy guard. Running code or commands, overwriting or editing files and creating scripts
+  need a two-step confirmation that shows you exactly what will run. The built-in browser panel and llama.cpp's
+  built-in agent tools (on by default; `-Agent:$false` turns them off) have lighter gates, and Bypass permissions
+  skips the approvals; see [Security notes](#security-notes).
 - **Documents and knowledge.** Read PDF/DOCX/XLSX/PPTX/CSV, OCR scanned Thai and English pages, create DOCX, XLSX,
   PPTX, PDF, CSV and Markdown files, and search project files by keyword and by meaning.
 - **Deep research** in the background with a cited Markdown/DOCX report.
+- **Built-in browser.** A per-project browser panel beside the chat: you and the model work in the same visible
+  tab, and it can only reach public addresses.
+- **Long agent runs.** Queue the next message while the model works; Auto Continue resumes at the agent's turn
+  limit and reconnects an interrupted reply without re-running tools that already finished.
 - **Voice.** Dictation with faster-whisper on the GPU (CPU fallback) and read-aloud.
 - **Long chats keep working.** Automatic compaction summarizes the middle of a conversation when it nears the
   context limit.
@@ -88,17 +95,73 @@ author's machine.
 - Artifacts panel for HTML (sandboxed, no network), SVG, Mermaid, Markdown, CSV tables and images.
 - Export a chat to Markdown, HTML or PDF; quote part of an answer to ask about it; rename, fork and delete chats.
 - Desktop notification when a reply finishes in a background tab; the machine is kept awake while a reply streams.
+- **Message queue:** while a chat is working, Enter puts the next message in a queue instead of interrupting the
+  running task. Queued messages go out one at a time once the chat is idle; Stop pauses the queue.
+- **Auto Continue and recovery** (per project, on by default): continues automatically when the agent reaches its
+  turn limit. A dropped connection, a page reload or a tool result that never reached the page reattaches to the
+  same server-side operation instead of sending it again, so completed tools are not repeated. Stop cancels the run.
+- **Chat backups on the server:** chats are also saved per project under `projects/data`, so history survives a
+  cleared browser profile. Within a project, the model can list, search and read the text of other chats as
+  reference material through read-only tools (`project_chat_list`, `project_chat_search`, `project_chat_read`);
+  old messages never count as approval for anything.
 - A base system prompt adds identity, today's date and "answer in the user's language", and the hub applies the
   vendor-recommended sampling settings when the client sets none.
 
 ### Tools via guarded MCP
 - `mcp-local` (port 8792) serves two surfaces per project: a compact **3-tool surface** (`local_read`, `local_do`,
-  `local_confirm`) that small models use reliably, and the **full surface with 50 tools** (files, search, shell,
+  `local_confirm`) that small models use reliably, and the **full surface with 53 tools** (files, search, shell,
   checkpoints/undo, media via FFmpeg, background tasks, memory, path aliases, an isolated browser profile, scheduler,
-  Python, documents, knowledge search, research, Office, transcription).
-- `mcp-websearch` (port 8791): web search and page fetch. Providers: built-in (Wikipedia + DuckDuckGo instant
-  answers, no key), Brave, Tavily, Serper or your own SearXNG.
+  Python, documents, knowledge search, research, Office, transcription, video generation).
+- `mcp-websearch` (port 8791): web search and page fetch. Providers: general web search through
+  [DDGS](https://github.com/deedy5/ddgs) (default, no key), Brave, Tavily, Serper, your own SearXNG, or the limited
+  built-in mode (Wikipedia + DuckDuckGo instant answers). Searches can be narrowed to domains, recent days or news;
+  fetch reads long pages in parts or jumps to a phrase.
 - Every call is checked by `guard.py` and written to an audit log; see [Security notes](#security-notes).
+
+### Built-in browser
+- A browser panel on the right of each project chat, backed by an isolated Edge profile per project
+  (`browser-profile\_panel\<project>`, never your own profile). The page is shown live in the panel and you can
+  click and type in it; the model drives the same visible tab with `browser_*` tools (navigate, read, click, type,
+  fill, scroll, wait, screenshot, upload, evaluate, tabs). There are no hidden tabs.
+- All traffic goes through an egress proxy inside the hub (`127.0.0.1:8797`) that connects only to public
+  addresses, so web pages cannot reach the hub, other local services or the LAN. If the system DNS stops working,
+  the proxy asks public DNS (1.1.1.1 / 8.8.8.8) under the same rules.
+- Text sent with `browser_type` / `browser_fill` is refused in password and payment-card fields, and a page's
+  confirm/prompt dialogs wait for you in the panel. These are guard rails rather than a hard boundary:
+  `browser_evaluate` runs JavaScript in the page and single key presses are not filtered. Downloads land in the
+  project's `outputs`, uploads are limited to project files and the usual user folders, and page text reaches the
+  model labelled as data. Sites that need a real window to sign in can be opened from the panel as a normal Edge
+  window with the same profile.
+
+### Agent mode (llama.cpp built-in tools)
+- The launcher starts the router with llama.cpp's `--agent` by default: the WebUI then offers llama-server's
+  built-in tools on Windows (read, write and edit files, search, run commands) under **Tools → Server Tools**, next
+  to the MCP tools, and llama.cpp's MCP CORS proxy is enabled. These built-in tools run on the host **outside**
+  `guard.py` and the two-step confirmation; the WebUI's own permission prompt is their gate. Start with
+  `-Agent:$false` to run without them.
+- The hub runs the built-in shell tool through Windows `cmd.exe` with tokens and other credentials removed from its
+  environment, refuses it in Plan mode, and stops an identical command after three failures. Long retry loops are
+  shortened in the outgoing request only (saved chats are never edited), and a truncated old tool call no longer
+  blocks every later reply.
+- **Bypass permissions** (per project, off by default) approves tool permission prompts automatically: those of the
+  built-in tools, the browser panel and the MCP tools, and also the Allow card of the two-step confirmation once the
+  server's review has loaded. File changes and commands then run without asking. It pauses while Plan first is on.
+
+### Video generation (Creative Studio)
+- `creative_video` asks the local **AI Creative Studio** (ComfyUI with Wan 2.2 TI2V 5B; a separate local project
+  that is not part of this repository) to render a short clip from a description, or from an image attached to
+  the project. The tool first returns a REVIEW card (prompt, size, length, seed, output name) with a confirm
+  token; after approval it starts ComfyUI if needed, moves idle chat models out of the GPU, renders, converts the
+  `.webm` to `.mp4` with FFmpeg and returns links to both files in the project's `outputs`. `creative_status`
+  reports Studio health and job progress, `creative_cancel` stops a job. The compact surface has the same three
+  as `local_do action=creative_video` / `creative_cancel` and `local_read action=creative_status`.
+- When a message asks to create a video, clip or animation, the hub appends a system note to it that points the
+  model at this tool, so it does not improvise with FFmpeg test patterns or scripts (same mechanism as the
+  Office note).
+- Needs `C:\LLM\start-creative-studio.ps1` and ComfyUI on `127.0.0.1:8188` with the Wan 2.2 5B files; without
+  them the tool just says what is missing. A 2-second 1280x704 clip takes about 2 minutes on an RTX 4090. The
+  free-VRAM figure is cross-checked with `nvidia-smi`, because ComfyUI 0.38 reports the whole card as free
+  while llama-server still holds it.
 
 ### Documents and knowledge
 - **Read** PDF, DOCX, XLSX, CSV, PPTX and text into Markdown with page/sheet markers (zip-bomb and XXE safe).
@@ -113,7 +176,13 @@ author's machine.
 
 ### Python interpreter and charts
 - A persistent Jupyter kernel per project (pandas, matplotlib, plotly from Anaconda), working directory inside the
-  project, figures saved as PNG to `outputs` and shown inline. Every run needs approval of the exact code.
+  project, figures saved as PNG to `outputs` and shown inline. Every run on the host needs approval of the exact
+  code.
+- **Optional Docker sandbox:** with the image from `mcp-local/python-sandbox` built and enabled, code runs right away
+  in a container with no network, a read-only root file system, no Linux capabilities, a non-root user, 1 GB of
+  memory and 2 CPUs, which sees only the project's `work` and `outputs` folders (and `attachments` read-only). The
+  container is checked before any code runs; if Docker or the image is not available, the tool falls back to the
+  host with approval. See [Configuration](#configuration).
 
 ### Deep research
 - `research` runs in the background: plan, search, pick and read sources, take notes, write a report with
@@ -197,8 +266,9 @@ flowchart LR
   HUB -->|"base prompt, memory, project knowledge,<br/>plan mode, compaction, usage log"| R
   HUB -->|"voice clips"| STT["Speech-to-text :8795<br/>faster-whisper"]
   HUB -->|"knowledge lookups"| MCPL
+  HUB -->|"browser panel, browser_* tools"| BR["Built-in browser<br/>Edge, isolated profile per project<br/>egress proxy :8797, public addresses only"]
 
-  R["llama-server router :8099<br/>Qwen3.8-27B, Qwen3-4B,<br/>Qwen3-Coder-30B-A3B, gpt-oss-20b"]
+  R["llama-server router :8099 (--agent)<br/>Qwen3.8-27B, Qwen3-4B,<br/>Qwen3-Coder-30B-A3B, gpt-oss-20b"]
   MCPL["MCP local tools :8792<br/>guard.py, two-step confirm, audit log"]
   MCPW["MCP web search :8791<br/>SSRF guard"]
   MCPL --> EMB["Embedding server :8093<br/>Qwen3-Embedding-0.6B"]
@@ -232,6 +302,7 @@ hub adds the router token for them.
 | 8093 | embedding server (llama-server `--embeddings`, CPU) | launcher |
 | 8795 | speech-to-text (faster-whisper) | launcher |
 | 8780 | remote prompt gateway | launcher |
+| 8797 | egress proxy of the built-in browser panel (loopback; connects to public addresses only) | hub |
 
 ## Measured performance
 
@@ -267,14 +338,15 @@ Other measurements from the same machine:
 | OS | Windows 11 | Developed on 10.0.26200; launcher and stop scripts are Windows PowerShell 5.1 |
 | GPU | NVIDIA, recent driver | Developed with driver 596.71. 6 GB runs the 4B model well; the 27B needs about 20 GB of VRAM for interactive speed |
 | llama.cpp | b10984 Windows CUDA 12.4 build in `C:\LLM\llama.cpp-b10984` | The UI layer is mapped to this build's WebUI; newer builds may need selector updates (see DESIGN.md §4) |
-| Python | 3.13 installed to `C:\Python313` + `requirements.txt` | Choose "Customize installation" and set that location: the launcher, `restart_svc.ps1` and the tests call `C:\Python313\python.exe`. Hub is standard library only; document tools need PyMuPDF, python-docx, openpyxl, defusedxml, NumPy, Pillow |
+| Python | 3.13 installed to `C:\Python313` + `requirements.txt` | Choose "Customize installation" and set that location: the launcher, `restart_svc.ps1` and the tests call `C:\Python313\python.exe`. Hub is standard library only; document tools need PyMuPDF, python-docx, openpyxl, defusedxml, NumPy, Pillow; the default web-search provider needs DDGS |
 | Models | GGUF files in `C:\LLM\models` | **`Qwen3.8-27B-UD-Q4_K_M.gguf` is required** (the launcher exits without it); the others are optional. Not included; see [THIRD_PARTY.md](THIRD_PARTY.md). Embedding model expected at `D:\LLM\models-embed\Qwen3-Embedding-0.6B-Q8_0.gguf` |
 | Anaconda | optional | Python tool kernel and Office bridge: `%USERPROFILE%\anaconda3\python.exe` by default (jupyter_client, ipykernel, pandas, matplotlib, plotly, pywin32, psutil); point `QWEN_PY_KERNEL_PYTHON` / `QWEN_OFFICE_PYTHON` at another interpreter if yours lives elsewhere |
 | faster-whisper | optional | Voice input: conda env named `flexxfast` under `%USERPROFILE%\anaconda3\envs` with faster-whisper 1.2, CTranslate2, PyAV; model large-v3-turbo in the Hugging Face cache (or set `QWEN_STT_HF_HUB`) |
 | Tesseract | optional | OCR: Tesseract 5.4 in `C:\LLM\tools\tesseract` with `tessdata_best` tha + eng |
 | Microsoft Office | optional | Office bridge (Excel, Word, PowerPoint via COM) |
 | FFmpeg | optional | Media tools; on `PATH`, in `C:\LLM\tools\ffmpeg\bin`, or set `MCP_LOCAL_FFMPEG` / `MCP_LOCAL_FFPROBE` |
-| Microsoft Edge | included with Windows | Headless screenshot harness and the isolated browser tool |
+| Microsoft Edge | included with Windows | Headless screenshot harness, the isolated browser tool and the built-in browser panel |
+| Docker Desktop | optional | Python sandbox: the Linux engine and an image built from `mcp-local/python-sandbox` |
 | Node.js | optional | Some UI tests run JavaScript functions in Node |
 
 ## Quick start
@@ -317,8 +389,9 @@ Other measurements from the same machine:
    processes listening on the stack's ports, then **every** remaining `llama-server.exe` and any Python process
    running `scheduler.py`, so stop other llama.cpp servers you run yourself first.
 
-Optional: put a Brave Search API key in `C:\LLM\secrets\brave-search.key` for real web search, and restrict the
-folder's permissions as described in [secrets/README.md](secrets/README.md).
+Optional: web search works without a key (DDGS). To use Brave Search instead, put an API key in
+`C:\LLM\secrets\brave-search.key`, set `{"provider": "brave"}` in `mcp-websearch\config.json`, and restrict the
+secrets folder's permissions as described in [secrets/README.md](secrets/README.md).
 
 ## Configuration
 
@@ -328,12 +401,26 @@ folder's permissions as described in [secrets/README.md](secrets/README.md).
 | Language, theme, reply font, "about me", style | the UI, stored in `projects/settings.json` (example: `projects/settings.example.json`) |
 | GPU per model | **Choose GPU…** in the account menu → `gpu-choice.json`; permanent overrides in `models-preset.user.ini` |
 | Context size, threads, vision, main model for one run | launcher flags `-Ctx N`, `-Threads N`, `-Vision` / `-NoVision`, `-Primary <id>` |
+| llama.cpp built-in agent tools | on by default; launcher flag `-Agent:$false` turns them off for that launch |
+| Python sandbox | build the image, then create `mcp-local/python-sandbox.json` (see below); `QWEN_PY_SANDBOX=off` disables it |
 | Optional services | launcher flags `-NoEmbed`, `-NoStt`, `-RestartStt`, `-RestartEmbed`, `-EmbedOnly`, `-SttOnly`, `-NoBrowser` |
 | Tool permissions (writable folders, extra blocked paths) | `mcp-local/config.json` (start from `mcp-local/config.example.json`); merged with the built-in policy, see [Security notes](#security-notes) |
-| Web search provider | `mcp-websearch/config.json` (start from `config.example.json`) or just `secrets/brave-search.key` |
+| Web search provider | `mcp-websearch/config.json` (start from `config.example.json`); without it DDGS general search is used, and a `{"provider": "brave"}` config uses `secrets/brave-search.key` |
 | Skills | `skills/<name>/SKILL.md`; optional per-project enable/disable list in `skills/enabled.json` |
 | Gateway API key | `GATEWAY_API_KEY` user environment variable |
 | Restart one service with a clean environment | `projects\tools\restart_svc.ps1 -Name mcp-local` (or `websearch`, `scheduler`, `hub`) |
+
+To enable the Python sandbox, start Docker Desktop (Linux engine) and build the image once:
+
+```powershell
+cd C:\LLM\mcp-local\python-sandbox
+docker build -t qwen-python-sandbox .
+docker image inspect qwen-python-sandbox --format "{{.Id}}"
+```
+
+then write the printed `sha256:...` id into `C:\LLM\mcp-local\python-sandbox.json` as
+`{"enabled": true, "image_id": "sha256:..."}` (the tests read the same id from `python-sandbox\image-id.txt`).
+Both files are git-ignored because the id is specific to your machine.
 
 Useful environment overrides: `LLM_LOCAL_TOKEN_FILE` (token file for tests), `QWEN_PY_KERNEL_PYTHON` and
 `QWEN_OFFICE_PYTHON` (interpreter for the Python tool and Office bridge), `MCP_LOCAL_FFMPEG` / `MCP_LOCAL_FFPROBE`,
@@ -361,13 +448,22 @@ C:\LLM
 │   ├── hub_compact.py        automatic conversation compaction
 │   ├── hub_usage.py          usage log and aggregation
 │   ├── hub_doctor.py         health report for the Doctor page
+│   ├── hub_browser.py        built-in browser panel: isolated Edge per project, egress proxy, browser_* tools
+│   ├── hub_recovery.py       reconnectable replies (Auto Continue / recovery)
+│   ├── hub_chats.py          project chat references + read-only project_chat_* tools
+│   ├── hub_chat_history.py   server-side chat backups
+│   ├── hub_agent.py          Windows command adapter and retry-loop guard for llama.cpp's built-in tools
+│   ├── hub_tool_history.py   keeps malformed old tool calls from blocking a chat
 │   ├── record_tests.py       runs the test suite, records the result for the Doctor page
-│   ├── static\               theme, enhance script, design tokens, boot script, fonts (OFL)
+│   ├── static\               theme, enhance script, design tokens, boot script, fonts (OFL), browser panel,
+│   │                         message queue, recovery and chat-backup scripts
 │   └── tools\                shot.py (headless screenshots), restart_svc.ps1, fixtures\, demo\
 ├── mcp-local\                MCP "this computer": server, guard, netguard, tools_*.py, scheduler, gateway,
 │                             Office helper, Jupyter kernel runner, document extractor, skills loader,
+│                             Docker sandbox backend (python_sandbox.py, image in python-sandbox\),
+│                             Creative Studio video tool (tools_creative.py),
 │                             config.example.json (tool permission overrides)
-├── mcp-websearch\            MCP web search and fetch
+├── mcp-websearch\            MCP web search and fetch (general_search.py: DDGS provider)
 ├── stt\                      speech-to-text service and benchmark
 ├── skills\                   prompt templates served as MCP prompts
 ├── tests\                    unittest suite (+ simulated GPU fixtures)
@@ -378,8 +474,13 @@ C:\LLM
 ```
 
 Runtime folders that are created locally and git-ignored: `models\`, `logs\`, `projects\data\` (chats are in the
-browser's IndexedDB; attachments, outputs, memory, research, usage log and caches are here), `browser-profile\`,
-`tools\` (Tesseract, FFmpeg).
+browser's IndexedDB, with backups here; attachments, outputs, memory, research, usage log and caches are here too),
+`browser-profile\`, `tools\` (Tesseract, FFmpeg).
+
+The account menu also links to a GPU monitor on port 8796, and the launcher starts it when `gpumon\` exists. The GPU
+monitor and the Creative Studio runtime (ComfyUI, Wan 2.2, Blender and their setup scripts) are separate local
+projects and are not part of this repository; `mcp-local\tools_creative.py` is only the MCP side that drives the
+Studio over HTTP.
 
 ## Security notes
 
@@ -391,7 +492,18 @@ The model can run tools on your computer, so the stack is built around keeping i
   MCP connections. The remote prompt gateway uses its own key (`GATEWAY_API_KEY`). llama-server itself does not
   check the Host header; it relies on the token.
 - **Origin and Host checks** on the hub, MCP and STT block other web pages and DNS rebinding. CORS answers only the
-  stack's own ports, without credentials. llama.cpp's `--ui-mcp-proxy` is deliberately not used.
+  stack's own ports, without credentials.
+- **Agent mode is on by default.** The router runs with llama.cpp's `--agent`, which adds llama-server's built-in
+  host tools (files and commands) and its MCP CORS proxy. Those tools do **not** go through the policy guard,
+  the two-step confirmation or the audit log below; the WebUI's permission prompt is the only gate, and
+  **Bypass permissions** (off by default, per project) removes it. The hub runs their shell commands with
+  credentials stripped from the environment and refuses them in Plan mode. Start the launcher with `-Agent:$false`
+  if you want only the guarded MCP tools.
+- **Built-in browser panel.** Its `browser_*` tools are served by the hub, not by `mcp-local`: they are not checked
+  by `guard.py`, need no two-step confirmation and are not in its audit log. Their limits are the WebUI's permission
+  prompt, the egress proxy (public addresses only) and the fact that everything happens in the visible tab.
+  `browser_upload` can send files from the project and your usual user folders to a public website, and
+  `browser_evaluate` runs JavaScript in the page.
 - **Policy guard (`mcp-local/guard.py`).** Secret folders and credential files (SSH keys, browser profiles and
   history, git and package-manager credentials, CLI tokens, this stack's own secrets) cannot be read.
   **Default writable roots:** your user folder (`%USERPROFILE%`), `C:\LLM`, and the **whole `D:\`, `E:\` and `F:\`
@@ -403,13 +515,18 @@ The model can run tools on your computer, so the stack is built around keeping i
   Every call is audited.
 - **Two-step confirmation with server-side review.** Actions that change the machine — running commands or Python,
   editing or overwriting files, creating scripts and programs, writing into Office documents, starting or stopping
-  background tasks, opening the isolated browser — return a one-time token instead of running. The token is valid
+  background tasks, opening the isolated browser, rendering a video with the Creative Studio — return a one-time
+  token instead of running. The token is valid
   for 10 minutes (at most 15 if a mismatched review has to be sent again). Only the separate `local_confirm` tool can
   redeem it, and the chat shows an Allow card that loads the exact review text from the server: full code with line
   numbers, the full command, or the diff. Hidden and look-alike characters are made visible, a review sent by the
-  model that differs from the server's is flagged in red, and "always allow" is removed for this tool.
+  model that differs from the server's is flagged in red, and "always allow" is removed for this tool. With
+  **Bypass permissions** on for a project, these Allow cards are approved automatically too, so the confirmation
+  no longer waits for you.
 - **SSRF guard (`netguard.py`).** Web fetches and the browser tool resolve and check every redirect hop, pin the IP
-  at connect time, and refuse loopback, private, link-local and cloud-metadata addresses.
+  at connect time, and refuse loopback, private, link-local and cloud-metadata addresses. The built-in browser
+  panel applies the same rule in its own egress proxy, which resolves every name itself and connects only to the
+  checked public IP, so pages opened there cannot reach the hub, other local services or the LAN.
 - **Project isolation.** Each project's tools are bound to its own URL (`/mcp/<project>`); tools cannot read or
   write another project's data. Plan mode removes write tools on the server, not just in the prompt.
 - **Untrusted content stays data.** Text from files, web pages and tools is labelled as data; automatic knowledge
@@ -418,11 +535,15 @@ The model can run tools on your computer, so the stack is built around keeping i
 - **Clean service environments.** The launcher starts long-running services through WMI so they do not inherit
   the environment (and any tokens) of the shell that launched them.
 
-Residual risks you should know about: a command you approve can do anything your account can do; **new files of
-non-executable types (documents, text, data, HTML and so on) can be created in any writable root without
-confirmation** — overwrites, edits and new scripts or executables need approval; the secrets folder inherits broad
-permissions until you restrict it (see [secrets/README.md](secrets/README.md)); the MCP token is stored in the
-browser's local storage for the project origins; the Python tool runs on the host, not in a container.
+Residual risks you should know about: a command you approve can do anything your account can do; with agent mode
+on, llama-server's built-in tools can read, change and run whatever your account can once their permission prompt is
+accepted; with Bypass permissions on, every approval (the two-step confirmation included) happens without you;
+**new files of non-executable types (documents, text,
+data, HTML and so on) can be created in any writable root without confirmation** — overwrites, edits and new
+scripts or executables need approval; the secrets folder inherits broad permissions until you restrict it (see
+[secrets/README.md](secrets/README.md)); the MCP token is stored in the browser's local storage for the project
+origins; the Python tool runs on the host unless the optional Docker sandbox is set up; sign-ins you make in the
+built-in browser panel stay in that project's browser profile.
 
 ## Running the tests
 
@@ -431,10 +552,12 @@ C:\Python313\python.exe -m unittest discover -s C:\LLM\tests
 C:\Python313\python.exe C:\LLM\projects\record_tests.py        # same, and records the result for the Doctor page
 ```
 
-The last full run on the author's machine: 1,550 tests, 1,501 passed, 49 skipped, 0 failures. Tests that need
-live services, a browser, Office or a GPU skip themselves when those are not available. Several live suites are
-opt-in through environment flags: `LLM_SECURITY_LIVE`, `LLM_B3_LIVE`, `LLM_STT_LIVE`, `LLM_STACK_LIVE`,
-`GPU_PROFILE_ROUTER_TESTS`, and the browser end-to-end suites `QWEN_B3_E2E` and `QWEN_UI_E2E` (set to `1`).
+The last full run on the author's machine (2026-11-08): 1,860 tests, 1,806 passed, 54 skipped, 0 failures. Tests
+that need live services, a browser, Office, Docker or a GPU skip themselves when those are not available (the
+Python-sandbox suite needs Docker Desktop running and the sandbox image built). Several live suites are opt-in
+through environment flags: `LLM_SECURITY_LIVE`, `LLM_B3_LIVE`, `LLM_STT_LIVE`, `LLM_STACK_LIVE`,
+`GPU_PROFILE_ROUTER_TESTS`, `QWEN_BROWSER_LIVE_TEST` (the built-in browser against a real website), and the
+browser end-to-end suites `QWEN_B3_E2E` and `QWEN_UI_E2E` (set to `1`).
 The suite was written for the author's layout (`C:\LLM`, `C:\Python313`, the Anaconda and `flexxfast`
 interpreters, a `D:` drive); on a machine set up differently some tests skip and a few may fail.
 
@@ -446,15 +569,17 @@ interpreters, a `D:` drive); on a machine set up differently some tests skip and
 - **Windows only.** Launcher, Office bridge, WMI process handling and keep-awake are Windows-specific.
 - **Tied to one llama.cpp WebUI build.** The UI layer injects into the WebUI of b10984; newer builds may move
   elements. The DOM map in [docs/DESIGN.md](docs/DESIGN.md) is the place to update.
-- **No container sandbox yet.** Python and shell commands run on the host behind the two-step approval. A Docker
-  sandbox is planned.
-- **Web search** without an API key only covers Wikipedia and DuckDuckGo instant answers.
+- **Sandboxing is partial.** Python can run in the optional Docker sandbox; shell commands, the Office bridge and
+  llama.cpp's built-in agent tools still run on the host.
+- **Web search** without an API key goes through DDGS, which queries several public search engines; they can
+  refuse or rate-limit requests, so results vary. An API provider (Brave, Tavily, Serper) or your own SearXNG is
+  more predictable.
 - **Small models need explicit cues.** The 4B model calls the knowledge search reliably when the question mentions
   files or documents; a bare question about project data may get "no data".
 - **Compaction on a shared GPU.** If the small summarizer model has to share VRAM with a busy 27B, the first reply
   after compaction can be slow; the UI does not yet show summarizing progress.
 - **Language of the code.** Most comments, log messages and parts of the engineering notes are in Thai.
-- **Planned:** configurable paths, container sandbox, compaction progress and a summary viewer in the UI, and
+- **Planned:** configurable paths, broader sandboxing, compaction progress and a summary viewer in the UI, and
   evaluation of speculative decoding drafts and newer models on the RTX 4090.
 
 ## Acknowledgements

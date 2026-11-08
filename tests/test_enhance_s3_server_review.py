@@ -26,7 +26,7 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, r"C:\LLM\tests")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # โฟลเดอร์ของไฟล์นี้เอง (เดิม r"C:\LLM\tests" ทำให้ discover จากสำเนาที่อื่นพัง)
 import test_security_common as C  # noqa: E402  (ตั้ง env ทดสอบ + import guard ของจริง)
 
 ENH = os.environ.get("QWEN_ENH_FILE") or r"C:\LLM\projects\static\webui-enhance.js"

@@ -1346,6 +1346,7 @@
       var btns = f.querySelectorAll("button");
       for (var i = 0; i < btns.length; i++) {
         var b = btns[i], sr = b.querySelector(".sr-only");
+        if (b.classList.contains("qw-auto-continue")) continue;
         var label = (b.getAttribute("aria-label") || "") + " " + (enAttr(b, "title") || "") +
           " " + (sr ? enText(sr) : "");
         if (/\bstop\b|skip reasoning/i.test(label)) return true;
@@ -2583,10 +2584,14 @@
   function scanPrompts() {
     promptTimer = 0;
     try { confirmCards(); } catch (e) { /* กล่องตรวจทานพังรอบเดียว ต้องไม่ทำให้การแจ้งเตือนหาย */ }
+    try { bypassScan(); } catch (e) {}
+    try { autoContinueScan(); } catch (e) {}
     try { cfBadgeScan(); } catch (e) { /* ป้ายผลของ local_confirm ไม่มี = หน้าตาแบบเดิม ไม่กระทบส่วนอื่น */ }
     var cs = document.querySelectorAll(PROMPT_SEL);
     for (var i = 0; i < cs.length; i++) {
       var c = cs[i];
+      if (bypassClicked && bypassClicked.has(c)) continue;
+      if (autoContinueHandling(c)) continue;
       if (promptSeen.has(c)) continue;
       var info = promptInfo(c);
       if (!info) continue;
@@ -3029,6 +3034,9 @@
       st.busy = false;
       st.at = Date.now();
       if (seq !== st.seq || !card.isConnected || route().id !== conv) return;
+      // Automatic approval must use a fresh, successfully matched pending call; the manual review may retain old text.
+      st.bypassCurrent = r.status === "ok";
+      st.bypassConv = conv;
       // อ่านออกแล้วครั้งหนึ่ง = ไม่ถอยเป็น "หาไม่เจอ" (ดู rvShow) — เก็บผลที่ดีล่าสุดไว้วาดซ้ำตอนเซิร์ฟเวอร์ตอบ
       if (!(r.status === "unknown" && st.good)) st.r = r;
       rvSrv(card, st);
@@ -3038,7 +3046,10 @@
   // วาดตาม st.r (IndexedDB) + st.srv (เซิร์ฟเวอร์) — เรียกได้ทั้งตอน IndexedDB ตอบและตอนเซิร์ฟเวอร์ตอบ
   function rvPaint(card, st) {
     var vis = rvVisible(card);
-    if (!rvShow(st, st.r || { status: "loading" })) return;
+    if (!rvShow(st, st.r || { status: "loading" })) {
+      try { bypassCard(card); } catch (e) {}
+      return;
+    }
     rvFit(st);
     if (vis && !st.scrolled && st.box.getAttribute("data-state") !== "loading") {
       // การ์ดอยู่ในจออยู่แล้ว (ผู้ใช้อยู่ท้ายแชต): กล่องที่ขยายต้องไม่ดันปุ่มลงไปใต้กล่องพิมพ์ — เลื่อนพอเห็นแถวปุ่ม ครั้งเดียว
@@ -3047,6 +3058,7 @@
       var kids = card.children, acts = kids[kids.length - 1];
       if (acts && acts !== st.box) rvReveal(acts);
     }
+    try { bypassCard(card); } catch (e) {}
   }
   // S3: ขอ review ของเซิร์ฟเวอร์ครั้งเดียวต่อ token (endpoint มี rate limit และการ์ดตรวจซ้ำทุก 2 วิ) ลองใหม่เฉพาะที่พลาด
   // ชั่วคราว (ไม่ตอบ/ยุ่ง) สูงสุด 3 ครั้ง เว้น 2/4/8 วิ · review ที่ได้แล้วหมดอายุตาม expires_in_s = เปลี่ยนเป็น "โหลดไม่ได้"
@@ -3582,7 +3594,7 @@
     if (!e.isTrusted) return;
     if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
     var b = e.target && e.target.closest ? e.target.closest("button") : null;
-    if (!b || b.closest(".qw-speak-stop")) return;
+    if (!b || b.closest(".qw-speak-stop, .qw-auto-continue")) return;
     var lab = (b.getAttribute("aria-label") || "") + " " + (enAttr(b, "title") || "") + " " + enText(b);
     if (/\bstop\b/i.test(lab) || /hover:bg-destructive/.test(b.className || "")) userStopAt = Date.now();
   }
@@ -4520,6 +4532,21 @@
     "Plan mode is on for this chat": "เปิดโหมดวางแผนในแชตนี้แล้ว",
     "Plan mode is on for the new chat": "เปิดโหมดวางแผนสำหรับแชตใหม่นี้แล้ว",
     "Plan mode is off": "ปิดโหมดวางแผนแล้ว",
+    "Bypass permissions: OFF": "ข้ามการขออนุญาต: ปิด",
+    "Bypass permissions: ON": "ข้ามการขออนุญาต: เปิด",
+    "Bypass permissions: PAUSED": "ข้ามการขออนุญาต: พัก",
+    "Bypass permissions automatically allows agent tools, including file changes and commands. Click to turn it on or off. Your choice is saved for this project.":
+      "ข้ามการขออนุญาตจะอนุญาตเครื่องมือ Agent อัตโนมัติ รวมถึงแก้ไขไฟล์และรันคำสั่ง กดเพื่อเปิดหรือปิด ระบบจำค่าสำหรับโปรเจกต์นี้",
+    "Bypass permissions is paused while Plan first is on. Turn Plan first off to resume automatic approvals.":
+      "พักการอนุญาตอัตโนมัติขณะเปิดวางแผนก่อน ปิดวางแผนก่อนเพื่อกลับมาอนุญาตอัตโนมัติ",
+    "Waiting for project information before enabling bypass permissions.": "รอข้อมูลโปรเจกต์ก่อนเปิดการอนุญาตอัตโนมัติ",
+    "Auto Continue: ON": "ทำต่ออัตโนมัติ: เปิด",
+    "Auto Continue: OFF": "ทำต่ออัตโนมัติ: ปิด",
+    "Auto Continue: PAUSED": "ทำต่ออัตโนมัติ: พัก",
+    "Automatically continues at the turn limit and reconnects interrupted responses without repeating completed tools. Stop cancels the run. Your choice is saved for this project.": "ทำต่ออัตโนมัติเมื่อถึงจำนวนรอบที่กำหนด และกู้การเชื่อมต่อที่ขาดโดยไม่สั่งเครื่องมือที่เสร็จแล้วซ้ำ กดหยุดเพื่อยกเลิกงาน จำตัวเลือกไว้สำหรับโปรเจกต์นี้",
+    "Auto Continue is paused after Stop. Send a new message or turn Auto Continue off and on to resume.": "พักการทำต่ออัตโนมัติหลังจากกดหยุด ส่งข้อความใหม่หรือปิดแล้วเปิดการทำต่ออัตโนมัติเพื่อเริ่มอีกครั้ง",
+    "Auto Continue is paused while Plan first is on.": "พักการทำต่ออัตโนมัติขณะเปิดโหมดวางแผนก่อน",
+    "Waiting for project information before enabling Auto Continue.": "รอข้อมูลโปรเจกต์ก่อนเปิดการทำต่ออัตโนมัติ",
     // ---- @ไฟล์ ----
     "Project files": "ไฟล์ของโปรเจกต์",
     "↑↓ choose · Enter insert · Esc close": "↑↓ เลือก · Enter แทรก · Esc ปิด",
@@ -4815,6 +4842,324 @@
     setTxt(planOff, L("Turn off"));
     setAt(planOff, "aria-label", A("Turn off plan mode"));
     planApprove.hidden = !(r.name === "chat" && !st && lastIsAssistant());
+  }
+
+  /* ---- Auto Continue (project preference; native agent turn-limit cards only) ------------------------- */
+  var AUTO_CONTINUE_KEY = "qwen-auto-continue-v1", AUTO_CONTINUE_DELAY = 600;
+  var autoContinueProject = "", autoContinueOn = true, autoContinueChip = null;
+  var autoContinuePending = new Map(), autoContinueClicked = new WeakSet(), autoContinueOwners = new WeakMap();
+  var autoContinueStopped = Object.create(null);
+  var AUTO_CONTINUE_TIP = "Automatically continues at the turn limit and reconnects interrupted responses without repeating completed tools. Stop cancels the run. Your choice is saved for this project.";
+  function autoContinueRefresh() {
+    var slug = bypassIdentity();
+    if (slug === autoContinueProject) return slug;
+    autoContinueCancel();
+    autoContinueProject = slug;
+    autoContinueOn = true;
+    try {
+      var pref = JSON.parse(lsGet(AUTO_CONTINUE_KEY) || "null");
+      if (pref && pref.project === slug && typeof pref.on === "boolean") autoContinueOn = pref.on;
+    } catch (e) {}
+    return slug;
+  }
+  function autoContinueState() {
+    var slug = autoContinueRefresh(), r = route();
+    var stopped = !!(r.id && autoContinueStopped[slug + "|" + r.id]), plan = !!planCurrent();
+    return { on: autoContinueOn, active: !!(slug && autoContinueOn && r.name === "chat" && r.id && !stopped && !plan),
+      paused: !!(autoContinueOn && (stopped || plan)), stopped: stopped, ready: !!slug, project: slug };
+  }
+  function autoContinueCancel() {
+    autoContinuePending.forEach(function (p) { clearTimeout(p.timer); });
+    autoContinuePending.clear();
+  }
+  function setAutoContinue(on) {
+    var slug = autoContinueRefresh();
+    if (!slug) return false;
+    autoContinueOn = !!on;
+    lsSet(AUTO_CONTINUE_KEY, JSON.stringify({ project: slug, on: autoContinueOn }));
+    autoContinueCancel();
+    if (autoContinueOn && route().id) delete autoContinueStopped[slug + "|" + route().id];
+    syncAutoContinue(route());
+    autoContinueScan();
+    schedule();
+    return true;
+  }
+  function autoContinueControls(card) {
+    if (!card || !card.isConnected || !card.matches(PROMPT_SEL) || !card.closest(".agentic-content") ||
+        card.closest(".markdown-content, .chat-message-user, .qw-review, pre, code, [role='dialog']")) return null;
+    var kids = card.children;
+    if (kids.length !== 2 || !bypassExact(kids[0], "Agentic turn limit reached. Continue?")) return null;
+    var acts = kids[1];
+    if (!acts.classList.contains("flex") || !acts.classList.contains("items-center")) return null;
+    var bs = acts.querySelectorAll("button"), next = null, stop = null;
+    if (bs.length !== 2) return null;
+    for (var i = 0; i < bs.length; i++) {
+      if (bypassExact(bs[i], "Continue")) next = bs[i];
+      if (bypassExact(bs[i], "Stop")) stop = bs[i];
+    }
+    if (!next || !stop || next.disabled || stop.disabled ||
+        next.getAttribute("aria-disabled") === "true" || stop.getAttribute("aria-disabled") === "true") return null;
+    return { next: next, stop: stop };
+  }
+  function autoContinueHandling(card) {
+    return autoContinuePending.has(card) || autoContinueClicked.has(card);
+  }
+  function autoContinueScan() {
+    var s = autoContinueState(), r = route(), owner = s.project + "|" + (r.id || "");
+    if (!s.active) autoContinueCancel();
+    if (!s.ready || r.name !== "chat" || !r.id) return;
+    var cs = document.querySelectorAll(PROMPT_SEL);
+    for (var i = 0; i < cs.length; i++) {
+      var card = cs[i], hit = autoContinueControls(card);
+      if (!hit) continue;
+      if (!autoContinueOwners.has(card)) autoContinueOwners.set(card, owner);
+      if (!s.active || autoContinueOwners.get(card) !== owner || autoContinueHandling(card)) continue;
+      (function (c, button, id, project) {
+        var p = { timer: 0 };
+        autoContinuePending.set(c, p);
+        p.timer = setTimeout(function () {
+          if (autoContinuePending.get(c) !== p) return;
+          autoContinuePending.delete(c);
+          var state = autoContinueState(), current = route(), controls = autoContinueControls(c);
+          if (!state.active || current.id !== id || state.project !== project || !controls || controls.next !== button) return;
+          autoContinueClicked.add(c);
+          controls.next.click();
+        }, AUTO_CONTINUE_DELAY);
+      })(card, hit.next, r.id, s.project);
+    }
+  }
+  function autoContinueNoteStop(e) {
+    if (!e.isTrusted || (e.type === "keydown" && e.key !== "Enter" && e.key !== " ")) return;
+    var b = e.target && e.target.closest ? e.target.closest("button") : null, r = route();
+    if (!b || !r.id) return;
+    var card = b.closest(PROMPT_SEL), controls = card && autoContinueControls(card), form = composerForm();
+    var nativeStop = form && form.contains(b) && (bypassExact(b, "Stop") || bypassExact(b, "Stop generation"));
+    if (!(controls && controls.stop === b) && !nativeStop && !b.classList.contains("stop-button")) return;
+    autoContinueStopped[bypassIdentity() + "|" + r.id] = true;
+    autoContinueCancel();
+    schedule();
+  }
+  function autoContinueNoteSend(e) {
+    var f = composerForm(), t = e.target, r = route();
+    if (!f || !t || !f.contains(t) || !r.id) return;
+    if (e.type === "keydown" && (e.key !== "Enter" || e.shiftKey || e.isComposing || t.tagName !== "TEXTAREA")) return;
+    if (e.type === "click" && !(t.closest && t.closest('button[type="submit"]'))) return;
+    delete autoContinueStopped[bypassIdentity() + "|" + r.id];
+    schedule();
+  }
+  ["pointerdown", "click", "keydown"].forEach(function (ty) { window.addEventListener(ty, autoContinueNoteStop, true); });
+  ["keydown", "click", "submit"].forEach(function (ty) { window.addEventListener(ty, autoContinueNoteSend, true); });
+  window.addEventListener("hashchange", autoContinueCancel);
+  window.addEventListener("storage", function (e) {
+    if (e && (e.key === AUTO_CONTINUE_KEY || e.key === null)) {
+      autoContinueProject = "";
+      autoContinueRefresh();
+      autoContinueScan();
+      schedule();
+    }
+  });
+  function syncAutoContinue(r) {
+    var f = composerForm(), tb = composerToolbar(), grp = tb && tb.querySelector(":scope > .mr-auto");
+    if (!f || !grp || (r.name !== "start" && r.name !== "chat")) {
+      if (autoContinueChip) detach(autoContinueChip);
+      return;
+    }
+    if (!autoContinueChip) {
+      autoContinueChip = b2El("button", "qw-auto-continue");
+      autoContinueChip.type = "button";
+      var icon = el("span", "qw-auto-continue-icon"); icon.innerHTML = xIcon("play");
+      autoContinueChip.appendChild(icon);
+      autoContinueChip.appendChild(el("span", "qw-auto-continue-label"));
+      autoContinueChip.appendChild(el("span", "qw-auto-continue-state"));
+      autoContinueChip.addEventListener("click", function (e) { e.preventDefault(); setAutoContinue(!autoContinueState().on); });
+    }
+    if (bypassChip && bypassChip.parentNode === grp) {
+      if (bypassChip.nextElementSibling !== autoContinueChip) bypassChip.after(autoContinueChip);
+    } else if (autoContinueChip.parentNode !== grp) grp.appendChild(autoContinueChip);
+    var s = autoContinueState(), state = s.paused ? "PAUSED" : s.on ? "ON" : "OFF";
+    var tip = !s.ready ? "Waiting for project information before enabling Auto Continue." : s.stopped ?
+      "Auto Continue is paused after Stop. Send a new message or turn Auto Continue off and on to resume." : s.paused ?
+      "Auto Continue is paused while Plan first is on." : AUTO_CONTINUE_TIP;
+    autoContinueChip.disabled = !s.ready;
+    setAt(autoContinueChip, "aria-pressed", s.on ? "true" : "false");
+    setAt(autoContinueChip, "data-state", state.toLowerCase());
+    setAt(autoContinueChip, "title", A(tip));
+    setAt(autoContinueChip, "aria-label", A("Auto Continue: " + state));
+    setTxt(autoContinueChip.children[1], L("Auto Continue: " + state));
+    setTxt(autoContinueChip.children[2], state === "PAUSED" ? "Ⅱ" : state);
+  }
+
+  /* ---- Bypass permissions (explicit project preference; native prompts only) --------------------------- */
+  var BYPASS_KEY = "qwen-bypass-permissions", BYPASS_HEADER = "X-Qwen-Bypass-Permissions";
+  var bypassProject = "", bypassOn = false, bypassChip = null;
+  var bypassButtons = new WeakSet(), bypassClicked = new WeakSet();
+  var BYPASS_TIP = "Bypass permissions automatically allows agent tools, including file changes and commands. Click to turn it on or off. Your choice is saved for this project.";
+  var BYPASS_PLAN_TIP = "Bypass permissions is paused while Plan first is on. Turn Plan first off to resume automatic approvals.";
+  function bypassIdentity() {
+    var sh = shell(), p = sh && sh.project, slug = p && p.slug;
+    return typeof slug === "string" && slug && slug.length <= 200 ? slug : "";
+  }
+  function bypassRefresh() {
+    var slug = bypassIdentity();
+    if (slug === bypassProject) return slug;
+    bypassProject = slug;
+    bypassOn = false;
+    if (slug) {
+      try {
+        var pref = JSON.parse(lsGet(BYPASS_KEY) || "null");
+        bypassOn = !!(pref && pref.project === slug && pref.on === true);
+      } catch (e) {}
+    }
+    return slug;
+  }
+  function bypassState() {
+    var slug = bypassRefresh(), paused = !!(bypassOn && planCurrent());
+    return { on: !!bypassOn, active: !!(slug && bypassOn && !paused), paused: paused, ready: !!slug, project: slug };
+  }
+  function setBypass(on) {
+    var slug = bypassRefresh();
+    if (!slug) return false;
+    bypassOn = !!on;
+    lsSet(BYPASS_KEY, JSON.stringify({ project: slug, on: bypassOn }));
+    syncBypass(route());
+    // No deferred approval callback: switching off immediately stops all future scans and asynchronous review replies.
+    if (bypassOn) { try { confirmCards(); bypassScan(); } catch (e) {} }
+    schedule();
+    return true;
+  }
+  window.addEventListener("storage", function (e) {
+    if (e && (e.key === BYPASS_KEY || e.key === null)) {
+      bypassProject = "";
+      bypassRefresh();
+      schedule();
+    }
+  });
+  function bypassExact(node, label) {
+    var t = enText(node).replace(/\s+/g, " ").trim();
+    return t === label || (hasOwn(TH, label) && t === TH[label].replace(/\s+/g, " ").trim());
+  }
+  function bypassControls(card) {
+    if (!card || !card.isConnected || !card.matches || !card.matches(PROMPT_SEL) ||
+        !card.closest(".agentic-content") || card.closest(".markdown-content, .chat-message-user, .qw-review, pre, code, [role='dialog']")) return null;
+    var info = promptInfo(card), kids = card.children;
+    if (!info || info.kind !== "permission" || !info.tool || kids.length < 2) return null;
+    // The native header and final action row are siblings; model text and tool results never qualify as action cards.
+    var head = kids[0], acts = kids[kids.length - 1];
+    if (!hasLabel(enText(head).replace(/\s+/g, " "), "Allow use of") ||
+        !acts.classList.contains("flex") || !acts.classList.contains("items-center")) return null;
+    var bs = acts.querySelectorAll("button"), allow = null, deny = null, an = 0, dn = 0;
+    for (var i = 0; i < bs.length; i++) {
+      if (bypassExact(bs[i], "Allow once")) { allow = bs[i]; an++; }
+      if (bypassExact(bs[i], "Deny")) { deny = bs[i]; dn++; }
+    }
+    if (an !== 1 || dn !== 1 || allow.disabled || deny.disabled ||
+        allow.getAttribute("aria-disabled") === "true" || deny.getAttribute("aria-disabled") === "true") return null;
+    return { allow: allow, info: info };
+  }
+  function bypassReviewReady(card, info) {
+    var st = card.__qwRv, r = st && st.r, s = st && st.srv;
+    if (!st || st.card !== card || !st.good || st.busy || !st.bypassCurrent ||
+        st.bypassConv !== route().id || st.server !== (info.server || "") ||
+        !r || r.status !== "ok" || !r.args || !s || s.state !== "ok" || s.inflight) return false;
+    var tok = rvToken(r.args), review = s.review;
+    return !!(tok && s.tok === tok && typeof review === "string" && review.trim() &&
+      typeof s.expAt === "number" && isFinite(s.expAt) && s.expAt > Date.now() &&
+      !rvModelDiffers(r.args.review, review));
+  }
+  function bypassCard(card) {
+    if (!bypassState().active) return false;
+    var hit = bypassControls(card);
+    if (!hit || bypassButtons.has(hit.allow)) return false;
+    if (hit.info.tool === CONFIRM_TOOL && !bypassReviewReady(card, hit.info)) return false;
+    // Recheck immediately before the native handler runs; neither allowlists nor server-side execution gates are changed.
+    if (!bypassState().active || !card.isConnected) return false;
+    bypassButtons.add(hit.allow);
+    bypassClicked.add(card);
+    hit.allow.click();
+    return true;
+  }
+  function bypassScan() {
+    if (!bypassState().active) return;
+    var cs = document.querySelectorAll(PROMPT_SEL);
+    for (var i = 0; i < cs.length; i++) bypassCard(cs[i]);
+  }
+  function makeBypassChip() {
+    var c = b2El("button", "qw-bypass");
+    c.type = "button";
+    var icon = el("span", "qw-bypass-icon");
+    icon.innerHTML = xIcon("review");
+    var label = el("span", "qw-bypass-label"), state = el("span", "qw-bypass-state");
+    c.appendChild(icon); c.appendChild(label); c.appendChild(state);
+    c.addEventListener("click", function (e) { e.preventDefault(); setBypass(!bypassState().on); });
+    return c;
+  }
+  function syncBypass(r) {
+    var f = composerForm(), tb = composerToolbar(), grp = tb && tb.querySelector(":scope > .mr-auto");
+    if (!f || !grp || (r.name !== "start" && r.name !== "chat")) {
+      if (bypassChip) detach(bypassChip);
+      return;
+    }
+    if (!bypassChip) bypassChip = makeBypassChip();
+    if (planChip && planChip.parentNode === grp) {
+      if (planChip.nextElementSibling !== bypassChip) planChip.after(bypassChip);
+    } else if (bypassChip.parentNode !== grp) grp.appendChild(bypassChip);
+    var s = bypassState(), state = s.paused ? "PAUSED" : s.on ? "ON" : "OFF";
+    var title = !s.ready ? "Waiting for project information before enabling bypass permissions." : s.paused ? BYPASS_PLAN_TIP : BYPASS_TIP;
+    bypassChip.disabled = !s.ready;
+    setAt(bypassChip, "aria-pressed", s.on ? "true" : "false");
+    setAt(bypassChip, "data-state", state.toLowerCase());
+    setAt(bypassChip, "title", A(title));
+    setAt(bypassChip, "aria-label", A("Bypass permissions: " + state));
+    setTxt(bypassChip.children[1], L("Bypass permissions: " + state));
+    // Always visible even when the narrow composer hides the longer label.
+    setTxt(bypassChip.children[2], state === "PAUSED" ? "Ⅱ" : state);
+  }
+  function bypassRequest(input, init) {
+    var u = typeof input === "string" ? input : input && typeof input.url === "string" ? input.url : input && input.href ? String(input.href) : "";
+    var url;
+    try { url = new URL(u, location.href); } catch (e) { return null; }
+    if (!u || url.origin !== location.origin || url.pathname !== "/v1/chat/completions") return null;
+    var isReq = typeof Request === "function" && input instanceof Request;
+    var method = String(init && init.method !== undefined ? init.method : isReq ? input.method : "GET").toUpperCase();
+    if (method !== "POST") return null;
+    var h = new Headers(init && init.headers !== undefined ? init.headers : isReq ? input.headers : undefined);
+    // Plan mode has precedence, including an explicitly supplied plan header and the conversation selected by WebUI.
+    var on = bypassState().active && h.get(PLAN_HEADER) !== "1" && !planFor(planConv(h.get("X-Conversation-Id")));
+    if (on) h.set(BYPASS_HEADER, "1");
+    else if (h.has(BYPASS_HEADER)) h.delete(BYPASS_HEADER);
+    else return null;
+    return [input, Object.assign({}, init || {}, { headers: h })];
+  }
+  var bypassFetch = window.fetch;
+  if (typeof bypassFetch === "function") {
+    window.fetch = function (input, init) {
+      var p = null;
+      try { p = bypassRequest(input, init); } catch (e) { p = null; }
+      return p ? bypassFetch.call(window, p[0], p[1]) : bypassFetch.apply(window, arguments);
+    };
+  }
+
+  // Native command requests need the owning chat as well as generation requests.
+  // Preserve body, signal and the existing approval UI; plan mode remains a gate.
+  function agentCommandRequest(input, init) {
+    var u = typeof input === "string" ? input : input && input.url ? input.url : "", url;
+    try { url = new URL(u, location.href); } catch (e) { return null; }
+    if (url.origin !== location.origin || url.pathname !== "/tools") return null;
+    var isReq = typeof Request === "function" && input instanceof Request;
+    var method = String(init && init.method !== undefined ? init.method : isReq ? input.method : "GET").toUpperCase();
+    if (method !== "POST") return null;
+    var r = route(), h = new Headers(init && init.headers !== undefined ? init.headers : isReq ? input.headers : undefined);
+    if (!h.get("X-Conversation-Id") && r.name === "chat" && r.id) h.set("X-Conversation-Id", r.id);
+    if (planCurrent()) h.set(PLAN_HEADER, "1");
+    return [input, Object.assign({}, init || {}, { headers: h })];
+  }
+  var agentCommandFetch = window.fetch;
+  if (typeof agentCommandFetch === "function") {
+    window.fetch = function (input, init) {
+      var p = null;
+      try { p = agentCommandRequest(input, init); } catch (e) { p = null; }
+      return p ? agentCommandFetch.call(window, p[0], p[1]) : agentCommandFetch.apply(window, arguments);
+    };
   }
 
   /* ---- 2) ไมค์: MediaRecorder → POST /_qwen/stt (hub ส่งต่อ 127.0.0.1:8795 พร้อมโทเค็น) → ใส่ข้อความที่เคอร์เซอร์ ------ */
@@ -5395,6 +5740,8 @@
   /* ---- รวม: เรียกจาก extrasPass() ทุกรอบ ---------------------------------------------------------------- */
   function b2bPass(r, st) {
     try { syncPlan(r, st); } catch (e) {}
+    try { syncBypass(r); bypassScan(); } catch (e) {}
+    try { syncAutoContinue(r); autoContinueScan(); } catch (e) {}
     try { syncMic(r); } catch (e) {}
     if (AT.open && (r.name !== "start" && r.name !== "chat")) atClose();
   }
@@ -5402,6 +5749,18 @@
   // plan() → {on, pendingNew, count} · setPlan(true|false|ไม่ส่ง=สลับ) → boolean
   window.qwenEnhance.plan = function () { return { on: planCurrent(), pendingNew: !!planNew, count: Object.keys(planIds).length }; };
   window.qwenEnhance.setPlan = function (on) { return setPlan(on == null ? !planCurrent() : !!on); };
+  // bypassPermissions() reads state; bypassPermissions(true|false) saves it for this origin and project.
+  window.qwenEnhance.bypassPermissions = function (on) {
+    if (on !== undefined) setBypass(!!on);
+    return bypassState();
+  };
+  window.qwenEnhance.setBypassPermissions = function (on) {
+    return setBypass(on == null ? !bypassState().on : !!on);
+  };
+  window.qwenEnhance.autoContinue = function (on) {
+    if (on !== undefined) setAutoContinue(!!on);
+    return autoContinueState();
+  };
   // dictation() → {state, supported, error} · startDictation()/stopDictation()/cancelDictation()
   window.qwenEnhance.dictation = function () { return { state: MIC.state, supported: micSupported(), error: MIC.err, service: sttState() }; };
   window.qwenEnhance.startDictation = function () { micStart(); return MIC.state !== "idle"; };
@@ -5439,7 +5798,8 @@
     "Earlier part of this chat summarized ({n} turns)": "สรุปช่วงต้นของบทสนทนาแล้ว ({n} รอบ)",
     "This chat got longer than the model can hold at once, so the middle part ({n} turns) was summarized automatically. Qwen still sees your first message, the summary and the latest turns. Every message is still here on this page.":
       "บทสนทนานี้ยาวเกินกว่าที่โมเดลจำได้ในครั้งเดียว ระบบจึงสรุปช่วงกลาง ({n} รอบ) ให้อัตโนมัติ Qwen ยังเห็นข้อความแรก บทสรุป และรอบล่าสุด ส่วนข้อความทั้งหมดยังอยู่ครบในหน้านี้",
-    "The earlier part of this chat was summarized to fit the model's memory": "สรุปช่วงต้นของบทสนทนาแล้ว เพื่อให้พอดีกับหน่วยความจำของโมเดล"
+    "The earlier part of this chat was summarized to fit the model's memory": "สรุปช่วงต้นของบทสนทนาแล้ว เพื่อให้พอดีกับหน่วยความจำของโมเดล",
+    "Recovered an incomplete tool record so this chat can continue. Your saved messages are preserved.": "กู้ประวัติเรียกเครื่องมือที่ไม่สมบูรณ์แล้ว เพื่อให้แชตคุยต่อได้ ข้อความที่บันทึกไว้ยังอยู่ครบ"
   };
   // พจนานุกรมแยก (เหมือน TH_B2B): ไม่ใส่รวมใน TH ของตัวแปล ป้ายของ WebUI ที่บังเอิญตรงคำจะได้ไม่เพี้ยน
   (function () { for (var k in TH_B3) if (hasOwn(TH_B3, k)) TH_B3[k] = glue(TH_B3[k]); })();
@@ -5449,6 +5809,7 @@
     '<path d="M4.5 12h15"/>';
   XICON.info = '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".9" fill="currentColor" stroke="none"/>';
   var B3C_KEY = "qwen-compact", B3C_MAX = 300, B3C_HDR = "X-Qwen-Compacted";
+  var b3hSeen = {};
   var b3cState = b3cLoad(), b3cEl = null, b3cBtn = null, b3cTxt = null, b3cTip = null, b3cPinned = false, b3cHoverT = 0;
   // อ่านอย่างระวัง: ค่าใน localStorage อาจถูกแก้/เสีย — รับเฉพาะ id สั้นๆ กับจำนวนรอบที่เป็นเลขบวก
   function b3cLoad() {
@@ -5492,6 +5853,14 @@
   // คำขอที่ไม่มี id (pre-encode ของ WebUI) ตั้งค่าให้แชตที่เปิดอยู่ได้ แต่ลบไม่ได้ — มันไม่ได้บอกว่าแชตนั้นสั้นลง
   function b3cNote(conv, res) {
     if (!res || !res.ok || !res.headers || typeof res.headers.get !== "function") return;
+    // Read only the recovery count; never consume or clone the response stream.
+    if (conv && b3cTurns(res.headers.get("X-Qwen-History-Recovered")) > 0 && !b3hSeen[conv]) {
+      b3hSeen[conv] = true;
+      var active = route();
+      if (active.name === "chat" && active.id === conv) {
+        b2Say(A3("Recovered an incomplete tool record so this chat can continue. Your saved messages are preserved."));
+      }
+    }
     var n = b3cTurns(res.headers.get(B3C_HDR)), id = conv || "", r = route();
     if (!id && n > 0 && r.name === "chat" && r.id) id = r.id;
     if (!id) return;

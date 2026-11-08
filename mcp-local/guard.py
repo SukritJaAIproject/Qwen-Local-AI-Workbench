@@ -260,6 +260,11 @@ WRITE_PROTECTED = [
     # ใต้ stt\models) — แก้โค้ด/วางโมเดลปลอมได้ = โค้ดรันถาวรในโปรเซสที่ถือ token และได้ยินเสียงผู้ใช้ จึงห้ามแม้มี confirm
     r"C:\LLM\stt", r"C:\LLM\stt\**",
     # [/voice]
+    # [gpumon] batch: เซอร์วิส monitor GPU ที่ launcher auto-start (บล็อก 1c ของ start-qwen38.ps1)
+    # และ jobs.py โหลด C:\LLM\secrets_util.py (ถือ token) ผ่าน exec_module — เขียนโค้ด/.ps1 ในโฟลเดอร์นี้
+    # ได้ = โค้ดรันถาวรในโปรเซสที่ถือ token จึงห้ามแม้มี confirm (เหมือน stt/llama.cpp)
+    r"C:\LLM\gpumon", r"C:\LLM\gpumon\**",
+    # [/gpumon]
     # โปรไฟล์เบราว์เซอร์แยก: เบราว์เซอร์เขียนเอง เครื่องมือไฟล์ห้ามยัด extension/ค่าตั้งเข้าไป
     r"C:\LLM\browser-profile\**",
     # --- จุดที่ทำให้โค้ดรันเองตอนเปิดเครื่อง/เปิด shell (persistence) ---
