@@ -44,6 +44,8 @@ models-preset.ini
 models-preset.user.ini
 ui-config.json
 mcp-local/config.json
+mcp-local/python-sandbox.json
+mcp-local/python-sandbox/image-id.txt
 mcp-websearch/config.json
 skills/enabled.json
 *.state.json
@@ -63,6 +65,7 @@ skills/enabled.json
 /llama.cpp-*
 /tools/
 /dl/
+mcp-websearch/vendor/
 *.exe
 *.dll
 *.msi

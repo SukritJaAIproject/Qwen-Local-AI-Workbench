@@ -39,7 +39,7 @@ import threading
 import time
 
 PREFIX = "@@QWK@@ "
-CREATE_NO_WINDOW = 0x08000000
+CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 
 # เพดานในฝั่งนี้กว้างกว่าที่ MCP แสดงจริง (ฝั่ง MCP ตัดอีกรอบ) — แค่กัน RAM บวมจากโค้ดที่พิมพ์ไม่หยุด
 CAP_STDOUT = 400_000
@@ -95,6 +95,8 @@ savefig.dpi: 144
 savefig.facecolor: white
 savefig.bbox: tight
 """
+if os.name != 'nt':
+    MPL_RC = MPL_RC.replace('Leelawadee UI, Tahoma,', 'Noto Sans Thai, Noto Sans,')
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,120}$")

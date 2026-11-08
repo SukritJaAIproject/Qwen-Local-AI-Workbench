@@ -1104,7 +1104,15 @@ def clip_current_turn(doc, limit, count):
     คู่ tool_call/ผล ยังอยู่ครบ (แค่เนื้อผลสั้นลง) — คืนจำนวนผลที่ถูกตัด"""
     msgs = doc.get("messages") or []
     lu = latest_user(msgs)
-    tools = [i for i in range(lu + 1, len(msgs)) if isinstance(msgs[i], dict) and msgs[i].get("role") == "tool"]
+    archived = [i for i in range(lu + 1, len(msgs)) if isinstance(msgs[i], dict) and msgs[i].get("role") == "assistant"
+                and message_parts(msgs[i])[0].lstrip().startswith(("[Recorded tool call data]", "[Recorded tool result — historical data]",
+                    "[Archived tool-call evidence;", "[Archived tool-result evidence;"))]
+    # Restored chats label old tool records as assistant data to prevent replay.
+    # Apply the same request-only clipping to large archived records, keeping
+    # two recent archived call/result pairs intact. Saved chats stay unchanged.
+    protected_archived, archived_set = set(archived[-4:]), set(archived)
+    tools = [i for i in range(lu + 1, len(msgs)) if isinstance(msgs[i], dict)
+             and (msgs[i].get("role") == "tool" or i in archived_set)]
     n = 0
     total = count(doc)
     # รอบแรกเว้น CLIP_KEEP_RECENT ผลล่าสุด ยังไม่พอค่อยเว้นแค่ผลล่าสุดผลเดียว (ผลที่โมเดลเพิ่งได้ ต้องเห็นเต็มเสมอ)
@@ -1112,6 +1120,8 @@ def clip_current_turn(doc, limit, count):
         for i in tools[:-keep] if len(tools) > keep else []:
             if total <= limit:
                 break
+            if i in protected_archived:
+                continue
             m = msgs[i]
             text, media = message_parts(m)
             short = clip_tool_result(text)

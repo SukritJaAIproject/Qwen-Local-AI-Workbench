@@ -264,7 +264,7 @@ LIVE_DISKS = [{"drive": "C:", "present": True, "free_gb": 26.2, "total_gb": 474.
               {"drive": "E:", "present": True, "free_gb": 11.5, "total_gb": 229.2}]
 
 
-def real_doctor(tmp, lang="th", sick=True, raw=False, disks=None):
+def real_doctor(tmp, lang="th", sick=True, raw=False, disks=None, docker=None):
     """รายงานจาก hub_doctor ตัวจริง: _build() ของผลตรวจที่จัดเตรียมไว้ (ไม่รันตัวตรวจที่ถามพอร์ต/nvidia-smi) + localize()
     ไฟล์คีย์/ผลเทสต์เป็นไฟล์ชั่วคราว — ค่า SECRET อยู่ในไฟล์คีย์และใน log เพื่อตรวจว่าไม่หลุดถึงหน้า
     disks = แทนรายการดิสก์ของผลตรวจ (ค่าเริ่มต้น: C: 8.4 GB ตอน sick / 120.5 GB ตอนปกติ)"""
@@ -309,7 +309,7 @@ def real_doctor(tmp, lang="th", sick=True, raw=False, disks=None):
             {"drive": "C:", "present": True, "free_gb": 8.4 if sick else 120.5, "total_gb": 476.3},
             {"drive": "D:", "present": True, "free_gb": 402.7, "total_gb": 931.5},
             {"drive": "E:", "present": True, "free_gb": 1210.4, "total_gb": 1863.0}],
-        "docker": {"usable": False, "reason_th": "ติดตั้ง Docker Desktop ไว้แต่ engine ไม่ทำงาน",
+        "docker": dict(docker) if docker is not None else {"usable": False, "reason_th": "ติดตั้ง Docker Desktop ไว้แต่ engine ไม่ทำงาน",
                    "reason_en": "Docker Desktop is installed but its engine is not running"},
     }
     rep = mod.Doctor(cfg)._build(res, [])
@@ -670,6 +670,28 @@ out({n: brief(N), w: brief(W), rep: b3Report(N, function (k) { return k; }, 'th'
             self.assertNotIn(SECRET, blob)
         self.assertIn("- local_token — b3_doc_present", r["rep"])
 
+    def test_docker_not_used_when_python_sandbox_off(self):
+        """[2026-10-21] hub_doctor ส่ง docker.off (ปิด Python sandbox) → แถว Docker = "ไม่ได้ใช้" ไม่ใช่ "ใช้ไม่ได้",
+        ไม่มีคำแนะนำ Docker และรายงานที่คัดลอกเขียนว่าไม่ได้ใช้"""
+        off = {"usable": False, "off": True, "reason_th": "ปิด Python sandbox ไว้ · โค้ด Python รันบนเครื่องหลังผู้ใช้กดอนุญาต",
+               "reason_en": "the Python sandbox is off · Python code runs on this PC after you approve it"}
+        with tempfile.TemporaryDirectory(prefix="b3ui-doc-") as tmp:
+            th, en = real_doctor(tmp, "th", sick=False, docker=off), real_doctor(tmp, "en", sick=False, docker=off)
+        r = self.node(r"""
+var N = b3Doctor(%s, 'th'), E = b3Doctor(%s, 'en');
+var u = {ms: '%%s ms', s: '%%s s', min: '%%s min', h: '%%s h'};
+out({docker: N.docker, edocker: E.docker, fixes: N.fixes.map(function (f) { return f.id; }), tips: N.tips,
+  rep: b3Report(N, function (k) { return k; }, 'th', u)});
+""" % (json.dumps(th), json.dumps(en)))
+        self.assertEqual((r["docker"]["ok"], r["docker"]["off"]), (False, True))
+        self.assertIn("sandbox", r["edocker"]["reason"])
+        self.assertTrue(THAI.search(r["docker"]["reason"]))
+        self.assertNotIn("docker", r["fixes"])
+        self.assertIn("- Docker — b3_doc_notused (", r["rep"])
+        self.assertNotIn("b3_doc_unusable", r["rep"])
+        self.assertEqual((parts.STRINGS_UI["th"]["b3_doc_notused"], parts.STRINGS_UI["en"]["b3_doc_notused"]),
+                         ("ไม่ได้ใช้", "Not used"))
+
     def test_meter_levels_follow_hub(self):
         """สีของแถบดิสก์/commit = คำตัดสินของ hub ไม่ใช่ % ที่ว่างที่หน้าคิดเอง (integ b3 2026-10-06: C: 26.2 GB (5.5%) กับ
         E: 11.5 GB ขึ้นแดง "เหลือน้อย" ทั้งที่ hub_doctor ไม่มีคำแนะนำเรื่องดิสก์และสรุป overall=ok)"""
@@ -791,7 +813,7 @@ class EnhanceTests(unittest.TestCase):
         blk = blk[:blk.index("\n  };\n") + 5]
         th = run_node(blk.replace("var TH_B3 =", "const TH_B3 =", 1) + "\nconsole.log(JSON.stringify(TH_B3));")
         used = set(re.findall(r'\b(?:L3|A3)\(\s*"([^"]+)"\s*\)', self.sec))
-        self.assertEqual(len(used), 3)
+        self.assertEqual(len(used), 4)
         self.assertEqual(sorted(used), sorted(th))
         for en, tx in th.items():
             self.assertRegex(tx, THAI, en)
@@ -799,6 +821,37 @@ class EnhanceTests(unittest.TestCase):
                 self.assertIn(ph, tx, (en, ph))
         # ถ้อยคำตามสัญญา D4: "สรุปช่วงต้นของบทสนทนาแล้ว (n รอบ)"
         self.assertEqual(th["Earlier part of this chat summarized ({n} turns)"], "สรุปช่วงต้นของบทสนทนาแล้ว ({n} รอบ)")
+
+    @unittest.skipUnless(HAVE_NODE, "ไม่มี node")
+    def test_recovery_notice_only_for_successful_current_chat_once(self):
+        fns = "\n".join(js_function(self.sec, n) for n in ("b3cTurns", "b3cNote"))
+        code = r"""
+var B3C_HDR = "X-Qwen-Compacted", b3cState = {}, b3hSeen = {}, said = [];
+var current = {name: "chat", id: "c1"};
+function route() { return current; }
+function b2Say(m) { said.push(m); }
+function A3(s) { return s; }
+function b3cSave() {}
+function schedule() {}
+function response(value, ok) {
+  return {ok: ok !== false, headers: new Headers({"X-Qwen-History-Recovered": value}),
+    clone: function () { throw new Error("response must not be cloned"); },
+    text: function () { throw new Error("response body must not be read"); }};
+}
+""" + fns + r"""
+b3cNote("c1", response("1", false));
+b3cNote("c1", response("invalid"));
+b3cNote("", response("1"));
+b3cNote("other", response("1"));
+var before = said.length;
+b3cNote("c1", response("1"));
+b3cNote("c1", response("2"));
+console.log(JSON.stringify({before: before, said: said}));
+"""
+        result = run_node(code)
+        self.assertEqual(result["before"], 0)
+        self.assertEqual(result["said"], [
+            "Recovered an incomplete tool record so this chat can continue. Your saved messages are preserved."])
 
     @unittest.skipUnless(HAVE_NODE, "ไม่มี node")
     def test_pure_functions(self):

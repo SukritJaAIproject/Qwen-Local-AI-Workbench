@@ -11,6 +11,7 @@
 import io
 import json
 import os
+import re
 import shutil
 import struct
 import sys
@@ -29,6 +30,27 @@ IDCODER = "Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL"
 IDOSS = "gpt-oss-20b-MXFP4"
 ID4B = "Qwen3-4B-Instruct-2507-Q4_K_M"
 MMPROJ = r"C:\LLM\models\mmproj-Qwen3.8-27B-F16.gguf"
+
+
+def router_ids(folder):
+    """id ของโมเดลแบบที่ router เห็นใน --models-dir: ชื่อไฟล์ .gguf ไม่รวม mmproj*/mtp-* และ shard ที่ 2..N
+
+    คิดจากรายชื่อไฟล์เอง (ไม่เรียก gp.scan_models ที่เป็นตัวที่ถูกทดสอบ) — โฟลเดอร์โมเดลจริงมีโมเดลเพิ่มได้เรื่อยๆ
+    เทสต์ที่อ่านโฟลเดอร์จริงจึงเทียบกับไฟล์ที่มีตอนรัน แทนรายชื่อตายตัว 4 ตัว (เดิมแดงทันทีที่เพิ่มโมเดล)
+    """
+    out = set()
+    for name in os.listdir(folder):
+        low = name.lower()
+        if not low.endswith(".gguf") or low.startswith(("mmproj", "mtp-")):
+            continue
+        if not os.path.isfile(os.path.join(folder, name)):
+            continue
+        shard = re.match(r"^.+-(\d{5})-of-\d{5}$", name[:-5])
+        if shard and int(shard.group(1)) != 1:
+            continue
+        out.add(name[:-5])
+    return out
+
 
 RTX1000 = ("NVIDIA RTX 1000 Ada Generation Laptop GPU", 6140)
 RTX4090 = ("NVIDIA GeForce RTX 4090", 24564)
@@ -504,7 +526,9 @@ class RealModelsTests(unittest.TestCase):
         w = []
         models = {m.id: m for m in gp.scan_models(REAL_MODELS, w)}
         self.assertEqual(w, [])
-        self.assertEqual(set(models), {ID27, IDCODER, IDOSS, ID4B})   # mmproj, mtp ไม่นับ
+        # mmproj, mtp ไม่นับ — โฟลเดอร์จริงมีโมเดลอื่นเพิ่มได้ (เทียบกับไฟล์ที่มีตอนรัน) แต่ 4 ตัวนี้ต้องอยู่ครบ
+        self.assertEqual(set(models), router_ids(REAL_MODELS))
+        self.assertLessEqual({ID27, IDCODER, IDOSS, ID4B}, set(models))
         want = {ID27: 34816, IDCODER: 52224, IDOSS: 13056, ID4B: 78336}
         for mid, v in want.items():
             self.assertEqual(models[mid].kv_bytes_per_token(), v, mid)

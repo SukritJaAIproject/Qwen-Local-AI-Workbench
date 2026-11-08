@@ -142,6 +142,20 @@ a{color:inherit;text-decoration:none}
 .snip-t{font-size:var(--qw-fs-xs);color:var(--qw-text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 mark{background:color-mix(in srgb,var(--qw-accent) 30%,transparent);color:var(--qw-text);border-radius:3px;padding:0 1px}
 .empty{padding:6px 10px;font-size:var(--qw-fs-sm);color:var(--qw-text-4)}
+/* แชตอยู่ใต้โปรเจกต์ปัจจุบัน: ปุ่ม + เห็นได้เสมอ และชื่อยาวไม่ทับตัวควบคุม */
+.project-row .item.proj{padding-left:31px;padding-right:63px}
+.project-row:hover .item.proj,.project-row:focus-within .item.proj{padding-right:63px}
+.project-toggle,.project-new{position:absolute;top:2px;width:28px;height:28px;display:inline-flex;
+  align-items:center;justify-content:center;border-radius:var(--qw-r-xs);color:var(--qw-text-3)}
+.project-toggle{left:2px}
+.project-toggle .ic{transform:rotate(-90deg);transition:transform var(--qw-dur)}
+.project-toggle[aria-expanded="true"] .ic{transform:none}
+.project-new{right:31px;color:var(--qw-text-2)}
+.project-toggle:hover,.project-new:hover{background:var(--qw-bg-hover);color:var(--qw-text)}
+.project-new:disabled{opacity:.45;cursor:wait}
+.project-body{margin:3px 0 8px 20px;padding-left:11px;border-left:1px solid var(--qw-border)}
+.project-body .rec{font-size:var(--qw-fs-sm)}
+.project-body .empty{white-space:normal;line-height:1.5}
 .newproj{padding:2px 0 4px}
 .newproj input{width:100%;height:34px;padding:0 10px;border:0;border-radius:var(--qw-r-sm);background:var(--qw-bg-elev);
   color:var(--qw-text);box-shadow:inset 0 0 0 1px var(--qw-border-focus),0 0 0 3px var(--qw-accent-soft);outline:none}
@@ -1446,6 +1460,8 @@ frame.addEventListener('load', function () {
     }
     /* หลังสลับภาษา: เติมข้อความที่พิมพ์ค้างคืน + คืนโฟกัส (ครั้งเดียว ตอน iframe โหลดครั้งแรก) */
     if (e && carryLeft) applyCarry(e);
+    /* + ของโปรเจกต์อื่นนำมาที่ origin ของโปรเจกต์นั้นก่อน แล้วค่อยสร้างแชตในฐานข้อมูลที่ถูกต้อง */
+    consumeProjectChatRequest(!!e);
   }, 100);
 });
 
@@ -1577,6 +1593,45 @@ function listConvs() {
       .sort(function (a, b) { return (b.lastModified || 0) - (a.lastModified || 0); });
   }).catch(function () { return null; });   // null = อ่านไม่ได้ครั้งนี้ (ถูกบล็อก/กำลังอัปเกรด) ≠ ไม่มีแชต
 }
+/* สร้างแชตที่ยังไม่มีข้อความได้ทันที ด้วย schema เดียวกับ llama UI รุ่นที่ใช้อยู่
+   root + system จำเป็น: เมื่อเปิดแชตที่มีอยู่แล้ว WebUI จะไม่สร้างสองรายการนี้ตอนส่งข้อความแรก */
+function projectChatRecords(name, now, ids, config, policy) {
+  var system = config && typeof config.systemMessage === 'string' ? config.systemMessage.trim() : '';
+  var c = { id: ids[0], name: name, lastModified: now, currNode: system ? ids[2] : ids[1] };
+  ['disabledTools', 'disabledToolCategories'].forEach(function (key) {
+    var values = policy && policy[key];
+    if (Array.isArray(values) && values.length) c[key] = values.filter(function (v) { return typeof v === 'string'; });
+  });
+  if (policy && ['default', 'off', 'low', 'medium', 'high', 'max'].indexOf(policy.reasoningEffort) >= 0) c.reasoningEffort = policy.reasoningEffort;
+  var root = { id: ids[1], convId: c.id, parent: null, children: system ? [ids[2]] : [],
+    content: '', role: 'system', type: 'root', timestamp: now, toolCalls: '' };
+  var messages = [root];
+  if (system) messages.push({ id: ids[2], convId: c.id, parent: root.id, children: [],
+    content: system, role: 'system', type: 'system', timestamp: now });
+  return { conversation: c, messages: messages };
+}
+function projectChatSettings() {
+  function read(key, fallback) {
+    try { var v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? fallback : v; }
+    catch (e) { return fallback; }
+  }
+  return { config: read('LlamaUi.config', {}), policy: {
+    disabledTools: read('LlamaUi.disabledToolKeys', []),
+    disabledToolCategories: read('LlamaUi.disabledToolCategories', []),
+    reasoningEffort: read('LlamaUi.reasoningEffortDefault', 'default')
+  } };
+}
+function saveProjectChat(name) {
+  var settings = projectChatSettings(), ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+  var record = projectChatRecords(name, Date.now(), ids, settings.config, settings.policy);
+  return withDB(function (db) {
+    if (!db.objectStoreNames.contains('conversations') || !db.objectStoreNames.contains('messages')) throw new Error('Chat storage is not ready');
+    var tx = db.transaction(['conversations', 'messages'], 'readwrite'), done = txDone(tx);
+    var requests = [reqP(tx.objectStore('conversations').add(record.conversation)), done];
+    record.messages.forEach(function (m) { requests.push(reqP(tx.objectStore('messages').add(m))); });
+    return Promise.all(requests).then(function () { return record.conversation; });
+  });
+}
 function renameConv(id, name) {
   return withDB(function (db) {
     var tx = db.transaction('conversations', 'readwrite'), st = tx.objectStore('conversations');
@@ -1590,7 +1645,16 @@ function renameConv(id, name) {
   });
 }
 function deleteConv(id) {
-  return withDB(function (db) {
+  /* Archive the saved copy explicitly before local deletion. Missing IDs from
+     browser cleanup/profile changes never stand in for this user action. */
+  var archivedRemotely = false;
+  function deletionMarker(on) { try { var w = $('#frame').contentWindow; if (w.qwenHistory) w.qwenHistory.markDeleting(id, on); } catch (e) {} }
+  deletionMarker(true);
+  return fetch('/_qwen/chats/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: id, archived: true }) }).then(function (r) {
+    if (!r.ok) throw new Error('Chat archive was not saved');
+    archivedRemotely = true;
+    return withDB(function (db) {
     var names = ['conversations', 'messages'].filter(function (s) { return db.objectStoreNames.contains(s); });
     var tx = db.transaction(names, 'readwrite'), done = txDone(tx);
     tx.objectStore('conversations').delete(id);
@@ -1612,6 +1676,12 @@ function deleteConv(id) {
       };
       cur.onerror = function () { no(cur.error); };
     }).then(function () { return done; });
+    });
+  }).catch(function (e) {
+    deletionMarker(false);
+    if (archivedRemotely) fetch('/_qwen/chats/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, archived: false }) }).catch(function () {});
+    throw e;
   }).then(function () {
     /* แถบแท็บของ WebUI จำ id ไว้ใน localStorage ต้องลบออกด้วย ไม่งั้นมันพยายามเปิดแชตที่ไม่มีแล้ว */
     try {
@@ -1692,20 +1762,25 @@ function recentRow(c, snip) {
 /* ---- รายการในแถบข้าง: จุดหยุด Tab เดียวต่อรายการ (roving tabindex) ----
    แชตมีได้หลายร้อยแถว ถ้าทุกลิงก์และทุก ⋯ อยู่ในลำดับ Tab ต้องกดหลายร้อยครั้งกว่าจะถึงช่องพิมพ์
    ลูกศรขึ้นลงเลื่อนแถว · → / Shift+F10 / ปุ่ม Menu เปิดตัวเลือกของแถว */
-function rowsOf(list) { return [].slice.call(list.querySelectorAll('.row')); }
+function listNodes(list, selector) {
+  return [].slice.call(list.querySelectorAll(selector)).filter(function (n) { return n.closest('[role="list"]') === list; });
+}
+function rowsOf(list) { return listNodes(list, '.row'); }
 function setRoving(list, link) {
-  var links = [].slice.call(list.querySelectorAll('a.item'));
+  var links = listNodes(list, 'a.item');
   if (!links.length) return;
-  if (!link || links.indexOf(link) < 0) link = list.querySelector('a.item.on') || links[0];
+  if (!link || links.indexOf(link) < 0) link = links.find(function (x) { return x.classList.contains('on'); }) || links[0];
   links.forEach(function (x) { setAttr(x, 'tabindex', x === link ? '0' : '-1'); });
 }
 /* จำว่าโฟกัสอยู่แถวไหนก่อนวาดรายการใหม่ แล้วคืนให้แถวเดิม (หรือแถวที่มาแทนที่ถ้าแถวนั้นถูกลบ)
    ไม่งั้นเปลี่ยนชื่อ/ลบแชตแล้วโฟกัสหล่นไป <body> ผู้ใช้คีย์บอร์ดต้องเริ่มจากต้นหน้า */
 function focusMemo(list) {
   var a = document.activeElement;
-  if (!a || !list.contains(a)) return null;
+  if (!a || !list.contains(a) || a.closest('[role="list"]') !== list) return null;
   var row = a.closest('.row');
-  return { key: row && row.getAttribute('data-key'), more: a.classList.contains('more'), idx: rowsOf(list).indexOf(row) };
+  return { key: row && row.getAttribute('data-key'), more: a.classList.contains('more'),
+    control: a.classList.contains('project-new') ? '.project-new' : a.classList.contains('project-toggle') ? '.project-toggle' : null,
+    idx: rowsOf(list).indexOf(row) };
 }
 function focusRestore(list, m) {
   if (!m) return;
@@ -1716,12 +1791,12 @@ function focusRestore(list, m) {
   if (!row) { var fb = [searchBtn, $('#newChatBtn'), $('#hdrNew')].filter(shown)[0]; if (fb) fb.focus(); return; }
   var link = row.querySelector('a.item');
   setRoving(list, link);
-  ((same && m.more && row.querySelector('.more')) || link).focus({ preventScroll: true });
+  ((same && m.control && row.querySelector(m.control)) || (same && m.more && row.querySelector('.more')) || link).focus({ preventScroll: true });
 }
 function rowKeys(list, e, openRowMenu) {
   var link = e.target.closest && e.target.closest('a.item');
-  if (!link || !list.contains(link)) return;
-  var links = [].slice.call(list.querySelectorAll('a.item')), i = links.indexOf(link), nx = null;
+  if (!link || !list.contains(link) || link.closest('[role="list"]') !== list) return;
+  var links = listNodes(list, 'a.item'), i = links.indexOf(link), nx = null;
   if (e.key === 'ArrowDown') nx = links[Math.min(links.length - 1, i + 1)];
   else if (e.key === 'ArrowUp') {
     if (i === 0 && list === recList && !searchWrap.hidden) { e.preventDefault(); qIn.focus(); return; }
@@ -1738,6 +1813,8 @@ function rowKeys(list, e, openRowMenu) {
   if (nx) { setRoving(list, nx); nx.focus(); }
 }
 function renderRecents() {
+  $('#secRecents').hidden = !body.classList.contains('searching');
+  renderProjectChats();
   var searching = body.classList.contains('searching') && QUERY;
   var rows = [];
   if (searching) {
@@ -1790,6 +1867,7 @@ function focusSearch() {
   body.classList.add('searching');
   searchBtn.hidden = true; searchWrap.hidden = false;
   $('#secProjects').hidden = true;
+  lastRecSig = ''; renderRecents();
   qIn.focus(); qIn.select();
 }
 function endSearch() {
@@ -2218,45 +2296,138 @@ $('#skipLink').addEventListener('click', function (e) {
 });
 
 /* ---------------------------------------------------------------- โปรเจกต์ในแถบข้าง */
-var projList = $('#projList'), lastProjSig = '';
+var projList = $('#projList'), lastProjSig = '', lastProjectChatSig = '', projectChatBusy = false;
+var projectChatRequested = false;
+try {
+  var newChatUrl = new URL(location.href);
+  projectChatRequested = newChatUrl.searchParams.get('newchat') === '1';
+  if (projectChatRequested) {
+    newChatUrl.searchParams.delete('newchat');
+    history.replaceState(null, '', newChatUrl.pathname + newChatUrl.search + newChatUrl.hash);
+  }
+} catch (e) {}
+function consumeProjectChatRequest(ready) {
+  if (!ready || !projectChatRequested) return false;
+  projectChatRequested = false;
+  setTimeout(function () { newProjectChat(PROJ.slug); }, 0);
+  return true;
+}
+function projectChatsExpanded() {
+  try { return localStorage.getItem('qwen-project-chats-collapsed:' + PROJ.slug) !== '1'; }
+  catch (e) { return true; }
+}
+function expandProjectChats(on) {
+  try { localStorage.setItem('qwen-project-chats-collapsed:' + PROJ.slug, on ? '0' : '1'); } catch (e) {}
+  lastProjSig = ''; renderProjects();
+}
+function renderProjectChats(savedMemo) {
+  var list = $('#projectChatList');
+  if (!list) return;
+  var rows = CONVS.slice(0, 300), sig = JSON.stringify([LANG, ROUTE.id, rows.map(function (c) { return [c.id, c.name]; })]);
+  if (sig === lastProjectChatSig && !savedMemo) return;
+  lastProjectChatSig = sig;
+  var memo = savedMemo || focusMemo(list);
+  if (!rows.length) list.replaceChildren(el('div', { class: 'empty', text: t('project_no_chats') }));
+  else list.replaceChildren.apply(list, rows.map(function (c) { return recentRow(c); }));
+  setRoving(list, null);
+  focusRestore(list, memo);
+}
+function newProjectChat(slug) {
+  var p = PROJECTS.find(function (x) { return x.slug === slug; });
+  if (!p) return Promise.resolve(false);
+  if (p.port !== ME) { location.assign(portUrl(p.port) + '?newchat=1'); return Promise.resolve(true); }
+  if (projectChatBusy) return Promise.resolve(false);
+  projectChatBusy = true;
+  closeMenu();
+  [].forEach.call(projList.querySelectorAll('.project-new'), function (b) { b.disabled = true; });
+  return openDialog({ title: fmt(t('project_new_chat_title'), p.name), body: t('project_new_chat_hint'),
+    input: '', okLabel: t('create_chat') }).then(function (name) {
+    if (name == null) return false;
+    name = name.trim().slice(0, 200) || tRaw('newchat');
+    return saveProjectChat(name).then(function (c) {
+      CONVS = [c].concat(CONVS.filter(function (v) { return v.id !== c.id; }));
+      expandProjectChats(true);
+      if (uiStale && !streaming() && !hasDraft()) reloadFrame('#/chat/' + encodeURIComponent(c.id));
+      openChat(c.id);
+      lastRecSig = ''; renderRecents();
+      setTimeout(function () { callEnh('focusComposer'); }, 150);
+      toast(t('project_chat_created'));
+      return c.id;
+    });
+  }).catch(function () { toast(t('project_chat_error'), true); return false; }).finally(function () {
+    projectChatBusy = false;
+    [].forEach.call(projList.querySelectorAll('.project-new'), function (b) { b.disabled = false; });
+  });
+}
 function renderProjects() {
-  var sig = JSON.stringify(PROJECTS.map(function (p) { return [p.slug, p.name, p.port]; }));
+  var sig = JSON.stringify([projectChatsExpanded(), PROJECTS.map(function (p) { return [p.slug, p.name, p.port]; })]);
   if (sig === lastProjSig) return;
   lastProjSig = sig;
-  var memo = focusMemo(projList);
+  var memo = focusMemo(projList), oldChats = $('#projectChatList'), chatMemo = oldChats && focusMemo(oldChats);
   projList.replaceChildren.apply(projList, PROJECTS.map(function (p) {
-    var cur = p.port === ME;
+    var cur = p.port === ME, expanded = cur && projectChatsExpanded();
     var a = el('a', {
       class: 'item proj' + (cur ? ' on' : ''), href: portUrl(p.port), target: '_top', tabindex: '-1',
       title: p.name, 'aria-current': cur ? 'page' : null, 'data-port': String(p.port), 'aria-describedby': 'rowKeysHint',
-      'aria-haspopup': cur ? 'dialog' : null
+      'aria-expanded': cur ? String(expanded) : null
     }, [el('span', { class: 'ib' }, [icon('folder')]), el('span', { class: 'lbl', text: p.name })]);
+    var toggle = el('button', { type: 'button', class: 'project-toggle', 'data-slug': p.slug,
+      'aria-label': fmt(t(expanded ? 'project_collapse_chats' : 'project_expand_chats'), p.name),
+      'aria-expanded': String(expanded), 'aria-controls': cur ? 'projectChatBody' : null }, [icon('chevron', 'ic-xs')]);
+    var add = el('button', { type: 'button', class: 'project-new', 'data-slug': p.slug,
+      'aria-label': fmt(t('project_new_chat_title'), p.name), 'data-tip': t('create_chat'), disabled: projectChatBusy }, [icon('plus', 'ic-sm')]);
     var more = el('button', {
       type: 'button', class: 'more', 'aria-label': t('proj_options') + ': ' + p.name, 'data-tip': t('proj_options'),
       'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-slug': p.slug, tabindex: '-1'
     }, [icon('more')]);
-    return el('div', { class: 'row', role: 'listitem', 'data-key': p.slug }, [a, more]);
+    var row = el('div', { class: 'row project-row', 'data-key': p.slug }, [a, toggle, add, more]);
+    var group = el('div', { class: 'project-group', role: 'listitem', 'data-slug': p.slug }, [row]);
+    if (cur) group.append(el('div', { id: 'projectChatBody', class: 'project-body', hidden: !expanded }, [
+      el('div', { id: 'projectChatList', class: 'list', role: 'list', 'aria-label': fmt(t('project_chats_label'), p.name) })
+    ]));
+    return group;
   }));
   setRoving(projList, null);
   focusRestore(projList, memo);
+  lastProjectChatSig = ''; renderProjectChats(chatMemo);
 }
 projList.addEventListener('click', function (e) {
+  var add = e.target.closest('.project-new');
+  if (add) { e.preventDefault(); newProjectChat(add.getAttribute('data-slug')); return; }
+  var toggle = e.target.closest('.project-toggle');
+  if (toggle) {
+    e.preventDefault();
+    var p = PROJECTS.find(function (x) { return x.slug === toggle.getAttribute('data-slug'); });
+    if (p && p.port === ME) expandProjectChats(!projectChatsExpanded());
+    else if (p) location.assign(portUrl(p.port));
+    return;
+  }
   var more = e.target.closest('.more');
-  if (more) { e.preventDefault(); projectMenu(more, more.getAttribute('data-slug')); return; }
+  if (more) {
+    e.preventDefault();
+    if (more.hasAttribute('data-id')) chatMenu(more, more.getAttribute('data-id'));
+    else projectMenu(more, more.getAttribute('data-slug'));
+    return;
+  }
+  var chat = e.target.closest('a.rec');
+  if (chat && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.button) { e.preventDefault(); openChat(chat.getAttribute('data-id')); return; }
   var a = e.target.closest('a.proj');
-  /* โปรเจกต์ปัจจุบัน: เปิดแผงโปรเจกต์แทนการโหลดหน้าเดิมซ้ำ */
-  if (a && a.classList.contains('on') && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); openPanel(); }
+  if (a && a.classList.contains('on') && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.button) { e.preventDefault(); expandProjectChats(!projectChatsExpanded()); }
 });
 projList.addEventListener('keydown', function (e) {
-  rowKeys(projList, e, function (more, link) { projectMenu(more, more.getAttribute('data-slug'), null, link); });
+  var list = e.target.closest('[role="list"]');
+  if (list && list.id === 'projectChatList') rowKeys(list, e, function (more, link) { chatMenu(more, more.getAttribute('data-id'), null, link); });
+  else rowKeys(projList, e, function (more, link) { projectMenu(more, more.getAttribute('data-slug'), null, link); });
 });
 projList.addEventListener('focusin', function (e) {
   var a = e.target.closest && e.target.closest('a.item');
-  if (a) setRoving(projList, a);
+  if (a) setRoving(a.closest('[role="list"]') || projList, a);
 });
 function projectMenu(anchor, slug, place, back) {
   var p = PROJECTS.find(function (x) { return x.slug === slug; });
   openMenu(anchor, [
+    { label: t('create_chat'), icon: 'plus', run: function () { newProjectChat(slug); } },
+    'sep',
     { label: t('rename_project'), icon: 'pencil', run: function () { renameProject(slug); } },
     PROJECTS.length > 1 ? { label: t('delete_project'), icon: 'trash', danger: true, run: function () { deleteProject(slug); } } : null
   ], place, { back: back, label: t('proj_options') + (p ? ': ' + p.name : '') });
@@ -2405,7 +2576,9 @@ $('#burger').addEventListener('click', function () { openDrawer(); setTimeout(fu
 $('#railRecents').addEventListener('click', function () {
   peek();
   /* ปุ่มนี้หายไปเมื่อแถบกาง — ย้ายโฟกัสไปแถวแรกของรายการ ไม่ปล่อยให้หล่นไป <body> */
-  var first = recList.querySelector('a.rec[tabindex="0"]') || recList.querySelector('a.rec');
+  if (!body.classList.contains('searching') && !projectChatsExpanded()) expandProjectChats(true);
+  var list = body.classList.contains('searching') ? recList : $('#projectChatList');
+  var first = list && (list.querySelector('a.rec[tabindex="0"]') || list.querySelector('a.rec'));
   (first || searchBtn).focus();
 });
 $('#railProj').addEventListener('click', function () { openPanel(); });
@@ -2543,7 +2716,9 @@ $('#acctBtn').addEventListener('click', function () {
     { label: t('manage_projects'), icon: 'grid', external: true, run: openManage },
     /* batch 3 (D4): สถิติการใช้งาน + ตรวจระบบ อยู่ในหน้าจัดการ (พอร์ต hub) — เปิดแท็บใหม่ที่แท็บนั้นเลย */
     { label: t('b3_menu_usage'), icon: 'chart', external: true, run: function () { openManage('usage'); } },
-    { label: t('b3_menu_doctor'), icon: 'pulse', external: true, run: function () { openManage('doctor'); } }
+    { label: t('b3_menu_doctor'), icon: 'pulse', external: true, run: function () { openManage('doctor'); } },
+    /* gpumon: มอนิเตอร์ GPU (บริการแยก พอร์ต 8796 อ่านอย่างเดียว) — เปิดแท็บใหม่ ส่งธีมไปด้วย */
+    { label: t('gpumon_menu'), icon: 'monitor', external: true, run: function () { var th = 'dark'; try { th = window.qwenBoot.resolvedTheme(); } catch (e) {} window.open('http://127.0.0.1:8796/?theme=' + th, '_blank', 'noopener'); } }
   ], place, { label: t('account_menu'), describedby: svc ? 'menuHead mhSvc' : 'menuHead', cls: g || svc ? 'wide' : '' });
 });
 /* batch 2a (B5): ก้อน "บริการ" ในเมนูบัญชี — ค่าจาก SVC (hub ตรวจทุก ~8 วินาที) ไม่ถามเพิ่มตอนเปิดเมนู
@@ -5329,6 +5504,7 @@ function exportChat(id, kind) {
 window.qwenShellApi = {
   version: '1',
   newChat: newChat,
+  newProjectChat: newProjectChat,
   openChat: openChat,
   focusSearch: focusSearch,
   toggleSidebar: toggleSidebar,
@@ -5397,6 +5573,8 @@ document.addEventListener('visibilitychange', function () {
 });
 })();
 </script>
+<!-- 2026-10-19: เบราว์เซอร์ในตัว (แผงขวา) — static/browser-panel.js คุยกับ /_qwen/browser/* ของพอร์ตนี้ -->
+<script src="/_qwen/static/browser-panel.js?v=__BP_VER__" defer></script>
 </body>
 </html>"""
 
@@ -6809,7 +6987,7 @@ function b3DocSoft(N) {
   /* hub_doctor ส่ง brave_key ทั้งในรายการไฟล์คีย์และแยกเดี่ยว — แสดงแถวเดียวพอ */
   var braveListed = N.keys.some(function (k) { return /brave/i.test(k.name); });
   if (N.brave != null && !braveListed) row(t('b3_doc_brave'), b3YesNo(N.brave ? t('b3_doc_present') : t('b3_doc_missing'), N.brave, true));
-  if (N.docker) row('Docker', b3YesNo((N.docker.ok ? t('b3_doc_usable') : t('b3_doc_unusable')) + (N.docker.reason ? ' — ' + N.docker.reason : ''), N.docker.ok, true));
+  if (N.docker) row('Docker', b3YesNo((N.docker.off ? t('b3_doc_notused') : N.docker.ok ? t('b3_doc_usable') : t('b3_doc_unusable')) + (N.docker.reason ? ' — ' + N.docker.reason : ''), N.docker.ok, true));
   row(t('b3_doc_tests'), N.tests ? b3TestsText(N.tests) : t('b3_doc_notests'));
   c.append(b3H2('dSwH', 'b3_doc_soft'), dl);
   return c;
@@ -6924,6 +7102,15 @@ STRINGS_UI = {
     "th": {
         "sidebar": "แถบข้าง",
         "newchat": "แชตใหม่",
+        "create_chat": "สร้างแชต",
+        "project_new_chat_title": "สร้างแชตใน %s",
+        "project_new_chat_hint": "ตั้งชื่อแชต หรือเว้นว่างเพื่อใช้ชื่อ แชตใหม่",
+        "project_chats_label": "แชตใน %s",
+        "project_expand_chats": "แสดงแชตใน %s",
+        "project_collapse_chats": "ซ่อนแชตใน %s",
+        "project_no_chats": "ยังไม่มีแชตในโปรเจกต์นี้ กด + เพื่อสร้างแชตได้เลย",
+        "project_chat_created": "สร้างแชตในโปรเจกต์แล้ว",
+        "project_chat_error": "สร้างแชตไม่ได้ โปรดลองอีกครั้ง",
         "searchchats": "ค้นหาแชต",
         "searchph": "ค้นหาชื่อหรือข้อความในแชต…",
         "searching": "กำลังค้นหา…",
@@ -7324,6 +7511,7 @@ STRINGS_UI = {
         # คีย์ขึ้นต้น b3_ ทั้งหมด (กันชนกับคีย์ที่ owner hub อาจเพิ่มใน STRINGS ของ hub.py — STRINGS_UI ทับคีย์ชื่อซ้ำ)
         "b3_menu_usage": "การใช้งาน",
         "b3_menu_doctor": "ตรวจระบบ",
+        "gpumon_menu": "มอนิเตอร์ GPU",
         "b3_tabs": "ส่วนของหน้า",
         "b3_tab_projects": "โปรเจกต์",
         "b3_tab_usage": "การใช้งาน",
@@ -7443,6 +7631,7 @@ STRINGS_UI = {
         "b3_doc_brave": "คีย์ Brave Search",
         "b3_doc_usable": "ใช้ได้",
         "b3_doc_unusable": "ใช้ไม่ได้",
+        "b3_doc_notused": "ไม่ได้ใช้",
         "b3_doc_tests": "ชุดทดสอบล่าสุด",
         "b3_doc_tests_v": "ผ่าน %1 · ข้าม %2 · ไม่ผ่าน %3",
         "b3_doc_notests": "ยังไม่มีบันทึกผล",
@@ -7476,6 +7665,15 @@ STRINGS_UI = {
     "en": {
         "sidebar": "Sidebar",
         "newchat": "New chat",
+        "create_chat": "Create chat",
+        "project_new_chat_title": "Create chat in %s",
+        "project_new_chat_hint": "Name this chat, or leave it blank to use New chat.",
+        "project_chats_label": "Chats in %s",
+        "project_expand_chats": "Show chats in %s",
+        "project_collapse_chats": "Hide chats in %s",
+        "project_no_chats": "No chats in this project yet. Use + to create one.",
+        "project_chat_created": "Chat created in project",
+        "project_chat_error": "Could not create chat. Please try again.",
         "searchchats": "Search chats",
         "searchph": "Search titles and messages…",
         "searching": "Searching…",
@@ -7868,6 +8066,7 @@ STRINGS_UI = {
         # ---- batch 3 (D4, owner ui): Usage / Doctor tabs on the manage page + links in the account menu
         "b3_menu_usage": "Usage",
         "b3_menu_doctor": "Doctor",
+        "gpumon_menu": "GPU monitor",
         "b3_tabs": "Page sections",
         "b3_tab_projects": "Projects",
         "b3_tab_usage": "Usage",
@@ -7987,6 +8186,7 @@ STRINGS_UI = {
         "b3_doc_brave": "Brave Search key",
         "b3_doc_usable": "Usable",
         "b3_doc_unusable": "Not usable",
+        "b3_doc_notused": "Not used",
         "b3_doc_tests": "Last test run",
         "b3_doc_tests_v": "%1 passed · %2 skipped · %3 failed",
         "b3_doc_notests": "No result recorded",
@@ -9165,6 +9365,7 @@ function b3Doctor(d, lang) {
   else if (b3Obj(dk)) {
     docker = { ok: b3Yes(b3Pick(dk, ['ok', 'usable', 'available', 'running'])),
       reason: b3Scrub(String(b3Pick(dk, ['reason', 'reason_' + lang, 'detail', 'error', 'message', 'reason_' + (lang === 'th' ? 'en' : 'th')]) || '')).slice(0, 200) };
+    if (dk.off === true) docker.off = true;   /* hub_doctor: ปิด Python sandbox = ไม่ได้ใช้ Docker (ไม่ใช่ "ใช้ไม่ได้") */
   }
   var br = b3Pick(d, ['brave_key', 'brave', 'brave_search']);
   var took = b3Pick(d, ['took_ms', 'elapsed_ms', 'ms']);
@@ -9260,7 +9461,7 @@ function b3Report(n, t, lang, u) {
   n.models.forEach(function (m) { L.push('- ' + m.name + (m.size != null ? ' — ' + b3Bytes(m.size) : '')); });
   n.keys.forEach(function (k) { L.push('- ' + (k.label || k.name) + ' — ' + (k.present ? yes : no)); });
   if (n.brave != null && !n.keys.some(function (k) { return /brave/i.test(k.name); })) L.push('- ' + t('b3_doc_brave') + ' — ' + (n.brave ? yes : no));
-  if (n.docker) L.push('- Docker — ' + (n.docker.ok ? t('b3_doc_usable') : t('b3_doc_unusable')) + (n.docker.reason ? ' (' + n.docker.reason + ')' : ''));
+  if (n.docker) L.push('- Docker — ' + (n.docker.off ? t('b3_doc_notused') : n.docker.ok ? t('b3_doc_usable') : t('b3_doc_unusable')) + (n.docker.reason ? ' (' + n.docker.reason + ')' : ''));
   if (n.tests) {
     var tx = n.tests.passed != null || n.tests.failed != null ? t('b3_doc_tests_v').replace('%1', String(n.tests.passed || 0))
       .replace('%2', String(n.tests.skipped || 0)).replace('%3', String((n.tests.failed || 0) + (n.tests.errors || 0))) : n.tests.text;

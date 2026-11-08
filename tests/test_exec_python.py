@@ -37,6 +37,7 @@ SENTINELS = {"QWEN_TEST_SENTINEL_SECRET": "sentinel-value-9f3a",
              "GH_TOKEN": "ghp_sentinel4444444444",
              "QWEN_PY_RUNTIME": RUNTIME}
 _SAVED_ENV = {}
+SENTINELS['QWEN_PY_SANDBOX'] = 'off'  # This suite verifies the host fallback confirmation gate.
 
 guard = C.import_local("guard")
 tools_python = C.import_local("tools_python")

@@ -6,7 +6,7 @@ this folder: `mcp-local/guard.py` blocks it for every tool, even after the user 
 | File | Created by | What it is |
 |---|---|---|
 | `local-services.token` | the launcher (`secrets_util.py --ensure`) on first start | 64 hex characters, one line, no BOM. The bearer token shared by the local services: llama-server router (`--api-key-file`), embedding server, both MCP servers, STT. The hub adds it to its own upstream requests and hands it to the chat page for MCP calls. Delete it to rotate; the launcher creates a new one and restarts what needs it. |
-| `brave-search.key` | you (optional) | Your Brave Search API key, one line. The web-search MCP reads it on every search, so no restart is needed. Without it, web search falls back to Wikipedia + DuckDuckGo instant answers. |
+| `brave-search.key` | you (optional) | Your Brave Search API key, one line. Used when `mcp-websearch/config.json` selects `brave` (or the limited `builtin` mode) without an `api_key`; the web-search MCP reads it on every search, so no restart is needed. The default provider (DDGS general search) needs no key. |
 
 Related secrets that live elsewhere:
 

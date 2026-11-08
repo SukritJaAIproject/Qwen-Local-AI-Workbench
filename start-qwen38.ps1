@@ -79,7 +79,12 @@
   ไฟล์แผน GPU: C:\LLM\models-preset.ini + gpu-profile.json เป็นของ router พอร์ตหลัก 8099 เท่านั้น
   (hub และ gpu_bench อ่านไฟล์นี้)  รันทดสอบด้วย -Port อื่นจะเก็บแยกที่ C:\LLM\logs\gpu-<port>\
 
-  ความปลอดภัย (2026-09-30)
+  Agent mode (default since 2026-10-08)
+    * Router launches default to --agent on every port: native host tools and MCP CORS proxy enabled.
+      Use -Agent:$false to disable them for a launch. Native tools are separate from protected MCP tools.
+      Loopback binding, API-key file, explicit CORS origins and no CORS credentials remain enabled.
+
+  ความปลอดภัย (2026-09-30; proxy removal applies when Agent is disabled)
     * บริการที่รันค้าง (MCP ×2, ตัวตั้งเวลา, Gateway, hub, llama-server) เปิดผ่าน WMI Win32_Process.Create
       ได้ environment มาตรฐานของผู้ใช้ ไม่ใช่ของโปรแกรมที่เรียกตัวเปิด (เชลล์ของเครื่องมือ/เอเจนต์เคยมีโทเคนติดมา
       แล้วส่งต่อถึง MCP ที่รันคำสั่งให้โมเดลได้) WMI ใช้ไม่ได้ = ถอยไป Start-Process หลังตัดตัวแปรลับออกจาก env
@@ -114,6 +119,9 @@ param(
     # ใช้ E-core ด้วยแล้วช้าลง เพราะทุกโทเคนต้องรอเธรดที่ช้าที่สุด
     [int]$Threads  = 6,
     [switch]$NoBrowser,
+    # Native llama-server agent mode is the default since 2026-10-08.
+    # Keep it on across shortcut/GPU restarts on every port; -Agent:$false explicitly opts out.
+    [switch]$Agent = $true,
     [switch]$Vision,
     [switch]$NoVision,
     [string]$Primary = '',
@@ -643,7 +651,11 @@ function Get-CorsOrigins {
 function Get-RouterInsecureReason([int]$RouterPid) {
     $cl = (Get-CimInstance Win32_Process -Filter "ProcessId=$RouterPid" -ErrorAction SilentlyContinue).CommandLine
     if (-not $cl) { return '' }        # อ่าน command line ไม่ได้ — ไม่รีสตาร์ตเพราะเดาเอา
-    if ($cl -match '--(ui|webui)-mcp-proxy(\s|$)' -or $cl -match '\s(-ag|--agent)(\s|$)') {
+    $hasAgent = $cl -match '\s(-ag|--agent)(\s|$)'
+    if ($Agent -and -not $hasAgent) {
+        return 'router ยังไม่ได้เปิดโหมด --agent ตามค่าของตัวเปิด'
+    }
+    if (-not $Agent -and ($cl -match '--(ui|webui)-mcp-proxy(\s|$)' -or $hasAgent)) {
         return 'router เปิด MCP CORS proxy (/cors-proxy) อยู่'
     }
     if ($cl -notmatch '--cors-origins\s' -or $cl -notmatch '--no-cors-credentials') {
@@ -673,10 +685,8 @@ function Get-RouterArgs([bool]$UsePreset, [string]$PresetPath) {
         '-fa', 'on'
         '--jinja'
         '--no-warmup'
-        # ไม่ใช้ --tools all อีกแล้ว เครื่องมือในตัวของ llama-server ไม่จำกัด path
-        # ทดสอบแล้วอ่าน .ssh และไฟล์ credential ได้ และรันคำสั่งทันทีโดยไม่ถาม
-        # ความสามารถเดิมย้ายไปที่ MCP "เครื่องนี้" (พอร์ต 8792) ซึ่งผ่านชั้นป้องกัน
-        # ไม่ใช้ --ui-mcp-proxy อีกแล้ว (ดู "ความปลอดภัย" หัวไฟล์) — /cors-proxy ตอบ 403 feature_disabled
+        # Native tools/proxy are enabled below only when agent mode is requested.
+        # They execute on this Windows host; existing project MCP tools still coexist.
         '--ui-config-file', $UiConfig
         # CORS: ค่าปริยาย (*) + credentials = สะท้อนทุก origin เว็บไหนก็อ่านคำตอบของ llama-server ได้
         # b10984 ส่งรายการนี้กลับทั้งก้อนเป็น Access-Control-Allow-Origin (ทดสอบบนพอร์ต 8199 แล้ว) ซึ่งเบราว์เซอร์
@@ -686,6 +696,7 @@ function Get-RouterArgs([bool]$UsePreset, [string]$PresetPath) {
         '--cors-origins', (Get-CorsOrigins)
         '--no-cors-credentials'
     )
+    if ($Agent) { $argv += '--agent' }
     # API key = ไฟล์โทเคนเดียวกับ MCP (ดู "ความปลอดภัย" หัวไฟล์) ส่งเป็น path เสมอ ห้ามใช้ --api-key <ค่า>:
     # command line ของ process ใครในเครื่องก็อ่านได้ และ router ส่ง argv ต่อให้โมเดลลูกด้วย
     # ไฟล์ใช้ไม่ได้ (ไม่มี / มี BOM) = เปิดแบบไม่มีคีย์ตามเดิม ดีกว่าเปิดแล้วทุกแชต 401
@@ -1419,6 +1430,12 @@ if ($pyx -and -not $NonInteractive) {
         $null = Start-CleanProcess $pyx @("$McpLocal\gateway.py", $GatewayPort) $McpLocal `
             "$LogDir\gateway.out.log" "$LogDir\gateway.err.log" $SvcEnv
     }
+    # gpumon: GPU logger + Thai monitor UI on 127.0.0.1:8796 (read-only). Lives in this 1c block so the
+    # -NonInteractive reruns (hub GPU apply / scheduler gpu_watch) never touch it. stop-qwen38 leaves it running.
+    if ((Test-Path -LiteralPath 'C:\LLM\gpumon\run_gpumon.py') -and -not (Test-Port 8796)) {
+        $null = Start-CleanProcess $pyx @('-X', 'utf8', 'C:\LLM\gpumon\run_gpumon.py', '--port', 8796) 'C:\LLM\gpumon' `
+            "$LogDir\gpumon.out.log" "$LogDir\gpumon.err.log" $SvcEnv
+    }
     Start-Sleep -Milliseconds 800
     Write-Host "  [1/4] ตัวตั้งเวลา + Gateway (พอร์ต $GatewayPort): พร้อม" -ForegroundColor Green
 }
@@ -1615,22 +1632,57 @@ if ($ready -and $NonInteractive) {
     # เปิดหน้าแชตเลย ไม่ต้องผ่านหน้าสร้างโปรเจกต์
     # hub สร้างโปรเจกต์ "ทั่วไป" ให้เองถ้ายังไม่มี จึงมีที่ให้พิมพ์ได้ทันทีเสมอ
     $chat = $url
-    if (Test-Port $HubPort) {
-        try {
-            $projects = (Invoke-RestMethod -Uri "http://127.0.0.1:$HubPort/api/projects" -TimeoutSec 5).projects
-            if ($projects -and $projects.Count -gt 0) { $chat = "http://127.0.0.1:$($projects[0].port)" }
-        } catch { }
+    # [fix 2026-11-07] เปิดผ่าน hub เสมอ ไม่ถอยไปหน้าแชตดิบ :8099 (ขึ้น "Access denied" เพราะ router ใช้ --api-key-file)
+    # หน้าแรกของ hub เด้งไปหน้าแชตของโปรเจกต์แรกเองและแนบ API key ให้ — ถามรายชื่อโปรเจกต์ได้ = เปิดพอร์ตโปรเจกต์ตรงๆ
+    # ไม่ผูกกับ Test-Port แล้ว: รอบ 2026-11-07 ตัวเปิดยังเปิด :8099 ทั้งที่ hub ฟังพอร์ตอยู่และตอบเบราว์เซอร์ได้ปกติ
+    # ผลทุกรอบจดลง C:\LLM\logs\launcher-hub-lookup.log (URL ที่เปิด, Get-NetTCPConnection เห็น hub ไหม, สาเหตุถ้าถามไม่ได้)
+    $hubUrl = "http://127.0.0.1:$HubPort"
+    $hubWhy = ''
+    try {
+        $hubListen = [bool](Get-NetTCPConnection -LocalPort $HubPort -State Listen -ErrorAction Stop)
+    } catch {
+        $hubListen = 'error: ' + $_.Exception.Message
     }
+    for ($attempt = 1; $attempt -le 5 -and $chat -eq $url; $attempt++) {
+        try {
+            $resp = Invoke-RestMethod -Uri "$hubUrl/api/projects" -TimeoutSec 5
+            $projects = $resp.projects
+            if ($projects -and $projects.Count -gt 0) {
+                $chat = "http://127.0.0.1:$($projects[0].port)"
+            } elseif ($resp -is [string]) {
+                # PS 5.1 คืนข้อความดิบแทนการโยน error เมื่อแปลง JSON ไม่ได้
+                $hubWhy = 'response not parsed as JSON: ' + $resp.Substring(0, [Math]::Min(200, $resp.Length))
+                break
+            } else {
+                $hubWhy = 'no projects in response'
+                break
+            }
+        } catch {
+            $hubWhy = $_.Exception.Message
+            if ($attempt -lt 5) { Start-Sleep -Seconds 1 }
+        }
+    }
+    if ($chat -eq $url) { $chat = $hubUrl }
+    try {
+        $line = '{0}  open={1}  hub-listen={2}' -f (Get-Date -Format 's'), $chat, $hubListen
+        if ($hubWhy) { $line += '  lookup: ' + $hubWhy }
+        Add-Content -LiteralPath (Join-Path $LogDir 'launcher-hub-lookup.log') -Value $line -Encoding UTF8
+    } catch { }
     Write-Host "  [4/4] พร้อมใช้งาน" -ForegroundColor Green
     Write-Host "        จัดการโปรเจกต์: http://127.0.0.1:$HubPort" -ForegroundColor DarkGray
     # หน้าแชตดิบที่ :8099 ต้องใส่ API key เอง (router เปิดด้วย --api-key-file) — หน้าเดียวกันผ่าน hub ไม่ต้อง (hub แนบให้)
-    if ($chat -ne $url) {
+    if ($chat -ne $url -and $chat -ne "http://127.0.0.1:$HubPort") {
         Write-Host "        แชตดิบไม่มีแถบโปรเจกต์: $chat/?ui=1" -ForegroundColor DarkGray
     } else {
         Write-Host "        แชตดิบไม่มีแถบโปรเจกต์: $url (ต้องใส่ API key = เนื้อหาไฟล์ $TokenFile)" -ForegroundColor DarkGray
     }
     Write-Host ''
-    Write-Host '  เครื่องมือที่เปิดให้โมเดล (28 อย่าง ผ่านชั้นป้องกันทั้งหมด):' -ForegroundColor DarkGray
+    if ($Agent) {
+        Write-Host '  --agent: เปิดเครื่องมือในตัว 7 อย่างบน Windows (อ่าน/เขียน/แก้ไฟล์ ค้นหา และรันคำสั่ง)' -ForegroundColor Green
+        Write-Host '  เครื่องมือในตัวทำงานนอกชั้นป้องกันของ MCP; เลือกใช้ได้ใน Tools > Server Tools' -ForegroundColor DarkGray
+        Write-Host ''
+    }
+    Write-Host '  เครื่องมือ MCP ที่เปิดให้โมเดล (28 อย่าง ผ่านชั้นป้องกันของ MCP):' -ForegroundColor DarkGray
     Write-Host '    ไฟล์   read_file, write_file, edit_file, list_dir, file_glob_search, grep_search, get_info' -ForegroundColor DarkGray
     Write-Host '    คำสั่ง exec_shell_command  (คำสั่งที่เปลี่ยนเครื่องต้องให้คุณยืนยันก่อน)' -ForegroundColor DarkGray
     Write-Host '    สื่อ   media_probe/trim/resize/compress/extract_audio/mute/to_gif/transcode' -ForegroundColor DarkGray
@@ -1638,7 +1690,7 @@ if ($ready -and $NonInteractive) {
     Write-Host '    ความจำ memory_remember/recall/forget/export, path_add/list/remove/resolve  (แยกตามโปรเจกต์)' -ForegroundColor DarkGray
     Write-Host '    เน็ต   web_search, fetch_url' -ForegroundColor DarkGray
     Write-Host ''
-    Write-Host '  ที่กันไว้ไม่ให้เข้าถึง: .ssh, ไฟล์ credential, ฐานข้อมูลรหัสผ่านของเบราว์เซอร์,' -ForegroundColor DarkGray
+    Write-Host '  MCP กันไว้ไม่ให้เข้าถึง: .ssh, ไฟล์ credential, ฐานข้อมูลรหัสผ่านของเบราว์เซอร์,' -ForegroundColor DarkGray
     Write-Host '  ไฟล์คีย์ (.pem .key .env), C:\Windows\System32\config — และเขียนทับ C:\Windows ไม่ได้' -ForegroundColor DarkGray
     Write-Host '  MCP รับเฉพาะหน้าแชตของเราที่มีโทเคน (hub ใส่ให้เอง) — เว็บอื่นที่เปิดอยู่เรียกเครื่องมือไม่ได้' -ForegroundColor DarkGray
     Write-Host '  บันทึกการเรียกเครื่องมือ: C:\LLM\mcp-local\audit.log' -ForegroundColor DarkGray

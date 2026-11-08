@@ -189,6 +189,68 @@ class DoctorTests(unittest.TestCase):
         for secret in (TOKEN, "abcdefghijklmnop0123", "sk-abcdefghijklmnopqrstuvwxyz", "gwkey-"):
             self.assertNotIn(secret, blob)
 
+    def test_brave_and_docker_fixes_follow_the_real_setup(self):
+        # [2026-10-20] MCP ค้นเว็บใช้ DDGS เป็นค่าเริ่มต้น (ค้นเว็บทั่วไป ไม่ต้องใช้ key) — ไม่มี Brave key ไม่ใช่ปัญหาอีกต่อไป
+        # เตือนเฉพาะเมื่อ provider ที่ MCP รายงานคือโหมดจำกัด builtin (test_report_states_keys_and_fixes)
+        ddgs = make_server({"/mcp": authed({"ok": True, "provider": "ddgs"})})
+        self.servers.append(ddgs)
+        cfg = dict(self.cfg, mcp_web_port=ddgs.server_address[1])
+        stopped = {"usable": False, "stopped": True, "reason_th": "ติดตั้ง Docker Desktop ไว้แต่ engine ไม่ทำงาน",
+                   "reason_en": "Docker Desktop is installed but its engine is not running"}
+        with mock.patch.object(hd, "docker_status", return_value=stopped):
+            rep = hd.Doctor(cfg).report()
+        st = {s["id"]: s for s in rep["services"]}
+        self.assertEqual(st["mcp_web"]["provider"], "ddgs")
+        self.assertFalse(rep["keys"]["brave_key"])
+        self.assertNotIn("brave", [f["id"] for f in rep["fixes"]])
+        # ติดตั้งไว้แล้วแต่ engine ไม่ทำงาน = แนะนำให้เปิด Docker Desktop ไม่ใช่ติดตั้งใหม่
+        dock = next(f for f in rep["fixes"] if f["id"] == "docker")
+        self.assertEqual(dock["severity"], "info")
+        self.assertIn("start Docker Desktop", dock["en"])
+        self.assertIn("เปิด Docker Desktop", dock["th"])
+        self.assertNotIn("install", dock["en"].split("→", 1)[1])
+        missing = {"usable": False, "reason_th": "ยังไม่ได้ติดตั้ง Docker", "reason_en": "Docker is not installed"}
+        with mock.patch.object(hd, "docker_status", return_value=missing):
+            rep2 = hd.Doctor(cfg).report()
+        self.assertIn("install Docker Desktop", next(f for f in rep2["fixes"] if f["id"] == "docker")["en"])
+        # ไฟล์ครบแต่คีย์ registry ของ Docker Desktop หาย (เปิดแล้ว backend ไม่ขึ้น) = ต้องติดตั้งใหม่ ไม่ใช่แค่เปิด
+        broken = {"usable": False, "broken": True, "reason_th": "การติดตั้ง Docker Desktop ไม่สมบูรณ์",
+                  "reason_en": "the Docker Desktop installation is incomplete"}
+        with mock.patch.object(hd, "docker_status", return_value=broken):
+            rep3 = hd.Doctor(cfg).report()
+        self.assertIn("reinstall Docker Desktop", next(f for f in rep3["fixes"] if f["id"] == "docker")["en"])
+        with mock.patch.object(hd, "sandbox_enabled", return_value=True), \
+                mock.patch.object(hd.shutil, "which", return_value=r"C:\x\docker.exe"), \
+                mock.patch.object(hd.os.path, "exists", return_value=False):            # ไม่มี pipe ของ engine
+            with mock.patch.object(hd, "_docker_registered", return_value=False):
+                self.assertTrue(hd.docker_status().get("broken"))
+            with mock.patch.object(hd, "_docker_registered", return_value=True):
+                self.assertTrue(hd.docker_status().get("stopped"))
+
+    def test_docker_not_suggested_when_python_sandbox_is_off(self):
+        """[2026-10-21] ปิด Python sandbox (python-sandbox.json ไม่ได้ตั้ง enabled: true หรือไม่มีไฟล์) = ไม่ใช้ Docker:
+        docker_status() ตอบ off โดยไม่ตรวจ Docker เลย ไม่มีคำแนะนำ Docker และรายงานเขียนว่า "ไม่ได้ใช้" """
+        with tempfile.TemporaryDirectory() as tmp:
+            conf = Path(tmp) / "python-sandbox.json"
+            self.assertFalse(hd.sandbox_enabled(conf))                          # ไม่มีไฟล์
+            for text, want in (("{\"version\": 1, \"enabled\": false}", False), ("{\"enabled\": \"yes\"}", False),
+                               ("[true]", False), ("{not json", False), ("\ufeff{\"version\": 1, \"enabled\": true}", True)):
+                conf.write_text(text, encoding="utf-8")
+                self.assertIs(hd.sandbox_enabled(conf), want, text)               # true เท่านั้น เหมือน python_sandbox.active()
+            conf.write_text("{\"version\": 1, \"enabled\": false}", encoding="utf-8")
+            with mock.patch.object(hd, "SANDBOX_CONFIG", conf), mock.patch.object(hd.shutil, "which") as which:
+                off = hd.docker_status()
+            which.assert_not_called()
+        self.assertEqual((off["usable"], off["off"]), (False, True))
+        self.assertIn("sandbox", off["reason_en"])
+        with mock.patch.object(hd, "docker_status", return_value=off):
+            rep = hd.Doctor(self.cfg).report()
+        self.assertNotIn("docker", [f["id"] for f in rep["fixes"]])
+        self.assertTrue(rep["docker"]["off"])
+        self.assertIn("- Docker: ไม่ได้ใช้ (ปิด Python sandbox", hd.report_text(rep, "th"))
+        self.assertIn("- Docker: not used (the Python sandbox is off", hd.report_text(rep, "en"))
+        self.assertIn("reason", hd.localize(rep, "en")["docker"])
+
     def test_error_lines_redacted_limited_and_benign_skipped(self):
         lines, skipped = hd.error_lines(self.tmp / "logs", scrub=lambda s: s.replace(TOKEN, "***"))
         self.assertEqual(len(lines), 20)

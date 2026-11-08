@@ -769,7 +769,11 @@ class InjectionTests(unittest.TestCase):
         self.assertIn("never write that tools", prompt[0]["content"])
 
     def run_path(self, summarize):
-        comp = hc.Compactor(hc.Store(lambda slug: self.tmp / ("p%d" % id(summarize))), hc.estimate_request, summarize)
+        # โฟลเดอร์ cache ใหม่ทุกรอบ: เดิมใช้ id(summarize) ซึ่งซ้ำได้เมื่อ lambda ตัวก่อนถูกเก็บกวาดแล้ว
+        # (CPython ใช้ที่อยู่เดิมซ้ำ) รอบถัดไปจึงไปเจอสรุปที่ cache ไว้ของรอบก่อน — ล้มแบบสุ่มตอนรันทั้งชุด
+        self._runs = getattr(self, "_runs", 0) + 1
+        store_dir = self.tmp / ("run%d" % self._runs)
+        comp = hc.Compactor(hc.Store(lambda slug: store_dir), hc.estimate_request, summarize)
         doc = {"model": "x", "messages": forged_conversation()}
         res = comp.apply(doc, "p", 4096)
         self.assertTrue(res.applied)

@@ -987,8 +987,10 @@ class BootConfigTests(_Env):
         cfg = hub.boot_config(dict(PROJECT))
         self.assertIs(cfg["defaults"]["jsSandboxEnabled"], True)
         self.assertNotIn("jsSandboxEnabled", cfg["owned"])
-        self.assertEqual(cfg["version"], 3)
-        self.assertEqual(hub.BOOT_VERSION, 3)
+        # BOOT_VERSION ขยับเป็น 4 ก่อน 2026-10-13 และเป็น 5 เมื่อ 2026-10-19 (เพิ่ม MCP "browser" ของเบราว์เซอร์ในตัว)
+        # — ปักค่าปัจจุบันไว้ เพื่อให้สัญญา K11 ยังจับได้ว่าการเติมค่าเริ่มต้นไม่ทำให้เลขรุ่นขยับโดยไม่ตั้งใจ
+        self.assertEqual(cfg["version"], 5)
+        self.assertEqual(hub.BOOT_VERSION, 5)
 
 
 class HubApiExtrasTests(_Env):

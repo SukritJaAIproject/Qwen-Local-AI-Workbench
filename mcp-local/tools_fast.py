@@ -109,6 +109,14 @@ except Exception as _exc:                  # noqa: BLE001
     _LOAD_ERRORS[STT] = "%s: %s" % (type(_exc).__name__, _exc)
 # --- /voice ---
 
+# --- creative (2026-10-21): สร้างวิดีโอด้วย AI Creative Studio (ComfyUI + Wan 2.2) — โหลดแยก (ComfyUI ไม่มีก็แค่ action นี้บอกเหตุผล) ---
+CREATIVE = "tools_creative"
+try:
+    _MODS[CREATIVE] = importlib.import_module(CREATIVE)
+except Exception as _exc:                  # noqa: BLE001
+    _LOAD_ERRORS[CREATIVE] = "%s: %s" % (type(_exc).__name__, _exc)
+# --- /creative ---
+
 
 # ---------------------------------------------------------------- ตารางคู่มือ
 # แหล่งความจริงแหล่งเดียวของทั้ง help และข้อความเตือนตอนใส่พารามิเตอร์ไม่ครบ
@@ -205,10 +213,11 @@ READ_ROWS.append(
      "รายการ checkpoint (สำเนาก่อนแก้ที่เก็บอัตโนมัติทุกครั้งที่ write/edit ลงมือ) ใส่ path = เฉพาะไฟล์นั้น"))
 DO_ROWS.extend([
     ("python", "code [timeout]",
-     "[ยืนยัน] รันโค้ด Python ใน kernel ถาวรของโปรเจกต์ (ตัวแปรคงอยู่ข้ามครั้ง, cwd=work\\, "
+     "[sandbox/ยืนยัน] รันโค้ด Python ใน kernel ถาวรของโปรเจกต์ (ตัวแปรคงอยู่ข้ามครั้ง, "
      "มี pandas/matplotlib/plotly) timeout=จำนวนวินาที ไม่ใช่ ms (120 สูงสุด 240) "
-     "กราฟถูกบันทึกเป็น PNG พร้อมลิงก์ "
-     "— ยืนยันทุกครั้ง"),
+     "กราฟ matplotlib บันทึกเป็น PNG พร้อมลิงก์ เมื่อ Docker sandbox พร้อมรันได้ทันที "
+     "ใช้ /work, /outputs, ไฟล์แนบอ่านอย่างเดียว /attachments ไม่มีเน็ตและไม่เห็นโปรเจกต์อื่น "
+     "ถ้า sandbox ไม่พร้อมจะขอยืนยันก่อนรันบนเครื่องจริง"),
     ("undo", "path [id]",
      "[ยืนยัน] ย้อนไฟล์กลับเป็น checkpoint ล่าสุดที่ยังไม่ถูกย้อน (id=เลือกจุดเอง) "
      "สถานะก่อนย้อนถูกเก็บเป็น checkpoint ใหม่เสมอ"),
@@ -299,6 +308,26 @@ _READ_INDEX.update({r[0]: r for r in READ_ROWS})
 _REQUIRED.update({"transcribe": ("path",)})
 # --- /voice ---
 
+# --- creative: แถวของ creative_status / creative_video / creative_cancel (บล็อกแยก) ---
+# creative_video เปลี่ยนเครื่องจริง (เปิด ComfyUI, ปลดโมเดลแชตจาก GPU, ใช้ GPU หลายนาที, เขียนไฟล์) = [ยืนยัน] ทุกครั้ง
+# ลำดับพารามิเตอร์ในแถว = ลำดับใน schema (name -> image -> seconds -> size -> seed -> negative -> prompt ที่ยาวสุดไว้ท้าย)
+READ_ROWS.append(
+    ("creative_status", "[id]",
+     "สถานะ AI Creative Studio (ComfyUI เปิดไหม GPU/VRAM โมเดล Wan 2.2 ครบไหม) และงานสร้างวิดีโอของโปรเจกต์นี้ "
+     "ไม่ใส่ id = ภาพรวม+รายการงาน ใส่ id = งานนั้น (เสร็จแล้วได้ลิงก์วิดีโอ) — ยังไม่เสร็จอย่าเรียกซ้ำถี่ๆ บอกผู้ใช้แล้วจบเทิร์นได้"))
+DO_ROWS.extend([
+    ("creative_video", "[name] [image] [seconds] [size] [seed] [negative] prompt",
+     "[ยืนยัน] สร้างวิดีโอด้วย AI Creative Studio (ComfyUI · Wan 2.2) จาก prompt (บรรยายฉาก/การเคลื่อนไหว) หรือจากภาพแนบ "
+     "image=ชื่อไฟล์ใน attachments (ภาพ→วิดีโอ) seconds=0.5-5 (2) size=1280x704|portrait|square seed=ตัวเลข (ไม่ใส่ = สุ่ม) "
+     "name=ชื่อไฟล์ ผลเป็น .mp4/.webm ใน outputs พร้อมลิงก์ ใช้ GPU 5-7 นาที (เสร็จไม่ทันในครั้งเดียวจะได้ id ไว้ถาม creative_status) "
+     "ระหว่างสร้างโมเดลแชตที่ว่างถูกปลดจาก GPU ชั่วคราว"),
+    ("creative_cancel", "id", "[ทันที] ยกเลิกงานสร้างวิดีโอของโปรเจกต์นี้ที่กำลังทำ"),
+])
+_READ_INDEX.update({r[0]: r for r in READ_ROWS})
+_DO_INDEX.update({r[0]: r for r in DO_ROWS})
+_REQUIRED.update({"creative_cancel": ("id",)})   # creative_video ตรวจ prompt/image ในสาขาของตัวเอง (รับชื่อสำรองหลายแบบ)
+# --- /creative ---
+
 
 def _help_block(title: str, note: str, rows) -> str:
     lines = [title, note]
@@ -330,7 +359,8 @@ def help_text() -> str:
         "",
         "หมายเหตุร่วม",
         "  confirm_token   ได้จาก run, task_start, task_stop, edit, write (ตอนทับหรือไฟล์สคริปต์), "
-        "media_* (ตอนทับ), browser_*, python (ทุกครั้ง), undo, make_file (ตอนชื่อซ้ำ)\n"
+        "media_* (ตอนทับ), browser_*, python (เมื่อ Docker sandbox ไม่พร้อม), undo, make_file (ตอนชื่อซ้ำ), "
+        "creative_video\n"
         # รอบ review-fetch (S2): เดิมสั่งให้ส่ง review คัดลอกตรงตัว — โมเดล 4B คัดลอกไม่ครบแล้วติดวนถามผู้ใช้ซ้ำ
         # ตอนนี้ token อย่างเดียวพอ กล่องอนุญาตดึง REVIEW จากเซิร์ฟเวอร์เอง (คู่มือต้องพูดตรงกับพฤติกรรมจริง)
         "                  ผู้ใช้อนุมัติแล้วให้เรียก local_confirm(confirm_token=...) ส่ง token อย่างเดียวพอ "
@@ -604,6 +634,11 @@ def local_read(action: str = "help", project: str = "", **params) -> str:
                          start=_p(params, "start", *_ALIASES["start"]),
                          max_chars=_p(params, "max_chars", "chars"))
         # --- /voice ---
+        # --- creative: สถานะ/ผลงานสร้างวิดีโอ (อ่านอย่างเดียว เฉพาะงานของโปรเจกต์ใน URL) ---
+        if act == "creative_status":
+            return _call(CREATIVE, "creative_status", project=project, surface="fast",
+                         id=_p(params, "id", "job", "job_id", *_ALIASES["id"]))
+        # --- /creative ---
         return _unknown(act, "local_read")
     except Exception as exc:               # noqa: BLE001
         return "ERROR: local_read ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
@@ -751,6 +786,25 @@ def local_do(action: str = "help", project: str = "", **params) -> str:
                          sheet=_p(params, "sheet", "sheet_name", "tab"),
                          data=data, overwrite=over, confirm_token=token)
         # --- /office ---
+        # --- creative: สร้าง/ยกเลิกวิดีโอ — ยืนยันสองขั้นอยู่ในปลายทาง (tools_creative + guard) ---
+        if act == "creative_video":
+            # prompt ส่งต่อตามที่ได้ (ปลายทาง normalize แบบเดียวกันทั้งตอนขอและตอนใช้ token) ชื่อสำรองรับได้เมื่อโมเดลเขียนก่อน image
+            prompt = _p(params, "prompt", "text", "content", "description", "question", "caption")
+            image = _p(params, "image", "picture", "photo", "path", "file")
+            if not prompt and not image:
+                return _lacking("creative_video", _DO_INDEX, ["prompt"])
+            size = _p(params, "size", "resolution")
+            if not size and (_p(params, "width") or _p(params, "height")):
+                size = "%sx%s" % (_p(params, "width") or "1280", _p(params, "height") or "704")
+            return _call(CREATIVE, "creative_video", project=project, surface="fast", prompt=prompt, image=image,
+                         seconds=_p(params, "seconds", "duration", "length", *_ALIASES["duration"]), size=size,
+                         seed=_p(params, "seed"), negative=_p(params, "negative", "negative_prompt"),
+                         name=_p(params, "name", *_ALIASES["out"]), steps=_p(params, "steps"), cfg=_p(params, "cfg"),
+                         confirm_token=token)
+        if act == "creative_cancel":
+            return _call(CREATIVE, "creative_cancel", project=project, surface="fast",
+                         id=_p(params, "id", "job", "job_id", *_ALIASES["id"]))
+        # --- /creative ---
         return _unknown(act, "local_do")
     except Exception as exc:               # noqa: BLE001
         return "ERROR: local_do ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
@@ -782,6 +836,9 @@ _READ_PARAMS += ("mode",)
 _READ_PARAMS += ("what", "range")                      # office
 _DO_PARAMS += ("target", "cell", "sheet", "data")      # office_write
 _READ_PARAMS += ("language",)                          # voice: transcribe (ต่อท้าย — path/start/max_chars อยู่ก่อนแล้ว)
+# creative: ต่อท้าย schema ตามลำดับนี้ — image -> seconds -> size -> seed -> negative -> prompt (ข้อความยาวสุดไว้ท้ายสุด)
+# ให้โมเดลเขียน name (อยู่ต้นลำดับ) -> image -> ... -> prompt ได้ครบภายใต้ grammar ของ llama-server
+_DO_PARAMS += ("image", "seconds", "size", "seed", "negative", "prompt")   # creative_video
 
 # --- integrator (2026-09-30): ลำดับคีย์ใน schema = ลำดับที่โมเดล "เขียนได้" ---
 # llama-server (--jinja) บังคับรูปแบบ tool call ด้วย grammar ที่แปลงจาก JSON schema และ grammar นั้นยอมให้คีย์
@@ -917,6 +974,23 @@ TOOLS[1]["description"] = TOOLS[1]["description"].replace(
     "ถอดเสียงพูดเป็นข้อความใช้ local_read action=transcribe (media_extract_audio แค่แยกไฟล์เสียงออกจากวิดีโอ) · "
     "พารามิเตอร์: ", 1)
 # --- /voice ---
+
+# --- creative: ประโยคบอกทางของ creative_video / creative_status ---
+# "สร้างวิดีโอ/คลิป" ไม่มีความหมายกำกับในแผนที่พารามิเตอร์ (มีแค่ชื่อ action) และคำว่า media_* ทำให้โมเดลเล็กไปเลือกเครื่องมือตัดต่อแทน
+TOOLS[1]["description"] = TOOLS[1]["description"].replace(
+    "พารามิเตอร์: ",
+    "ผู้ใช้ขอสร้างวิดีโอ/คลิป/แอนิเมชันจากคำบรรยายหรือจากภาพ = action=creative_video prompt=... [image=ชื่อไฟล์ภาพ] "
+    "(ได้ REVIEW + confirm_token ก่อน ยังไม่สร้าง · media_* แค่ตัดต่อไฟล์ที่มีอยู่) · พารามิเตอร์: ", 1)
+TOOLS[0]["description"] = TOOLS[0]["description"].replace(
+    "พารามิเตอร์: ",
+    "ความคืบหน้า/ผลของงานสร้างวิดีโอ หรือสถานะ Creative Studio = action=creative_status [id] · พารามิเตอร์: ", 1)
+TOOLS[1]["description"] = (
+    "This tool CAN generate real videos on this PC with the local AI Creative Studio (ComfyUI + Wan 2.2): "
+    "action=\"creative_video\" prompt=\"<scene description>\" [image=\"<file in attachments>\"] [seconds=1-5]. "
+    "When the user asks to create/generate/make a video, clip or animation from a description or an image, call it "
+    "(it returns a REVIEW + confirm_token first) - never use ffmpeg, testsrc, Python scripts or shell commands for that. "
+    + TOOLS[1]["description"])
+# --- /creative ---
 
 IMPL = {
     "local_read": local_read,

@@ -207,7 +207,7 @@ class _Env(unittest.TestCase):
         p.start()
         self.patches.append(p)
         self.proj = {"slug": SLUG, "name": "ทดสอบ b3", "port": 0, "system_prompt": "", "think": "off",
-                     "extend": self.extend, "auto_kb": False, "model": ""}
+                     "extend": self.extend, "auto_kb": False, "model": "", "shared_chats": False}
         self.srv = ThreadingHTTPServer(("127.0.0.1", 0), hub.make_proxy_handler(SLUG, lambda: [self.proj]))
         self.srv.daemon_threads = True
         self.srv.handle_error = lambda *a: None

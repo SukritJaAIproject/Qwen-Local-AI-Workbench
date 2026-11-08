@@ -169,8 +169,17 @@ class EnhanceStaticTests(unittest.TestCase):
                 self.assertIn(ph, th[en], (en, ph))
         # ทุกคำในพจนานุกรมถูกใช้จริง (ป้ายที่เลือกด้วยเงื่อนไข เช่น "Stop and transcribe" ถูกนับตรงนี้)
         rest = self.block.replace(js_block(self.block, self.block.index("var TH_B2B = {")), "")
+        # ป้ายที่ต่อจากคำนำหน้า + ตัวแปร เช่น L("Bypass permissions: " + state) ของส่วน Bypass permissions
+        # (state = "OFF" / "ON" / "PAUSED") — คำในพจนานุกรมนับว่าใช้ ถ้าส่วนท้ายเป็นสตริงที่มีอยู่ในโค้ดของช่วงนี้
+        # และคำนำหน้าทุกตัวต้องมีคำแปลอย่างน้อยหนึ่งคำ (ไม่งั้นป้ายนั้นขึ้นเป็นอังกฤษล้วน) — แก้ 2026-10-20
+        composed = set(re.findall(r'\b[LA]\(\s*"([^"]+)"\s*\+\s*[A-Za-z_$][\w$]*\s*\)', self.block))
+        for pre in sorted(composed):
+            self.assertTrue(any(en.startswith(pre) for en in th), "ไม่มีคำแปลของป้าย %r + ..." % pre)
         for en in th:
-            self.assertIn(json.dumps(en, ensure_ascii=False), rest, "คำ %r ไม่ได้ถูกใช้" % en)
+            if json.dumps(en, ensure_ascii=False) in rest:
+                continue
+            self.assertTrue(any(en.startswith(pre) and json.dumps(en[len(pre):], ensure_ascii=False) in rest
+                                for pre in composed), "คำ %r ไม่ได้ถูกใช้" % en)
         # พจนานุกรมแยกจาก TH ของตัวแปล — ไม่เขียนใส่ TH (คำซ้ำกับป้ายของ WebUI จะเพี้ยนความหมาย)
         self.assertNotRegex(self.block, r"\bTH\[[^\]]+\]\s*=")
         self.assertIn('hasOwn(TH_B2B, en) ? TH_B2B[en] : en', self.block)
@@ -314,7 +323,14 @@ console.log(JSON.stringify(out));
         self.assertIn("t.stop()", js_function(b, "micStopTracks"))
         for fn in ("micRelease", "micCancel"):
             self.assertIn("micStopTracks(MIC.stream)" if fn == "micRelease" else "micRelease()", js_function(b, fn))
-        self.assertNotRegex(b, r"localStorage\.setItem|lsSet\((?!PLAN_KEY)")
+        # ที่เขียนลง localStorage ในช่วงนี้มีแค่ค่าตั้ง: id แชตที่เปิดโหมดวางแผน และสวิตช์ Auto Continue /
+        # Bypass permissions ต่อโปรเจกต์ (สองส่วนหลังเพิ่มเข้ามาในช่วงนี้ภายหลัง) — ไม่มีเสียงหรือข้อความใดๆ
+        self.assertNotRegex(b, r"localStorage\.setItem|lsSet\((?!(?:PLAN_KEY|AUTO_CONTINUE_KEY|BYPASS_KEY),)")
+        for key in ("AUTO_CONTINUE_KEY", "BYPASS_KEY"):
+            vals = re.findall(r"lsSet\(%s, (.+?)\);" % key, b)
+            self.assertTrue(vals, key)
+            for v in vals:
+                self.assertRegex(v, r"^JSON\.stringify\(\{\s*project:\s*slug,\s*on:\s*[\w$]+\s*\}\)$", (key, v))
         self.assertIn("MIC_MAX_MS = 180000", b)
         # Esc ของเราไม่ไปแย่งหน้าต่าง/เมนูของ WebUI และไม่ตอบสนองต่อ Escape ที่เราส่งให้ตัวเลือก @ ของ WebUI เอง
         self.assertIn("dialogOpen() || plusLayerOpen() || menuOpen()", b)

@@ -689,6 +689,46 @@ html:root [data-slot="input-area"] textarea::placeholder {
   opacity: 1;
 }
 
+/* Keep native Send/Stop and voice controls inside the card as project tools grow.
+   The left group may wrap; at narrow widths it gets its own full-width row. */
+html:root .conversation-chat-form [style*="container-type"]:has(> .mr-auto) {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+html:root .conversation-chat-form [style*="container-type"] > .mr-auto {
+  flex: 1 1 0%;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-right: 0;
+}
+html:root .conversation-chat-form [style*="container-type"]:has(> .mr-auto) > :not(.mr-auto) {
+  flex-shrink: 0;
+}
+html:root .conversation-chat-form [style*="container-type"] > div:has(button svg.lucide-package) {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(15rem, calc(100% - 8rem));
+}
+html:root .conversation-chat-form [style*="container-type"] div:has(> button svg.lucide-package),
+html:root .conversation-chat-form [style*="container-type"] button:has(svg.lucide-package) {
+  min-width: 0;
+  max-width: 100%;
+}
+html:root .conversation-chat-form .mr-auto > :is(.qw-shared-pill, .qw-history-status) {
+  max-width: 100%;
+  white-space: normal;
+}
+@container (max-width: 600px) {
+  html:root .conversation-chat-form [style*="container-type"] > .mr-auto {
+    flex-basis: 100%;
+  }
+  html:root .conversation-chat-form [style*="container-type"] > div:has(button svg.lucide-package) {
+    margin-left: auto;
+  }
+}
+
 /* ปุ่ม + (แนบไฟล์/เครื่องมือ) */
 html:root [data-slot="input-area"] button.file-upload-button {
   width: 32px;
@@ -1830,7 +1870,9 @@ html:root .dark\:text-purple-400 {
    สถานะ "กำลังอัด" ใช้ --qw-danger-bg + ไอคอนขาว (≥ 5.3:1) — สีเดียวกับสัญลักษณ์อัดเสียงที่คนคุ้น
    --------------------------------------------------------------------------- */
 /* ---- ชิป "วางแผนก่อน": หน้าตาชุดเดียวกับชิป "เร็ว (4B)" (ปุ่มโปร่ง เปิดอยู่ = พื้นส้มจาง + ไอคอนส้ม) ---- */
-html:root .qw-plan {
+html:root .qw-plan,
+html:root .qw-bypass,
+html:root .qw-auto-continue {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -1852,6 +1894,30 @@ html:root .qw-plan {
     border-color var(--qw-dur) var(--qw-ease);
 }
 html:root .qw-plan .qw-x-icon { width: 13px; height: 13px; }
+html:root .qw-bypass .qw-x-icon { width: 13px; height: 13px; }
+html:root .qw-bypass-icon { display: inline-flex; }
+html:root .qw-bypass-state { display: none; font-size: 10px; font-weight: 700; }
+html:root .qw-bypass:hover { background: var(--accent); color: var(--qw-text); }
+html:root .qw-bypass[data-state="on"] {
+  background: var(--qw-accent-soft);
+  border-color: color-mix(in srgb, var(--qw-accent) 65%, transparent);
+  color: var(--qw-text);
+}
+html:root .qw-bypass[data-state="on"] .qw-x-icon { color: var(--qw-accent); }
+html:root .qw-bypass[data-state="paused"] { border-style: dashed; color: var(--qw-text-3); }
+html:root .qw-bypass:disabled { opacity: 0.5; cursor: default; }
+html:root .qw-auto-continue .qw-x-icon { width: 13px; height: 13px; }
+html:root .qw-auto-continue-icon { display: inline-flex; }
+html:root .qw-auto-continue-state { display: none; font-size: 10px; font-weight: 700; }
+html:root .qw-auto-continue:hover { background: var(--accent); color: var(--qw-text); }
+html:root .qw-auto-continue[data-state="on"] {
+  background: var(--qw-accent-soft);
+  border-color: color-mix(in srgb, var(--qw-accent) 65%, transparent);
+  color: var(--qw-text);
+}
+html:root .qw-auto-continue[data-state="on"] .qw-x-icon { color: var(--qw-accent); }
+html:root .qw-auto-continue[data-state="paused"] { border-style: dashed; color: var(--qw-text-3); }
+html:root .qw-auto-continue:disabled { opacity: 0.5; cursor: default; }
 html:root .qw-plan:hover { background: var(--accent); color: var(--qw-text); }
 html:root .qw-plan[aria-pressed="true"] {
   background: var(--qw-accent-soft);
@@ -1861,6 +1927,8 @@ html:root .qw-plan[aria-pressed="true"] {
 html:root .qw-plan[aria-pressed="true"] .qw-x-icon { color: var(--qw-accent); }
 html:root .qw-plan[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--qw-accent) 22%, transparent); }
 html:root .qw-plan:focus-visible,
+html:root .qw-bypass:focus-visible,
+html:root .qw-auto-continue:focus-visible,
 html:root .qw-plan-bar-btn:focus-visible,
 html:root .qw-mic:focus-visible,
 html:root .qw-rec-x:focus-visible,
@@ -2098,6 +2166,14 @@ html:root[data-qw-embedded="1"] [data-qw-webui-mention] { display: none !importa
 @container (max-width: 520px) {
   html:root .qw-plan,
   html:root .qw-fast { width: 28px; padding: 0; }
+  html:root .qw-bypass { gap: 3px; padding: 0 5px; }
+  html:root .qw-auto-continue { gap: 3px; padding: 0 5px; }
+  html:root .qw-bypass .qw-bypass-label,
+  html:root .qw-auto-continue-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  html:root .qw-bypass-state { display: inline; }
+  html:root .qw-auto-continue-state { display: inline; }
   html:root .qw-plan > span,
   html:root .qw-fast > span {
     position: absolute;
@@ -2117,7 +2193,9 @@ html:root[data-qw-embedded="1"] [data-qw-webui-mention] { display: none !importa
   }
 }
 @media (pointer: coarse) {
-  html:root .qw-plan { height: 30px; }
+  html:root .qw-plan,
+  html:root .qw-bypass,
+  html:root .qw-auto-continue { height: 30px; }
   html:root .qw-plan-bar-btn,
   html:root .qw-at-add { height: 32px; }
   html:root .qw-rec-x { width: 30px; height: 30px; }
@@ -2202,3 +2280,27 @@ html:root .qw-compact-tip[hidden] { display: none; }
   html:root .qw-compact-rule { border-top: 1px solid CanvasText; }
   html:root .qw-compact-tip { border: 1px solid CanvasText; }
 }
+:root { --qw-shared-width: 760px; }
+.qw-shared-pill, .qw-shared-action {
+  font: inherit; font-size: 12px; color: var(--qw-text); background: var(--qw-bg);
+  border: 1px solid var(--qw-border); border-radius: 8px; padding: 5px 9px; cursor: pointer;
+}
+.qw-shared-pill { white-space: nowrap; }
+.qw-shared-dialog {
+  width: min(var(--qw-shared-width), calc(100vw - 32px)); max-height: 85vh; overflow: auto;
+  color: var(--qw-text); background: var(--qw-bg); border: 1px solid var(--qw-border);
+  border-radius: 16px; padding: 20px; font: inherit;
+}
+.qw-shared-dialog::backdrop { background: var(--qw-scrim); }
+.qw-shared-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.qw-shared-top h2 { margin: 0 0 14px; font-size: 18px; }
+.qw-shared-toggle { display: flex; gap: 8px; align-items: center; }
+.qw-shared-help { font-size: 13px; line-height: 1.6; opacity: .8; }
+.qw-shared-search { display: flex; gap: 8px; margin: 16px 0; }
+.qw-shared-search input { flex: 1; min-width: 0; padding: 9px; background: var(--qw-bg); color: var(--qw-text); border: 1px solid var(--qw-border); border-radius: 8px; }
+.qw-shared-card { display: block; text-align: start; width: 100%; margin: 9px 0; padding: 12px; }
+.qw-shared-card span { display: block; font-size: 12px; line-height: 1.6; opacity: .75; white-space: pre-wrap; margin-top: 6px; }
+.qw-shared-record { border-top: 1px solid var(--qw-border); padding: 12px 0; }
+.qw-shared-record pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; line-height: 1.7; }
+.qw-shared-source { text-decoration: underline; }
+.qw-history-status { display:inline-flex; align-items:center; font-size:var(--qw-fs-xs); line-height:1.3; padding:0 4px; color:var(--qw-text-3); white-space:nowrap; }

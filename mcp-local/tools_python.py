@@ -11,7 +11,9 @@ runner ถือ ipykernel ไว้ตลอด ตัวแปรจึงค�
 
 ความปลอดภัย (อ่านก่อนแก้ไฟล์นี้)
 ---------------------------------
-* โค้ดรันบนเครื่องจริงด้วยสิทธิ์ของผู้ใช้ ยังไม่มี sandbox (Docker มาทีหลัง) ทุกการเรียกจึงต้อง
+* เมื่อ python-sandbox.json เปิดใช้งานและ image/engine ผ่านการตรวจ โค้ดรันใน Docker แบบไม่มี
+  เครือข่าย ไม่เป็น root และเห็นเฉพาะ work/outputs/attachments ของโปรเจกต์นี้ ไม่ต้องยืนยันทุกครั้ง
+  ถ้า sandbox ไม่พร้อม โค้ดรันบนเครื่องจริงด้วยสิทธิ์ของผู้ใช้ ทุกการเรียกแบบ host จึงต้อง
   ผ่านการยืนยันสองขั้นเสมอ: ครั้งแรกคืน confirm_token + บล็อก REVIEW (โค้ดเต็มทุกตัวอักษร มีเลขบรรทัด
   อักขระซ่อนแสดงเป็น «U+XXXX») -> ผู้ใช้อนุมัติในแชต -> local_confirm(confirm_token, review) ซึ่งหน้าแชต
   บังคับให้คนกด "อนุญาต" อีกชั้นโดยเห็นโค้ดจริงในกล่อง ไม่มีข้อยกเว้นแม้โค้ดจะดูไม่มีพิษภัย
@@ -56,6 +58,7 @@ import urllib.parse
 from pathlib import Path
 
 import guard
+import python_sandbox
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
@@ -305,8 +308,11 @@ def _out_link(name: str) -> str:
 class _Kernel:
     """runner หนึ่งตัว (= ipykernel หนึ่งตัว) ของหนึ่งโปรเจกต์"""
 
-    def __init__(self, slug: str, workdir: str, outdir: str, runtime: str):
+    def __init__(self, slug: str, workdir: str, outdir: str, runtime: str, sandbox=None):
         self.slug, self.workdir, self.outdir, self.runtime = slug, workdir, outdir, runtime
+        self.sandbox = sandbox
+        self.container = ''
+        self.backend = 'docker' if sandbox is not None else 'host'
         self.proc: subprocess.Popen | None = None
         self.inbox: queue.Queue = queue.Queue()
         self.busy = threading.Lock()          # หนึ่งงานต่อ kernel — โค้ดสองชุดห้ามสลับกันรันกลางคัน
@@ -328,10 +334,18 @@ class _Kernel:
         cmd = [KERNEL_PYTHON, "-I", "-u", str(RUNNER), "--workdir", self.workdir,
                "--outdir", self.outdir, "--runtime", self.runtime,
                "--idle", str(IDLE_SECONDS + 60), "--edge", _find_edge()]
-        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=self._log, cwd=self.workdir,
-                                     env=kernel_env(self.runtime),
-                                     creationflags=CREATE_NO_WINDOW)
+        process_env, process_cwd = kernel_env(self.runtime), self.workdir
+        try:
+            if self.sandbox is not None:
+                self.container, cmd, process_env = self.sandbox.command(self.workdir, self.outdir, IDLE_SECONDS + 60)
+                process_cwd = str(HERE)
+            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                         stderr=self._log, cwd=process_cwd,
+                                         env=process_env,
+                                         creationflags=CREATE_NO_WINDOW)
+        except Exception:
+            self.kill()
+            raise
         self._reader = threading.Thread(target=self._pump, args=(self.proc, self.inbox), daemon=True)
         self._reader.start()
         ready = self._wait(lambda m: "ready" in m, START_TIMEOUT)
@@ -340,7 +354,14 @@ class _Kernel:
             self.kill()
             raise RuntimeError("เปิด kernel ไม่สำเร็จ: %s" % err)
         self.info = ready
-        guard.audit("python_kernel_start", {"project": self.slug, "pid": ready.get("pid")})
+        if self.sandbox is not None:
+            try:
+                self.info.update(self.sandbox.verify(self.container))
+            except Exception:
+                self.kill()
+                raise
+        guard.audit("python_kernel_start", {"project": self.slug, "pid": ready.get("pid"),
+                                            "backend": self.backend})
 
     @staticmethod
     def _pump(proc, inbox) -> None:
@@ -390,6 +411,9 @@ class _Kernel:
         self.kill()
 
     def kill(self) -> None:
+        if self.sandbox is not None and self.container:
+            self.sandbox.remove(self.container)
+            self.container = ''
         if self.proc is not None and self.proc.poll() is None:
             try:
                 self.proc.kill()          # เฉพาะ runner ที่เราเปิดเอง — kernel จบตามเองเมื่อ parent หาย
@@ -414,13 +438,20 @@ _KERNELS: dict[str, _Kernel] = {}
 _REG = threading.Lock()
 
 
-def _get_kernel(slug: str, workdir: str, outdir: str, runtime: str) -> _Kernel:
+def _get_kernel(slug: str, workdir: str, outdir: str, runtime: str, sandbox=None) -> _Kernel:
     """อ็อบเจกต์ kernel ของโปรเจกต์นี้ (หนึ่งตัวต่อโปรเจกต์ตลอดอายุ MCP — ถ้าสร้างใหม่ทุกครั้ง
     สองคำขอที่มาพร้อมกันจะได้คนละตัวแล้วเปิด runner ซ้อนกันสองตัว)"""
     with _REG:
         k = _KERNELS.get(slug)
+        desired_backend = 'docker' if sandbox is not None else 'host'
+        if k is not None and (k.backend != desired_backend or
+                              (sandbox is not None and k.sandbox.image != sandbox.image)):
+            if k.busy.locked():
+                raise RuntimeError('Project kernel is busy; wait before changing its backend')
+            k.stop()
+            k = None
         if k is None:
-            k = _Kernel(slug, workdir, outdir, runtime)
+            k = _Kernel(slug, workdir, outdir, runtime, sandbox=sandbox)
             _KERNELS[slug] = k
         return k
 
@@ -492,6 +523,7 @@ def kernel_status() -> dict:
     """สำหรับเทสต์/ตรวจสถานะ: โปรเจกต์ไหนมี kernel เปิดอยู่บ้าง"""
     with _REG:
         return {s: {"alive": k.alive(), "busy": k.busy.locked(),
+                    "backend": k.backend,
                     "idle_s": int(time.monotonic() - k.last_used)} for s, k in _KERNELS.items()}
 
 
@@ -553,19 +585,26 @@ def _format(slug: str, res: dict, fresh: bool, new_files: list[str],
 
 
 def _run(slug: str, code: str, timeout: int, workdir: str, outdir: str, runtime: str,
-         notes=()) -> str:
-    k = _get_kernel(slug, workdir, outdir, runtime)
+         notes=(), sandbox=None) -> str:
+    k = _get_kernel(slug, workdir, outdir, runtime, sandbox=sandbox)
     if not k.busy.acquire(timeout=5):
         return ("kernel ของโปรเจกต์นี้กำลังรันโค้ดอื่นอยู่ ยังไม่ได้รันโค้ดนี้ "
                 "— รอให้งานเดิมจบแล้วค่อยขอรันใหม่")
     fresh = False
     try:
+        with _REG:
+            if _KERNELS.get(slug) is not k:
+                return 'kernel ของโปรเจกต์เปลี่ยนระหว่างรับคำขอ ยังไม่ได้รันโค้ด — ลองใหม่อีกครั้ง'
         if not k.alive():
             try:
                 _make_room(slug)
                 k.start()
                 fresh = True
             except Exception as exc:   # noqa: BLE001
+                if sandbox is not None:
+                    return ("เปิด Docker sandbox ไม่สำเร็จ: %s\nยังไม่ได้รันโค้ดบนเครื่องจริง "
+                            "— ตรวจ Docker Desktop แล้วลองใหม่ (ดู %s)"
+                            % (exc, os.path.join(runtime, "runner.log")))
                 return ("ผิดพลาด: %s\nตรวจว่ามี %s และ jupyter_client/ipykernel ใน anaconda "
                         "(ดู %s)" % (exc, KERNEL_PYTHON, os.path.join(runtime, "runner.log")))
         k.last_used = time.monotonic()
@@ -593,7 +632,10 @@ def _run(slug: str, code: str, timeout: int, workdir: str, outdir: str, runtime:
                                          "timed_out": res.get("timed_out"),
                                          "restarted": res.get("restarted")})
         return _format(slug, res, fresh, [n for n in changed if _linkable(n)],
-                       timeout=timeout, notes=notes)
+                       timeout=timeout,
+                       notes=tuple(notes) + (("รันใน Docker sandbox · ไม่มีเครือข่าย · "
+                                             "โฟลเดอร์ /work และ /outputs ของโปรเจกต์นี้เท่านั้น "
+                                             "(ไฟล์แนบอ่านได้ที่ /attachments)",) if sandbox is not None else ()))
     finally:
         k.busy.release()
 
@@ -615,7 +657,7 @@ def _review(slug: str, workdir: str, timeout: int, t_note: str, code: str) -> st
 
 def python_exec(code: str = "", timeout=DEFAULT_TIMEOUT, project: str = "",
                 confirm_token: str = "", **_) -> str:
-    """รันโค้ดใน kernel ถาวรของโปรเจกต์ — ต้องยืนยันสองขั้นทุกครั้ง ไม่มีข้อยกเว้น"""
+    """Use the verified Docker sandbox, or preserve two-step host confirmation."""
     try:
         code = "" if code is None else str(code)
         if not code.strip():
@@ -644,7 +686,8 @@ def python_exec(code: str = "", timeout=DEFAULT_TIMEOUT, project: str = "",
                 return "ปฏิเสธ: โค้ดนี้อ้างถึงโฟลเดอร์ความลับของระบบ (secrets/token) จึงรันไม่ได้ไม่ว่ากรณีใด"
             return ("ปฏิเสธ: โค้ดนี้อ้างถึงโค้ด/ค่าตั้งของระบบหรือจุดที่ทำให้โปรแกรมรันเองอัตโนมัติ "
                     "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal")
-        if not os.path.isfile(KERNEL_PYTHON) or not RUNNER.is_file():
+        sandbox = python_sandbox.active()
+        if sandbox is None and (not os.path.isfile(KERNEL_PYTHON) or not RUNNER.is_file()):
             return ("ใช้ action python ไม่ได้บนเครื่องนี้: ไม่พบ %s หรือ %s "
                     "(ต้องมี anaconda ที่มี jupyter_client + ipykernel)" % (KERNEL_PYTHON, RUNNER.name))
         workdir, outdir, runtime = _dirs(slug)
@@ -652,6 +695,14 @@ def python_exec(code: str = "", timeout=DEFAULT_TIMEOUT, project: str = "",
         guard.check_write(workdir)
         guard.check_write(outdir)
         guard.check_workdir_for_exec(workdir, False)
+
+        # Automatic execution is confined to an image and container whose
+        # isolation is verified before any caller-supplied code is sent.
+        if sandbox is not None and not confirm_token:
+            guard.audit("python_exec", {"project": slug, "code_sha256": _sha(code)[:16],
+                                        "chars": len(code), "timeout": t, "backend": "docker"})
+            return _run(slug, code, t, workdir, outdir, runtime, sandbox=sandbox,
+                        notes=("เวลาสูงสุดของครั้งนี้: %s" % t_note,) if t_note else ())
 
         action = "python_exec:%s" % slug
         detail = "project=%s\ncode_sha256=%s\ntimeout=%d" % (slug, _sha(code), t)
@@ -673,6 +724,7 @@ def python_exec(code: str = "", timeout=DEFAULT_TIMEOUT, project: str = "",
         guard.audit("python_exec", {"project": slug, "code_sha256": _sha(code)[:16],
                                     "chars": len(code), "timeout": t})
         return _run(slug, code, t, workdir, outdir, runtime,
+                    sandbox=sandbox,
                     notes=("เวลาสูงสุดของครั้งนี้: %s" % t_note,) if t_note else ())
     except guard.Denied as exc:
         return "ปฏิเสธ: %s" % exc
@@ -686,8 +738,10 @@ TOOLS = [
      "description": ("รันโค้ด Python ใน Jupyter kernel ถาวรของโปรเจกต์ (ตัวแปรคงอยู่ข้ามครั้ง, "
                      "cwd = data\\<โปรเจกต์>\\work, มี pandas/numpy/matplotlib/plotly) คืน stdout/stderr/"
                      "ผลลัพธ์ และบันทึกกราฟเป็น PNG ใน outputs พร้อมลิงก์ ![fig](/_qwen/out/...) "
-                     "ทุกครั้งคืน confirm_token + บล็อก REVIEW ต้องแสดง REVIEW ให้ผู้ใช้อ่านและถามก่อน "
-                     "แล้วยืนยันด้วย local_confirm (ไม่เกิน 400 บรรทัดต่อครั้ง)"),
+                     "เมื่อ Docker sandbox พร้อม รันได้ทันทีใน Linux: /work, /outputs, "
+                     "ไฟล์แนบอ่านอย่างเดียวที่ /attachments ไม่มีเครือข่าย ไม่เห็นไฟล์ระบบหรือโปรเจกต์อื่น "
+                     "ถ้า sandbox ไม่พร้อม จะคืน confirm_token + REVIEW ให้ผู้ใช้อ่านและยืนยันด้วย "
+                     "local_confirm ก่อนรันบนเครื่องจริง (ไม่เกิน 400 บรรทัดต่อครั้ง)"),
      "inputSchema": {"type": "object", "required": ["code"], "properties": {
          "code": {"type": "string"},
          "timeout": {"type": "integer",

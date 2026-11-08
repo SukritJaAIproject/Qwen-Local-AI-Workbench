@@ -158,6 +158,9 @@ MODULES.append("tools_research")    # research: research_start/status/cancel บ
 MODULES.append("tools_office")      # [/office]
 # [voice] batch 2b: stt_transcribe บนผิวเต็ม (ผิวย่อ: local_read action=transcribe) — อ่านอย่างเดียว ไม่ออก confirm_token
 MODULES.append("tools_stt")         # [/voice]
+# [creative] 2026-10-21: creative_video / creative_status / creative_cancel — สั่ง AI Creative Studio (ComfyUI + Wan 2.2) สร้างวิดีโอ
+# creative_video คืน confirm_token ผ่าน guard.need_confirm เหมือนเครื่องมืออื่น (ผิวย่อ: local_do action=creative_video)
+MODULES.append("tools_creative")    # [/creative]
 # ผิวแบบย่อ: สองเครื่องมือครอบทุกอย่าง ใช้เมื่ออยากประหยัด prompt
 # (คู่มือข้อ 7 — ลดขนาด schema กว่า 90%) เรียกผ่าน /fast/<slug>
 FAST_MODULES = ["tools_fast"]
