@@ -132,6 +132,17 @@ class Browser:
         self.ws.events.clear()
         return out
 
+    def type_text(self, text):
+        """type into the focused element like a user would (fires the input events React listens to)"""
+        self.ws.call("Input.insertText", {"text": text})
+        self.ws.drain(0.3)
+
+    def press_enter(self):
+        for kind in ("keyDown", "keyUp"):
+            self.ws.call("Input.dispatchKeyEvent", {"type": kind, "key": "Enter", "code": "Enter",
+                                                    "windowsVirtualKeyCode": 13, "nativeVirtualKeyCode": 13})
+        self.ws.drain(0.3)
+
     def snap(self, name):
         shot = self.ws.call("Page.captureScreenshot", {"format": "png"})
         import base64
@@ -260,8 +271,145 @@ def manage_th(b):
     b.snap("11-manage-projects-th-light")
 
 
+PANEL_URL = "https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench"   # a public page; the project's own
+
+START_PANEL = """(async () => {
+  if (!window.qwenBrowserPanel) return 'no panel api';
+  window.qwenBrowserPanel.open();
+  await new Promise(r => setTimeout(r, 1200));
+  const u = document.getElementById('bpUrl'); u.value = %s;
+  document.getElementById('bpUrlForm').requestSubmit();
+  return 'submitted';
+})()"""
+
+PANEL_STATE = """(() => {
+  const st = window.qwenBrowserPanel && window.qwenBrowserPanel.state(), img = document.getElementById('bpImg');
+  if (!st) return {ok: false, why: 'no state'};
+  const tab = (st.tabs || []).find(t => t.active) || (st.tabs || [])[0];
+  return {ok: !!(st.running && img && img.naturalWidth > 0 && tab && /github\\.com/.test(tab.url || '') && !tab.loading),
+          running: !!st.running, starting: !!st.starting, error: st.error || null,
+          url: tab ? tab.url : null, loading: tab ? tab.loading : null,
+          img: img ? img.naturalWidth + 'x' + img.naturalHeight : null};
+})()"""
+
+STOP_PANEL = """(async () => {
+  try { await fetch('/_qwen/browser/stop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'}); } catch (e) {}
+  if (window.qwenBrowserPanel) window.qwenBrowserPanel.close();
+  return 'panel stopped';
+})()"""
+
+FOCUS_COMPOSER = frame("""(() => {
+  const ta = document.querySelector('.chat-screen-form-wrapper form.conversation-chat-form textarea') || document.querySelector('textarea');
+  if (!ta) return 'no textarea';
+  ta.focus();
+  return 'focused';
+})()""")
+
+# send what is in the composer the way the WebUI itself does (submit button), then wait for the reply to start
+SEND_FIRST = frame("""(async () => {
+  const f = document.querySelector('.chat-screen-form-wrapper form.conversation-chat-form');
+  const ta = f && f.querySelector('textarea');
+  if (!ta) return 'no form';
+  const b = f.querySelector('button[type="submit"]');
+  if (b) f.requestSubmit(b);
+  else ta.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true}));
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 250));
+    if (window.qwenQueue && window.qwenQueue.status().busy) return 'busy after ' + (i * 250) + ' ms';
+  }
+  return 'not busy: ' + JSON.stringify(window.qwenQueue ? window.qwenQueue.status() : null);
+})()""")
+
+QUEUE_STATUS = frame("""(() => {
+  const q = document.querySelector('.qw-queue');
+  return {status: window.qwenQueue ? window.qwenQueue.status() : null,
+          panel: q ? q.innerText.replace(/\\s+/g, ' ').slice(0, 200) : null,
+          composer: (document.querySelector('.chat-screen-form-wrapper textarea') || {}).value || ''};
+})()""")
+
+# fallback when the synthetic Enter is not accepted: put the waiting messages into the queue's own store
+# (sessionStorage) and reload; the reply reattaches through the recovery layer and the queue shows the items
+SEED_QUEUE = frame("""(() => {
+  const key = %s, items = %s;
+  let store; try { store = JSON.parse(sessionStorage.getItem('qwen-message-queue-v1') || '{}'); } catch (e) { store = {}; }
+  store.items = store.items || {}; store.paused = store.paused || {};
+  store.items[key] = items.map((t, i) => ({id: 'demo-' + i, text: t, at: Date.now() + i}));
+  sessionStorage.setItem('qwen-message-queue-v1', JSON.stringify(store));
+  return 'seeded ' + items.length;
+})()""")
+
+CLEAR_QUEUE = frame("""(() => {
+  if (window.qwenQueue) window.qwenQueue.clear();
+  sessionStorage.removeItem('qwen-message-queue-v1');
+  const stop = [...document.querySelectorAll('.chat-screen-form-wrapper button')].find(x => /stop|หยุด/i.test((x.getAttribute('aria-label') || '') + ' ' + (x.textContent || '')));
+  if (stop) stop.click();
+  return stop ? 'stopped' : 'no stop button';
+})()""")
+
+QUEUE_TEXTS = [
+    "Add a week-over-week column and highlight the stations that got worse.",
+    "Then draft the Monday e-mail to the maintenance team.",
+    "Also export the table as XLSX.",
+]
+
+
+def browser_panel_en(b):
+    """the built-in browser panel beside the chat, showing a public page through the egress proxy"""
+    prefs("en", "dark")
+    b.metrics(1440, 900)
+    b.seed(DEMO)
+    b.go(DEMO + "/?lang=en", 5)
+    print(b.ev(OPEN_CHAT % json.dumps("demo-c1"), 2))
+    try:
+        print(b.ev(START_PANEL % json.dumps(PANEL_URL), 1))
+        st = None
+        for _ in range(100):                      # up to ~75 s: Edge start + page load + first screencast frame
+            st = b.ev(PANEL_STATE, 0.25)
+            if isinstance(st, dict) and (st.get("ok") or st.get("error")):
+                break
+            time.sleep(0.5)
+        print("panel:", st)
+        time.sleep(3.0)                           # let the page settle and the screencast catch up
+        # scroll the chat to the report table after the panel has taken its width (the chat re-lays out)
+        print(b.ev(SCROLL_TO_TEXT.replace("OFFSET", "40") % (json.dumps("Using attachments/charger-faults"), json.dumps("start")), 1))
+        b.snap("12-browser-panel-en-dark")
+    finally:
+        print(b.ev(STOP_PANEL, 1))
+
+
+def message_queue_en(b):
+    """a reply streaming (the demo upstream answers slowly) with two messages waiting in the queue"""
+    prefs("en", "light")
+    b.metrics(1440, 900, scheme="light")
+    b.seed(DEMO)
+    b.go(DEMO + "/?lang=en", 5)
+    b.ws.call("Emulation.setFocusEmulationEnabled", {"enabled": True})
+    print(b.ev(OPEN_CHAT % json.dumps("demo-c1"), 2))
+    print(b.ev(FOCUS_COMPOSER, 0.3))
+    b.type_text(QUEUE_TEXTS[0])
+    print(b.ev(SEND_FIRST, 0.5))
+    for text in QUEUE_TEXTS[1:]:
+        print(b.ev(FOCUS_COMPOSER, 0.3))
+        b.type_text(text)
+        b.press_enter()
+        time.sleep(0.8)
+    st = b.ev(QUEUE_STATUS, 0.3)
+    print("after Enter:", st)
+    size = ((st or {}).get("status") or {}).get("size", 0) if isinstance(st, dict) else 0
+    if size < 2:
+        # Enter was not accepted by the page: use the queue's own store instead and reload the chat
+        print(b.ev(frame("(() => { const ta = document.querySelector('.chat-screen-form-wrapper textarea'); if (ta) { ta.value = ''; ta.dispatchEvent(new Event('input', {bubbles: true})); } return 'cleared'; })()"), 0.3))
+        print(b.ev(SEED_QUEUE % (json.dumps("demo|demo-c1"), json.dumps(QUEUE_TEXTS[1:])), 0.3))
+        b.go(DEMO + "/?lang=en", 5)
+        print(b.ev(OPEN_CHAT % json.dumps("demo-c1"), 3))
+        print("after reload:", b.ev(QUEUE_STATUS, 0.3))
+    print(b.ev(SCROLL_FRAME % "1e9", 1))
+    b.snap("13-message-queue-en-light")
+    print(b.ev(CLEAR_QUEUE, 1))
+
+
 ALL = [chat_en_dark, start_en_light, artifact_en_light, project_panel_en, usage_en, doctor_en, gpu_en,
-       account_menu_en, chat_th_dark, mobile_th, manage_th]
+       account_menu_en, chat_th_dark, mobile_th, manage_th, browser_panel_en, message_queue_en]
 
 
 def main():

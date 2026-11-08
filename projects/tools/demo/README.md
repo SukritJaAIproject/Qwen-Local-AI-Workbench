@@ -21,7 +21,12 @@ How the demo hub stays harmless:
 - GPUs are simulated (`QWEN_GPU_SIMULATE`: RTX 1000 Ada + RTX 4090); "apply" is a dry run (`QWEN_GPU_DRYRUN=1`).
 - The doctor report is built by the real `hub_doctor` code from synthetic probe results (no live probes, no logs).
 - The upstream is a fake llama-server: `GET` requests are relayed to the router on 8099 only to serve the WebUI files
-  and the model list. Requests that name a model are refused, so no model is ever loaded, and chat requests are refused.
+  and the model list. Requests that name a model are refused, so no model is ever loaded. A chat request gets a
+  fixed, synthetic reply streamed slowly over about 25 seconds, which is how the message-queue screenshot shows a
+  chat that is still working; other `POST` requests are refused.
 - MCP servers are hidden from the page, so no token is written into it.
+- The built-in browser panel is real: for its screenshot the demo hub starts an isolated headless Edge for the
+  `demo` project (profile under `C:\LLM\browser-profile\_panel\demo`) and opens one public page through the egress
+  proxy; `shots.py` stops that browser again afterwards.
 
 Everything this folder generates is git-ignored. Stop the demo hub by creating a file named `STOP` here.
