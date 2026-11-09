@@ -235,7 +235,8 @@ class TranscribeTests(SttBase):
         finally:
             i18n.set_lang(None)
         self.assertEqual(self.fake.requests[-1]["hint"], "ja")
-        self.audio("d.wav", 5)                        # ไฟล์ใหม่: ผลของ c.wav อยู่ในแคชแล้ว จะไม่มีคำขอไปถึงบริการ
+        # แคชผูกกับ sha256 ของเนื้อไฟล์: ไฟล์ที่เนื้อเสียงเหมือน c.wav จะได้ผลจากแคชโดยไม่มีคำขอไปถึงบริการ
+        self.audio("d.wav", 6)                        # จึงใช้ความยาวต่างกัน = เนื้อไฟล์ต่างกัน
         i18n.set_lang("en")
         try:
             self.run_t(path="d.wav")
