@@ -3885,8 +3885,9 @@ def stt_forward(body, ctype, language=""):
     if not tok:
         return _stt_err(503, "stt_no_token", "ยังไม่มีโทเคนของบริการในเครื่อง — เปิดตัวเปิด Qwen3.8 อีกครั้ง",
                         "the local services token is missing — run the Qwen3.8 launcher again")
-    # 2026-11: hint = ภาษาของหน้าจอ — stt_server ใช้เป็นภาษาสำรองเมื่อตรวจเองแล้วไม่แน่ใจ และหน้าจอญี่ปุ่น/จีนทำให้ ja/zh
-    # ถูกเพิ่มเข้าชุดภาษาที่ตรวจได้ของคำขอนั้น (ค่าอื่นถูกเพิกเฉยฝั่งโน้น) — language= ที่หน้าเว็บสั่งมาชัดเจนยังชนะเหมือนเดิม
+    # 2026-11: hint = ภาษาของหน้าจอ "เฉพาะญี่ปุ่น/จีน" — stt_server เพิ่ม ja/zh เข้าชุดภาษาที่ตรวจได้ของคำขอนั้นและใช้เป็นภาษาสำรอง
+    # หน้าจอไทย/อังกฤษไม่ส่ง: ภาษาสำรองของคลิปสั้นที่ไม่ชัดคงเป็นไทยตามที่วัดไว้ (คนไทยที่ใช้หน้าจออังกฤษยังพูดไทยได้เหมือนเดิม)
+    # language= ที่หน้าเว็บสั่งมาชัดเจนยังชนะเหมือนเดิม
     params = []
     if language in _STT_LANGS:
         params.append("language=" + language)
@@ -3894,7 +3895,7 @@ def stt_forward(body, ctype, language=""):
         hint = get_lang()
     except Exception:                  # noqa: BLE001 — อ่าน settings ไม่ได้ = ไม่ส่ง hint
         hint = ""
-    if hint in _STT_LANGS and hint != "auto":
+    if hint in ("ja", "zh"):
         params.append("hint=" + hint)
     path = "/v1/transcribe" + ("?" + "&".join(params) if params else "")
     conn = None

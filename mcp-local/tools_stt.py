@@ -643,8 +643,12 @@ def post_audio(data: bytes, language: str, timeout: float, content_type: str = "
     if secrets_util is None:
         raise SttError(TR("อ่าน token ของบริการในเครื่องไม่ได้ (ไม่มี secrets_util)"))
     host, port = service_url()
-    # 2026-11: hint = ภาษาของหน้าจอ — บริการใช้เป็นภาษาสำรองเมื่อตรวจเองแล้วไม่แน่ใจ และ ja/zh ถูกเพิ่มเข้าชุดที่ตรวจได้
-    q = urllib.parse.urlencode({"language": language or "auto", "hint": ui_lang()})
+    # 2026-11: หน้าจอญี่ปุ่น/จีนส่ง hint (บริการเพิ่มภาษานั้นเข้าชุดที่ตรวจได้และใช้เป็นภาษาสำรอง) — หน้าจอไทย/อังกฤษไม่ส่ง
+    # ภาษาสำรองจึงคงเป็นไทยเหมือนเดิม (คนไทยที่ใช้หน้าจออังกฤษยังถอดเสียงไทยได้ถูก)
+    params = {"language": language or "auto"}
+    if ui_lang() in ("ja", "zh"):
+        params["hint"] = ui_lang()
+    q = urllib.parse.urlencode(params)
     try:
         headers = dict(secrets_util.auth_headers())
     except Exception as exc:                   # noqa: BLE001

@@ -260,8 +260,8 @@ the author's machine. Taken with v1.1.0.
 - **Dictation:** the microphone button records in the browser and the hub forwards the clip to a local
   faster-whisper (large-v3-turbo) service. It uses the GPU when at least 1.5 GB of VRAM is free, otherwise CPU int8,
   and gives the VRAM back two seconds after each clip. Auto language detection covers Thai and English, plus
-  Japanese or Chinese when the UI is set to that language; the UI language is also the fallback for short, unclear
-  clips.
+  Japanese or Chinese when the UI is set to that language; short, unclear clips fall back to Thai, or to Japanese or
+  Chinese on a Japanese or Chinese UI.
 - **Transcribe files** (audio/video in the project) through the `transcribe` tool; results are cached and indexed.
 - **Read aloud** any answer with the browser's speech engine, switching between Thai and English voices.
 

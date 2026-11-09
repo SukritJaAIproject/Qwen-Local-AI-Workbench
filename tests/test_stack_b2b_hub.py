@@ -936,8 +936,8 @@ class SttProxyTests(_Env):
                                            {"start": 1.2, "end": 2.5, "text": " ทดสอบ"}])
         self.assertNotIn("model_path", doc)
         m, path, h, body = self.stt_cls.seen[-1]
-        # 2026-11: hint = ภาษาของหน้าจอ (settings.json ของเทสต์ = th) ส่งไปทุกครั้ง
-        self.assertEqual((m, path), ("POST", "/v1/transcribe?language=th&hint=th"))
+        # 2026-11: hint ส่งเฉพาะหน้าจอญี่ปุ่น/จีน (settings.json ของเทสต์ = th -> ไม่มี hint)
+        self.assertEqual((m, path), ("POST", "/v1/transcribe?language=th"))
         self.assertEqual(h.get("authorization"), "Bearer " + self.token)
         self.assertEqual(h.get("content-type"), "audio/webm")
         self.assertEqual(body, b"\x1aE\xdf\xa3webm")
@@ -948,18 +948,21 @@ class SttProxyTests(_Env):
         st, _d = self.post(body, "multipart/form-data; boundary=XyZ", path="/_qwen/stt?language=../../x")
         self.assertEqual(st, 200)
         _m, path, h, got = self.stt_cls.seen[-1]
-        self.assertEqual(path, "/v1/transcribe?hint=th")
+        self.assertEqual(path, "/v1/transcribe")
         self.assertEqual(h.get("content-type"), "multipart/form-data; boundary=XyZ")
         self.assertEqual(got, body)
 
     def test_ui_language_is_sent_as_hint(self):
-        """2026-11: หน้าจอญี่ปุ่น/จีน -> hint=ja|zh (stt_server เพิ่มภาษานั้นเข้าชุดตรวจเอง); ค่าแปลกไม่ส่ง"""
+        """2026-11: หน้าจอญี่ปุ่น/จีน -> hint=ja|zh (stt_server เพิ่มภาษานั้นเข้าชุดตรวจเอง); ไทย/อังกฤษ/อ่านไม่ได้ไม่ส่ง"""
         with mock.patch.object(hub, "get_lang", return_value="ja"):
             self.assertEqual(self.post()[0], 200)
         self.assertEqual(self.stt_cls.seen[-1][1], "/v1/transcribe?hint=ja")
         with mock.patch.object(hub, "get_lang", return_value="zh"):
             self.assertEqual(self.post(path="/_qwen/stt?language=en")[0], 200)
         self.assertEqual(self.stt_cls.seen[-1][1], "/v1/transcribe?language=en&hint=zh")
+        with mock.patch.object(hub, "get_lang", return_value="en"):                # หน้าจออังกฤษ: ภาษาสำรองคงเป็นไทย
+            self.assertEqual(self.post()[0], 200)
+        self.assertEqual(self.stt_cls.seen[-1][1], "/v1/transcribe")
         with mock.patch.object(hub, "get_lang", side_effect=RuntimeError("no settings")):
             self.assertEqual(self.post()[0], 200)
         self.assertEqual(self.stt_cls.seen[-1][1], "/v1/transcribe")

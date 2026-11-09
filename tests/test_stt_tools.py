@@ -181,7 +181,7 @@ class TranscribeTests(SttBase):
             self.assertEqual(r["host"], "127.0.0.1:%d" % self.fake.port)
             self.assertEqual(r["ctype"], "audio/wav")
             self.assertEqual(r["lang"], "auto")
-            self.assertEqual(r["hint"], "th")                     # 2026-11: ภาษาของหน้าจอไปกับทุกคำขอ
+            self.assertEqual(r["hint"], "")                       # 2026-11: หน้าจอไทย/อังกฤษไม่ส่ง hint
         # เวลาในผล = เวลาในท่อน + เวลาเริ่มของท่อน และข้อความ (วินาทีจริงในไฟล์) ต้องตรงกับเวลาเริ่มทุกบรรทัด
         self.assertIn("[00:00:00–00:00:10] เสียงวินาทีที่ 0", out)
         self.assertIn("[00:02:00–00:02:10] เสียงวินาทีที่ 120", out)
@@ -235,6 +235,16 @@ class TranscribeTests(SttBase):
         finally:
             i18n.set_lang(None)
         self.assertEqual(self.fake.requests[-1]["hint"], "ja")
+        # แคชผูกกับ sha256 ของเนื้อไฟล์: ไฟล์ที่เนื้อเสียงเหมือน c.wav จะได้ผลจากแคชโดยไม่มีคำขอไปถึงบริการ
+        self.audio("d.wav", 6)                        # จึงใช้ความยาวต่างกัน = เนื้อไฟล์ต่างกัน
+        i18n.set_lang("en")
+        try:
+            self.run_t(path="d.wav")
+        finally:
+            i18n.set_lang(None)
+        self.assertEqual(self.fake.requests[-1]["path"], "/v1/transcribe")
+        self.assertEqual(len(self.fake.requests), 2)
+        self.assertEqual(self.fake.requests[-1]["hint"], "")                    # หน้าจออังกฤษ: ไม่ส่ง
         self.assertIn("言語: タイ語 (th)", out)
         self.assertNotIn("ภาษา: ไทย", out)
         self.assertIn("ERROR", self.run_t(path="b.wav", language="klingon-x"))
