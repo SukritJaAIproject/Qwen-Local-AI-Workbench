@@ -50,6 +50,10 @@
                    system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --qw-font-serif: "Source Serif 4", "Noto Serif Thai", "Iowan Old Style", Georgia,
                    "Times New Roman", serif;
+  /* 2026-11 ญี่ปุ่น/จีน: ฟอนต์ CJK ที่มากับ Windows/macOS ต่อท้ายละติน — html[lang] ด้านล่างเลือกชุดของภาษานั้นก่อน
+     (อักษรฮั่นตัวเดียวกันวาดต่างกันระหว่างฟอนต์ญี่ปุ่นกับจีน: หน้าจีนต้องไม่ตกไปใช้ Yu Gothic) */
+  --qw-font-cjk-ja: "Yu Gothic UI", "Meiryo UI", "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP";
+  --qw-font-cjk-zh: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC";
   --qw-font-mono:  "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas,
                    ui-monospace, "SFMono-Regular", monospace;
 
@@ -171,4 +175,20 @@
 }
 @media (min-width: 2100px) {
   :root { --qw-content-w: 960px; }
+}
+
+/* ---- ภาษาญี่ปุ่น / จีนตัวย่อ (html lang=ja|zh) ----
+   ละตินยังใช้ Segoe UI / Source Serif ตามเดิม อักษร CJK ตกมาที่ฟอนต์ของภาษานั้นซึ่งมากับระบบ (ไม่ต้องดาวน์โหลด)
+   serif ของ CJK: Yu Mincho (ja) / SimSun·Noto Serif CJK (zh) — ถ้าเครื่องไม่มี เบราว์เซอร์ใช้ sans ของภาษานั้นแทน */
+html[lang="ja"] {
+  --qw-font-ui:    "Qw Thai UI", "Segoe UI Variable Text", "Segoe UI", var(--qw-font-cjk-ja), "Leelawadee UI",
+                   system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --qw-font-serif: "Source Serif 4", "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif CJK JP", "Noto Serif JP",
+                   "Noto Serif Thai", Georgia, serif;
+}
+html[lang="zh"] {
+  --qw-font-ui:    "Qw Thai UI", "Segoe UI Variable Text", "Segoe UI", var(--qw-font-cjk-zh), "Leelawadee UI",
+                   system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --qw-font-serif: "Source Serif 4", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", SimSun,
+                   "Noto Serif Thai", Georgia, serif;
 }

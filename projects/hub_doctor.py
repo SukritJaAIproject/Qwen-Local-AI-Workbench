@@ -24,6 +24,14 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+try:
+    import hub_i18n as _i18n          # 2026-11: pick()/tr() — ไม่มีคำแปลของภาษานั้นถอยไปอังกฤษ
+except ImportError:                   # ชุดทดสอบบางตัวโหลดไฟล์นี้ตรงๆ โดยไม่มี projects/ ใน sys.path
+    import importlib.util as _ilu
+    _spec = _ilu.spec_from_file_location("hub_i18n", str(Path(__file__).with_name("hub_i18n.py")))
+    _i18n = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_i18n)
+
 CACHE_S = 10.0
 DEADLINE_S = 2.6
 PROBE_TIMEOUT = 1.2
@@ -390,8 +398,23 @@ def os_name():
     return _OS_NAME
 
 
+# ชื่อบริการเป็นญี่ปุ่น/จีน ตาม id (ชื่อไทย/อังกฤษส่งมากับ _row ตามเดิม) — ชื่อสั้นสำหรับแถวที่ตรวจไม่ทัน (_build) ใช้ชุดเดียวกัน
+SERVICE_NAMES = {
+    "router": {"ja": "モデルルーター (llama-server)", "zh": "模型路由 (llama-server)"},
+    "mcp_local": {"ja": "ローカルツール (MCP)", "zh": "本机工具 (MCP)"},
+    "mcp_web": {"ja": "ウェブ検索 (MCP)", "zh": "网络搜索 (MCP)"},
+    "embed": {"ja": "意味検索 (embedding)", "zh": "语义搜索 (embedding)"},
+    "stt": {"ja": "音声入力 (STT)", "zh": "语音输入 (STT)"},
+    "scheduler": {"ja": "スケジューラー", "zh": "调度器"},
+    "gateway": {"ja": "リモートプロンプトゲートウェイ", "zh": "远程提示网关"},
+    "hub": {"ja": "ハブ + プロジェクトポート", "zh": "Hub + 项目端口"},
+}
+
+
 def _row(sid, th, en, port, state, ms=None, **detail):
     r = {"id": sid, "name_th": th, "name_en": en, "port": port, "state": state, "latency_ms": ms}
+    for code, name in (SERVICE_NAMES.get(sid) or {}).items():
+        r["name_" + code] = name
     r.update(detail)
     return r
 
@@ -469,6 +492,109 @@ FIX = {
 # (รายงานข้อความ/สคริปต์ที่อ่าน overall จึงบอก "มีข้อสังเกต" ทั้งที่ไม่มีปัญหา)
 FIX_SEVERITY = {"router": "error", "router_auth": "error", "mcp_local": "error", "mcp_web": "error", "mcp_auth": "error",
                 "embed": "error", "stt": "error", "scheduler": "error", "gateway": "error", "brave": "info", "docker": "info"}
+
+# 2026-11: คำแนะนำเดียวกันเป็นญี่ปุ่น/จีน (คำสั่ง/พาธคงเดิม) — คีย์ที่ไม่มีในนี้ หน้าเว็บถอยไปใช้อังกฤษ
+FIX_JA_ZH = {
+    "router": ("モデルルーター (8099) が停止しています → スタック全体を再起動: powershell -File C:\\LLM\\start-qwen38.ps1 -Unattended"
+               "（または Qwen3.8 アイコンをダブルクリック）",
+               "模型路由 (8099) 已停止 → 重启整套服务：powershell -File C:\\LLM\\start-qwen38.ps1 -Unattended（或双击 Qwen3.8 图标）"),
+    "router_auth": ("ルーターがハブのトークンを拒否しています → ランチャーをもう一度実行 (start-qwen38.ps1 -Unattended)",
+                    "路由拒绝了 Hub 的令牌 → 再次运行启动器 (start-qwen38.ps1 -Unattended)"),
+    "mcp_local": ("ローカルツール (MCP 8792) が停止しています → powershell -File C:\\LLM\\projects\\tools\\restart_svc.ps1 -Name mcp-local",
+                  "本机工具 (MCP 8792) 已停止 → powershell -File C:\\LLM\\projects\\tools\\restart_svc.ps1 -Name mcp-local"),
+    "mcp_web": ("ウェブ検索 (MCP 8791) が停止しています → powershell -File C:\\LLM\\projects\\tools\\restart_svc.ps1 -Name websearch",
+                "网络搜索 (MCP 8791) 已停止 → powershell -File C:\\LLM\\projects\\tools\\restart_svc.ps1 -Name websearch"),
+    "mcp_auth": ("MCP がトークンを拒否しています → restart_svc.ps1 で MCP を再起動（起動後にトークンが変わりました）",
+                 "MCP 拒绝了令牌 → 用 restart_svc.ps1 重启 MCP（服务启动后令牌已更换）"),
+    "embed": ("意味検索 (embedding 8093) が停止しています → powershell -File C:\\LLM\\start-qwen38.ps1 -EmbedOnly",
+              "语义搜索 (embedding 8093) 已停止 → powershell -File C:\\LLM\\start-qwen38.ps1 -EmbedOnly"),
+    "embed_absent": ("embedding モデルのファイルがありません (D:\\LLM\\models-embed) — 文書検索はキーワードのみになります",
+                     "缺少 embedding 模型文件 (D:\\LLM\\models-embed) — 文档搜索只能按关键词"),
+    "stt": ("音声入力 (STT 8795) が停止しています → powershell -File C:\\LLM\\start-qwen38.ps1 -RestartStt",
+            "语音输入 (STT 8795) 已停止 → powershell -File C:\\LLM\\start-qwen38.ps1 -RestartStt"),
+    "stt_model": ("STT がモデルを見つけられません → C:\\LLM\\Download-Missing-Models.cmd を実行するか D:\\LLM\\models-stt を確認し、"
+                  "start-qwen38.ps1 -RestartStt を実行",
+                  "STT 找不到模型 → 运行 C:\\LLM\\Download-Missing-Models.cmd 或检查 D:\\LLM\\models-stt，然后运行 "
+                  "start-qwen38.ps1 -RestartStt"),
+    "scheduler": ("スケジューラー（heartbeat/メモリージョブ）が動いていません → restart_svc.ps1 -Name scheduler",
+                  "调度器（heartbeat/记忆任务）未运行 → restart_svc.ps1 -Name scheduler"),
+    "gateway": ("リモートプロンプトゲートウェイ (8780) が停止しています → ランチャーをもう一度実行 (start-qwen38.ps1 -Unattended)",
+                "远程提示网关 (8780) 已停止 → 再次运行启动器 (start-qwen38.ps1 -Unattended)"),
+    "hub_port": ("応答しないプロジェクトポートがあります → restart_svc.ps1 -Name hub（進行中の回答が終わるのを待ってから）",
+                 "部分项目端口无响应 → restart_svc.ps1 -Name hub（请先等正在进行的回答结束）"),
+    "disk": ("ドライブ %s の空きが %.1f GB です → 不要なファイルを削除/移動するか再起動（C: の pagefile で約 20 GB 戻ります）",
+             "驱动器 %s 仅剩 %.1f GB → 清理空间或重启（C: 的 pagefile 可释放约 20 GB）"),
+    "drive_e": ("ドライブ E: (USB) が見つかりません — OCPP ログはそこにあります。使う前に接続してください",
+                "未找到驱动器 E: (USB) — OCPP 日志在那里，使用前请先接上"),
+    "commit": ("コミットメモリーの空きが %.1f GB しかありません → 使っていないプログラムを閉じるか、未使用のモデルをアンロード"
+               "（並列ジョブが失敗することがあります）",
+               "可用提交内存仅剩 %.1f GB → 关闭不用的程序或卸载闲置模型（并行任务可能失败）"),
+    "gpu_hot": ("GPU が %d °C です → 冷却を確認 / 負荷を下げる（マシンは自動で速度を落とします）",
+                "GPU 温度 %d °C → 检查散热 / 降低负载（机器会自动降频）"),
+    "gpu_missing": ("nvidia-smi が GPU を見つけられません → NVIDIA ドライバーを確認（モデルは遅い CPU で動きます）",
+                    "nvidia-smi 未找到 GPU → 检查 NVIDIA 驱动（模型会退回到很慢的 CPU）"),
+    "token": ("ローカルサービスのトークンファイルがありません → ランチャー (start-qwen38.ps1) を実行して作り直す",
+              "缺少本地服务令牌文件 → 运行启动器 (start-qwen38.ps1) 重新生成"),
+    "brave": ("ウェブ検索が制限モードです (Wikipedia + DuckDuckGo instant answers) → C:\\LLM\\mcp-websearch\\config.json から "
+              "\"provider\": \"builtin\" を外して DDGS（キー不要）を使うか、Brave キーを C:\\LLM\\secrets\\brave-search.key に置く",
+              "网络搜索处于受限模式 (Wikipedia + DuckDuckGo instant answers) → 从 C:\\LLM\\mcp-websearch\\config.json 中删除 "
+              "\"provider\": \"builtin\" 以使用 DDGS（无需密钥），或把 Brave 密钥放到 C:\\LLM\\secrets\\brave-search.key"),
+    "docker": ("Docker が使えません (%s) → Docker Desktop を自分でインストール（UAC とライセンスの同意が必要）。その間 python は承認のうえ"
+               "ホストで実行されます",
+               "Docker 不可用 (%s) → 请自行安装 Docker Desktop（需要 UAC 和接受许可）；期间 python 经批准后在本机运行"),
+    "docker_reinstall": ("Docker が使えません (%s) → Docker Desktop を自分で再インストール（UAC とライセンスの同意が必要）。その間 python は"
+                         "承認のうえホストで実行されます",
+                         "Docker 不可用 (%s) → 请自行重新安装 Docker Desktop（需要 UAC 和接受许可）；期间 python 经批准后在本机运行"),
+    "docker_start": ("Docker が使えません (%s) → スタートメニューから Docker Desktop を起動し、エンジンが動くまで待つ。その間 python は"
+                     "承認のうえホストで実行されます",
+                     "Docker 不可用 (%s) → 从开始菜单启动 Docker Desktop 并等待引擎就绪；期间 python 经批准后在本机运行"),
+    "tests": ("前回のテスト実行で %d 件失敗 → C:\\Python313\\python.exe -m unittest discover -s C:\\LLM\\tests",
+              "上次测试运行有 %d 项失败 → C:\\Python313\\python.exe -m unittest discover -s C:\\LLM\\tests"),
+}
+
+# เหตุผลของ Docker (docker_status) เป็นญี่ปุ่น/จีน ตามข้อความอังกฤษ
+DOCKER_REASONS = {
+    "the Python sandbox is off · Python code runs on this PC after you approve it": (
+        "Python サンドボックスはオフ · Python コードは承認後にこの PC で実行されます",
+        "Python 沙箱已关闭 · Python 代码在你批准后在本机运行"),
+    "ready": ("使用可能", "就绪"),
+    "Docker is not installed": ("Docker がインストールされていません", "未安装 Docker"),
+    "the Docker Desktop installation is incomplete (its registry key is missing, so the engine cannot start)": (
+        "Docker Desktop のインストールが不完全です（レジストリキーがないためエンジンを起動できません）",
+        "Docker Desktop 安装不完整（缺少注册表项，引擎无法启动）"),
+    "Docker Desktop is installed but its engine is not running": ("Docker Desktop はインストール済みですがエンジンが動いていません",
+                                                                 "已安装 Docker Desktop，但引擎未运行"),
+    "the docker CLI is not on PATH": ("docker コマンドが PATH にありません", "PATH 中没有 docker 命令"),
+    "check failed": ("確認できませんでした", "检查失败"),
+}
+
+
+def fix_texts(key, args=()):
+    """{"th","en","ja","zh"} ของคำแนะนำ key (ฟอร์แมต args ให้ทุกภาษา) — ja/zh เป็น None เมื่อไม่มีคำแปล"""
+    th, en = FIX[key]
+    ja, zh = FIX_JA_ZH.get(key) or (None, None)
+    out = {}
+    for code, tpl in (("th", th), ("en", en), ("ja", ja), ("zh", zh)):
+        if tpl is None:
+            out[code] = None
+        else:
+            try:
+                out[code] = tpl % args if args else tpl
+            except (TypeError, ValueError):
+                out[code] = tpl
+    return out
+
+
+def docker_reason(dk, lang):
+    """เหตุผล Docker ตามภาษา — ja/zh จาก DOCKER_REASONS ตามข้อความอังกฤษ ไม่มีก็อังกฤษ"""
+    dk = dk or {}
+    en = dk.get("reason_en") or ""
+    if lang in ("ja", "zh"):
+        hit = DOCKER_REASONS.get(en)
+        if hit:
+            return hit[0 if lang == "ja" else 1]
+        return en or dk.get("reason_th") or ""
+    return dk.get("reason_" + lang) or en or dk.get("reason_th") or ""
 
 
 class Doctor:
@@ -760,9 +886,12 @@ class Doctor:
         out = []
 
         def add(key, *args):
-            th, en = FIX[key]
-            out.append({"id": key, "severity": FIX_SEVERITY.get(key, "warn"),
-                        "th": th % args if args else th, "en": en % args if args else en})
+            texts = fix_texts(key, args)
+            row = {"id": key, "severity": FIX_SEVERITY.get(key, "warn"), "th": texts["th"], "en": texts["en"]}
+            for code in ("ja", "zh"):
+                if texts.get(code):
+                    row[code] = texts[code]
+            out.append(row)
         st = {s["id"]: s for s in rep["services"]}
         r = st["router"]["state"]
         if r in ("down", "timeout", "error"):
@@ -807,10 +936,14 @@ class Doctor:
             add("brave")
         if not rep["docker"].get("usable") and not rep["docker"].get("off"):   # off = ไม่ใช้ Docker (ปิด sandbox)
             dk = rep["docker"]
-            th, en = FIX["docker_start" if dk.get("stopped") else "docker_reinstall" if dk.get("broken") else "docker"]
-            out.append({"id": "docker", "severity": FIX_SEVERITY["docker"],
-                        "th": th % rep["docker"].get("reason_th", ""),
-                        "en": en % rep["docker"].get("reason_en", "")})
+            key = "docker_start" if dk.get("stopped") else "docker_reinstall" if dk.get("broken") else "docker"
+            th, en = FIX[key]
+            row = {"id": "docker", "severity": FIX_SEVERITY["docker"],
+                   "th": th % dk.get("reason_th", ""), "en": en % dk.get("reason_en", "")}
+            ja_zh = FIX_JA_ZH.get(key)
+            if ja_zh:
+                row["ja"], row["zh"] = ja_zh[0] % docker_reason(dk, "ja"), ja_zh[1] % docker_reason(dk, "zh")
+            out.append(row)
         t = rep["tests"]
         if t and ((t.get("failures") or 0) + (t.get("errors") or 0)) > 0:
             add("tests", (t.get("failures") or 0) + (t.get("errors") or 0))
@@ -818,18 +951,21 @@ class Doctor:
 
 
 def localize(rep, lang="th"):
-    """สำเนาของรายงานที่เติมข้อความภาษาเดียวของหน้า: services[].name, docker.reason (รายงานในแคชเป็นสองภาษา ไม่แตะ)"""
+    """สำเนาของรายงานที่เติมข้อความภาษาเดียวของหน้า: services[].name, docker.reason (รายงานในแคชเป็นหลายภาษา ไม่แตะ)
+    2026-11: th/en/ja/zh — ชื่อ/เหตุผลที่ไม่มีคำแปลของภาษานั้นใช้อังกฤษ"""
+    lang = _i18n.norm_lang(lang)
     th = lang == "th"
     out = dict(rep)
-    out["services"] = [dict(s, name=s.get("name_th" if th else "name_en") or s.get("id")) for s in rep.get("services") or []]
+    out["services"] = [dict(s, name=s.get("name_" + lang) or s.get("name_en") or s.get("name_th") or s.get("id"))
+                       for s in rep.get("services") or []]
     if not th:
-        # ข้อความ heartbeat มาจาก scheduler (เขียนเป็นภาษาไทยอย่างเดียว) — หน้าอังกฤษไม่โชว์ข้อความไทยปน (ภาพ 1440 en 2026-10-06)
+        # ข้อความ heartbeat มาจาก scheduler (เขียนเป็นภาษาไทยอย่างเดียว) — หน้าภาษาอื่นไม่โชว์ข้อความไทยปน (ภาพ 1440 en 2026-10-06)
         for s in out["services"]:
             if isinstance(s.get("heartbeat_message"), str) and re.search("[฀-๿]", s["heartbeat_message"]):
                 s["heartbeat_message"] = None
     if isinstance(rep.get("docker"), dict):
-        out["docker"] = dict(rep["docker"], reason=rep["docker"].get("reason_th" if th else "reason_en") or "")
-    out["lang"] = "th" if th else "en"
+        out["docker"] = dict(rep["docker"], reason=docker_reason(rep["docker"], lang))
+    out["lang"] = lang
     return out
 
 
@@ -838,86 +974,122 @@ STATE_WORD = {"th": {"ok": "ปกติ", "down": "ไม่ทำงาน", "
                      "error": "ตรวจไม่ได้"},
               "en": {"ok": "ok", "down": "down", "auth": "token rejected", "loading": "loading", "missing": "missing",
                      "absent": "model file missing", "stale": "stale", "warn": "warning", "timeout": "timed out",
-                     "error": "check failed"}}
+                     "error": "check failed"},
+              "ja": {"ok": "正常", "down": "停止", "auth": "トークン拒否", "loading": "読み込み中", "missing": "なし",
+                     "absent": "モデルファイルなし", "stale": "更新なし", "warn": "注意", "timeout": "タイムアウト",
+                     "error": "確認失敗"},
+              "zh": {"ok": "正常", "down": "已停止", "auth": "令牌被拒", "loading": "加载中", "missing": "缺失",
+                     "absent": "缺少模型文件", "stale": "无更新", "warn": "注意", "timeout": "超时",
+                     "error": "检查失败"}}
+
+# ข้อความของรายงานแบบข้อความ (report_text) — ภาษาละชุด คีย์เดียวกัน
+REPORT_TEXT = {
+    "th": {"title": "Qwen3.8 — รายงานตรวจระบบ %s (รวม: %s)", "problem": "มีปัญหา", "services": "[บริการ]", "loaded": "โหลดอยู่: ",
+           "hb_ago": "heartbeat %d นาทีก่อน", "ports_up": "พอร์ตโปรเจกต์ %d/%d ตอบ", "streams": "แชตที่กำลังตอบ %s",
+           "versions": "[เวอร์ชัน]", "model_files": "- ไฟล์โมเดล %d ไฟล์: ", "hardware": "[ฮาร์ดแวร์]", "gpu_none": "ไม่พบ",
+           "ram": "- RAM ว่าง %.1f/%.1f GB · commit ว่าง %.1f/%.1f GB", "disk": "- ดิสก์ %s ว่าง %.1f/%.1f GB",
+           "disk_none": "- ดิสก์ %s ไม่พบ", "yes": "มี", "no": "ไม่มี",
+           "keys": "- ไฟล์โทเคนบริการ: %s · Brave key: %s · Gateway key: %s", "docker_off": "ไม่ได้ใช้",
+           "tests": "- ชุดทดสอบล่าสุด %s: รัน %s ข้อ ไม่ผ่าน %s ผิดพลาด %s ข้าม %s", "fixes": "[วิธีแก้ที่แนะนำ]",
+           "errors": "[ข้อผิดพลาดล่าสุดใน log (ลบความลับแล้ว)]"},
+    "en": {"title": "Qwen3.8 — system check %s (overall: %s)", "problem": "problem", "services": "[Services]", "loaded": "loaded: ",
+           "hb_ago": "heartbeat %d min ago", "ports_up": "project ports %d/%d up", "streams": "streams %s",
+           "versions": "[Versions]", "model_files": "- %d model files: ", "hardware": "[Hardware]", "gpu_none": "not found",
+           "ram": "- RAM free %.1f/%.1f GB · commit free %.1f/%.1f GB", "disk": "- Drive %s free %.1f/%.1f GB",
+           "disk_none": "- Drive %s not present", "yes": "yes", "no": "no",
+           "keys": "- Local token file: %s · Brave key: %s · Gateway key: %s", "docker_off": "not used",
+           "tests": "- Last test run %s: ran %s, failures %s, errors %s, skipped %s", "fixes": "[Suggested fixes]",
+           "errors": "[Latest log errors (redacted)]"},
+    "ja": {"title": "Qwen3.8 — システムチェック %s（総合: %s）", "problem": "問題あり", "services": "[サービス]", "loaded": "読み込み済み: ",
+           "hb_ago": "heartbeat %d 分前", "ports_up": "プロジェクトポート %d/%d 応答", "streams": "回答中のチャット %s",
+           "versions": "[バージョン]", "model_files": "- モデルファイル %d 個: ", "hardware": "[ハードウェア]", "gpu_none": "見つかりません",
+           "ram": "- RAM 空き %.1f/%.1f GB · コミット空き %.1f/%.1f GB", "disk": "- ドライブ %s 空き %.1f/%.1f GB",
+           "disk_none": "- ドライブ %s なし", "yes": "あり", "no": "なし",
+           "keys": "- ローカルトークンファイル: %s · Brave キー: %s · Gateway キー: %s", "docker_off": "未使用",
+           "tests": "- 前回のテスト %s: 実行 %s、失敗 %s、エラー %s、スキップ %s", "fixes": "[推奨される対処]",
+           "errors": "[ログの最新エラー（秘密情報は除去済み）]"},
+    "zh": {"title": "Qwen3.8 — 系统检查 %s（总体：%s）", "problem": "有问题", "services": "[服务]", "loaded": "已加载：",
+           "hb_ago": "heartbeat %d 分钟前", "ports_up": "项目端口 %d/%d 在线", "streams": "回答中的对话 %s",
+           "versions": "[版本]", "model_files": "- 模型文件 %d 个：", "hardware": "[硬件]", "gpu_none": "未找到",
+           "ram": "- RAM 可用 %.1f/%.1f GB · 提交内存可用 %.1f/%.1f GB", "disk": "- 驱动器 %s 可用 %.1f/%.1f GB",
+           "disk_none": "- 未找到驱动器 %s", "yes": "有", "no": "无",
+           "keys": "- 本地令牌文件：%s · Brave 密钥：%s · Gateway 密钥：%s", "docker_off": "未使用",
+           "tests": "- 上次测试 %s：运行 %s，失败 %s，错误 %s，跳过 %s", "fixes": "[建议的修复]",
+           "errors": "[日志中的最新错误（已脱敏）]"},
+}
 
 
 def report_text(rep, lang="th"):
-    """รายงานแบบข้อความสำหรับปุ่ม "คัดลอกรายงาน" — มาจาก JSON ที่ลบความลับแล้ว ไม่มีโทเคน/คีย์ (บอกแค่มี/ไม่มี)"""
-    th = lang == "th"
-    W = STATE_WORD["th" if th else "en"]
+    """รายงานแบบข้อความสำหรับปุ่ม "คัดลอกรายงาน" — มาจาก JSON ที่ลบความลับแล้ว ไม่มีโทเคน/คีย์ (บอกแค่มี/ไม่มี)
+    2026-11: th/en/ja/zh ผ่านตาราง REPORT_TEXT / STATE_WORD"""
+    lang = _i18n.norm_lang(lang)
+    W = STATE_WORD[lang]
+    R = REPORT_TEXT[lang]
     L = []
-    overall = {"ok": W["ok"], "warn": W["warn"], "error": "มีปัญหา" if th else "problem"}.get(rep.get("overall"), "?")
-    L.append(("Qwen3.8 — รายงานตรวจระบบ %s (รวม: %s)" if th else "Qwen3.8 — system check %s (overall: %s)")
-             % (rep.get("checked_at"), overall))
+    overall = {"ok": W["ok"], "warn": W["warn"], "error": R["problem"]}.get(rep.get("overall"), "?")
+    L.append(R["title"] % (rep.get("checked_at"), overall))
     L.append("")
-    L.append("[บริการ]" if th else "[Services]")
+    L.append(R["services"])
     for s in rep.get("services") or []:
-        name = s.get("name_th" if th else "name_en")
+        name = s.get("name_" + lang) or s.get("name_en") or s.get("name_th") or s.get("id")
         extra = []
         if s.get("latency_ms") is not None and s["id"] != "hub":
             extra.append("%d ms" % s["latency_ms"])
         if s["id"] == "router" and s.get("loaded"):
-            extra.append(("โหลดอยู่: " if th else "loaded: ") + ", ".join(m["id"] for m in s["loaded"]))
+            extra.append(R["loaded"] + ", ".join(m["id"] for m in s["loaded"]))
         if s["id"] == "scheduler" and s.get("heartbeat_age_s") is not None:
-            extra.append(("heartbeat %d นาทีก่อน" if th else "heartbeat %d min ago") % (s["heartbeat_age_s"] // 60))
+            extra.append(R["hb_ago"] % (s["heartbeat_age_s"] // 60))
         if s["id"] == "stt" and s.get("device"):
             extra.append(s["device"].upper())
         if s["id"] == "hub":
             ports = s.get("ports") or []
-            extra.append(("พอร์ตโปรเจกต์ %d/%d ตอบ" if th else "project ports %d/%d up")
-                         % (len([p for p in ports if p["state"] == "ok"]), len(ports)))
-            extra.append(("แชตที่กำลังตอบ %s" if th else "streams %s") % s.get("keep_awake"))
+            extra.append(R["ports_up"] % (len([p for p in ports if p["state"] == "ok"]), len(ports)))
+            extra.append(R["streams"] % s.get("keep_awake"))
         port = (" (:%s)" % s["port"]) if s.get("port") else ""
         L.append("- %s%s: %s%s" % (name, port, W.get(s.get("state"), s.get("state")),
                                     (" (" + "; ".join(extra) + ")") if extra else ""))
     v = rep.get("versions") or {}
     L.append("")
-    L.append("[เวอร์ชัน]" if th else "[Versions]")
+    L.append(R["versions"])
     L.append("- llama.cpp %s · Python %s · %s" % (v.get("llama_cpp"), v.get("python"), v.get("os")))
     files = (rep.get("models") or {}).get("files") or []
     if files:
-        L.append(("- ไฟล์โมเดล %d ไฟล์: " if th else "- %d model files: ") % len(files)
-                 + ", ".join("%s (%.1f GB)" % (f["name"], f["size_gb"]) for f in files))
+        L.append(R["model_files"] % len(files) + ", ".join("%s (%.1f GB)" % (f["name"], f["size_gb"]) for f in files))
     L.append("")
-    L.append("[ฮาร์ดแวร์]" if th else "[Hardware]")
+    L.append(R["hardware"])
     for g in rep.get("gpu") or []:
         L.append("- GPU %s: VRAM %s/%s MiB, %s °C, driver %s" % (g.get("name"), g.get("mem_used_mib"),
                                                                  g.get("mem_total_mib"), g.get("temp_c"), g.get("driver")))
     if not rep.get("gpu"):
         gerr = (rep.get("_meta") or {}).get("gpu_error")
-        L.append("- GPU: " + ("ไม่พบ" if th else "not found") + (" (%s)" % gerr if gerr else ""))
+        L.append("- GPU: " + R["gpu_none"] + (" (%s)" % gerr if gerr else ""))
     m = rep.get("memory") or {}
     if m:
-        L.append(("- RAM ว่าง %.1f/%.1f GB · commit ว่าง %.1f/%.1f GB" if th else "- RAM free %.1f/%.1f GB · commit free %.1f/%.1f GB")
-                 % (m["ram_free_gb"], m["ram_total_gb"], m["commit_free_gb"], m["commit_limit_gb"]))
+        L.append(R["ram"] % (m["ram_free_gb"], m["ram_total_gb"], m["commit_free_gb"], m["commit_limit_gb"]))
     for d in rep.get("disks") or []:
         if d.get("present"):
-            L.append(("- ดิสก์ %s ว่าง %.1f/%.1f GB" if th else "- Drive %s free %.1f/%.1f GB") % (d["drive"], d["free_gb"], d["total_gb"]))
+            L.append(R["disk"] % (d["drive"], d["free_gb"], d["total_gb"]))
         else:
-            L.append(("- ดิสก์ %s ไม่พบ" if th else "- Drive %s not present") % d["drive"])
+            L.append(R["disk_none"] % d["drive"])
     k = rep.get("keys") or {}
-    yn = (lambda b: "มี" if b else "ไม่มี") if th else (lambda b: "yes" if b else "no")
-    L.append(("- ไฟล์โทเคนบริการ: %s · Brave key: %s · Gateway key: %s" if th else
-              "- Local token file: %s · Brave key: %s · Gateway key: %s")
-             % (yn(k.get("local_token")), yn(k.get("brave_key")), yn(k.get("gateway_key"))))
+    yn = lambda b: R["yes"] if b else R["no"]   # noqa: E731
+    L.append(R["keys"] % (yn(k.get("local_token")), yn(k.get("brave_key")), yn(k.get("gateway_key"))))
     dk = rep.get("docker") or {}
-    state = (("ไม่ได้ใช้" if th else "not used") if dk.get("off") else yn(dk.get("usable")))
-    L.append("- Docker: %s (%s)" % (state, dk.get("reason_th" if th else "reason_en")))
+    state = R["docker_off"] if dk.get("off") else yn(dk.get("usable"))
+    L.append("- Docker: %s (%s)" % (state, docker_reason(dk, lang)))
     t = rep.get("tests")
     if t:
-        L.append(("- ชุดทดสอบล่าสุด %s: รัน %s ข้อ ไม่ผ่าน %s ผิดพลาด %s ข้าม %s" if th else
-                  "- Last test run %s: ran %s, failures %s, errors %s, skipped %s")
-                 % (t.get("at"), t.get("ran"), t.get("failures"), t.get("errors"), t.get("skipped")))
+        L.append(R["tests"] % (t.get("at"), t.get("ran"), t.get("failures"), t.get("errors"), t.get("skipped")))
     fixes = rep.get("fixes") or []
     if fixes:
         L.append("")
-        L.append("[วิธีแก้ที่แนะนำ]" if th else "[Suggested fixes]")
+        L.append(R["fixes"])
         for f in fixes:
-            L.append("- " + f["th" if th else "en"])
+            L.append("- " + (f.get(lang) or f.get("en") or f.get("th") or ""))
     errs = rep.get("errors") or []
     if errs:
         L.append("")
-        L.append("[ข้อผิดพลาดล่าสุดใน log (ลบความลับแล้ว)]" if th else "[Latest log errors (redacted)]")
+        L.append(R["errors"])
         for e in errs:
             L.append("- %s: %s" % (e["file"], e["line"]))
     return "\n".join(L) + "\n"

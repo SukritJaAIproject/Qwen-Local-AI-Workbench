@@ -7,8 +7,8 @@
 [![Python](https://img.shields.io/badge/python-3.13-blue)](#requirements)
 
 A fully local, privacy-first AI workbench for Windows, built around **llama.cpp** and **Qwen** models.
-It wraps the llama.cpp server and its built-in WebUI with a clean, chat-first interface in **Thai and English**,
-per-project workspaces, guarded tools over MCP, a built-in browser, document and knowledge features, voice
+It wraps the llama.cpp server and its built-in WebUI with a clean, chat-first interface in **Thai, English,
+Japanese and Simplified Chinese**, per-project workspaces, guarded tools over MCP, a built-in browser, document and knowledge features, voice
 input, usage and health dashboards, and automatic GPU placement across the internal GPU and a Thunderbolt eGPU.
 
 Models, chats, files, embeddings, OCR and speech-to-text all run on `127.0.0.1`. Data leaves the machine only
@@ -17,10 +17,10 @@ deep-research job. The web-search tools are enabled in every project by default,
 in the chat.
 
 > **ภาษาไทย:** Qwen Local AI Workbench คือชุดเครื่องมือ AI ที่ทำงานบนเครื่องของคุณทั้งหมด (Windows 11 + GPU NVIDIA)
-> สร้างบน llama.cpp และโมเดล Qwen มีหน้าแชตภาษาไทย/อังกฤษ แยกพื้นที่ทำงานเป็นโปรเจกต์ เครื่องมืออ่านและสร้างเอกสาร
-> ค้นข้อมูลในไฟล์ พิมพ์ด้วยเสียง เบราว์เซอร์ในตัว และการจัดวางโมเดลลง GPU อัตโนมัติ ข้อมูลไม่ออกจากเครื่อง
-> ยกเว้นตอนใช้เครื่องมือค้นเว็บ วิธีติดตั้งอยู่ที่ [Quick start](#quick-start) (ภาษาอังกฤษ) ส่วนหน้าจอสลับไทย/อังกฤษได้ด้วย
-> `Alt+Shift+L`
+> สร้างบน llama.cpp และโมเดล Qwen มีหน้าแชตภาษาไทย อังกฤษ ญี่ปุ่น และจีนตัวย่อ แยกพื้นที่ทำงานเป็นโปรเจกต์
+> เครื่องมืออ่านและสร้างเอกสาร ค้นข้อมูลในไฟล์ พิมพ์ด้วยเสียง เบราว์เซอร์ในตัว และการจัดวางโมเดลลง GPU อัตโนมัติ
+> ข้อมูลไม่ออกจากเครื่อง ยกเว้นตอนใช้เครื่องมือค้นเว็บ วิธีติดตั้งอยู่ที่ [Quick start](#quick-start) (ภาษาอังกฤษ)
+> ส่วนหน้าจอสลับภาษาได้จากปุ่ม ไทย | EN | 日本語 | 中文 หรือกด `Alt+Shift+L`
 
 ![Chat in a project: a summary table and action list built from a project file](docs/screenshots/01-chat-en-dark.png)
 
@@ -60,8 +60,12 @@ in the chat.
   and STT; the remote prompt gateway has its own API key.
 - **Projects.** Each project gets its own port, chat history, instructions, files, memory, default model and
   thinking mode, and its own isolated tool scope.
-- **Bilingual UI.** Thai and English, switchable with one click or `Alt+Shift+L`; the llama.cpp WebUI's own menus
-  are translated too (about 700 strings), while chat content is never touched.
+- **Four UI languages.** Thai, English, Japanese and Simplified Chinese for the shell, the manage page, the Doctor
+  report, API messages and the notes the hub writes for the model; switch with one click (ไทย | EN | 日本語 | 中文)
+  or cycle with `Alt+Shift+L`. The llama.cpp WebUI's own menus are translated too (about 700 strings, Thai and
+  English today, Japanese and Chinese in progress), while chat content is never touched. The model is told to
+  answer in the language you write in, and the hub detects Thai, Japanese and Chinese text to keep its own notes
+  in that language.
 - **Tools you can trust.** The local MCP server's tools (files, shell, Python, Office, media and its isolated
   browser) go through a policy guard, and anything that changes the machine needs a two-step confirmation that
   shows you exactly what will run. Two newer paths have lighter gates: llama.cpp's built-in agent tools (on by
@@ -400,8 +404,8 @@ Other measurements from the same machine:
    On first start the launcher creates `C:\LLM\secrets\local-services.token`, plans the GPUs, starts the MCP
    servers, embedding, STT, the model router, the hub, the scheduler and the gateway, then opens
    `http://127.0.0.1:8100`. A fresh install has no projects yet: create one on that page, then open it to chat on
-   its own port. The UI starts in Thai unless you copied `settings.example.json`; switch with the ไทย | EN toggle
-   or `Alt+Shift+L`. Use `-Unattended` for scripted starts (no prompts, no browser; exit code 0 = ready).
+   its own port. The UI starts in Thai unless you copied `settings.example.json`; switch with the
+   ไทย | EN | 日本語 | 中文 buttons or cycle with `Alt+Shift+L` (`"lang"` in `settings.json` takes `th`, `en`, `ja` or `zh`). Use `-Unattended` for scripted starts (no prompts, no browser; exit code 0 = ready).
 6. Check that everything is up: open **Doctor** (`http://127.0.0.1:8100/?manage=1#doctor`, or the account menu).
    Every service should be green; each problem comes with a suggested fix.
 7. Stop everything with `powershell -NoProfile -ExecutionPolicy Bypass -File C:\LLM\stop-qwen38.ps1`. It stops the
@@ -470,7 +474,8 @@ C:\LLM
 ├── .github\                  tests workflow (GitHub Actions on Windows), issue and pull-request templates
 ├── projects\
 │   ├── hub.py                project hub: API + manage page (8100), per-project proxies (8101-8179)
-│   ├── hub_i18n_parts.py     shell and manage-page templates, Thai/English strings (hot-reloaded)
+│   ├── hub_i18n.py           language registry (th/en/ja/zh), fallback rules, API message catalogue
+│   ├── hub_i18n_parts.py     shell and manage-page templates, UI strings in four languages (hot-reloaded)
 │   ├── hub_compact.py        automatic conversation compaction
 │   ├── hub_usage.py          usage log and aggregation
 │   ├── hub_doctor.py         health report for the Doctor page

@@ -954,12 +954,18 @@
     return true;
   }
   // ภาษาที่ใช้: ค่าที่ setLang() ตั้งไว้ (สลับสดโดยไม่โหลดหน้า) มาก่อน แล้วจึงเป็นของ shell / <html lang>
+  // 2026-11: UI_LANGS = ภาษาของ shell ทั้งสี่ (uiLang) — พจนานุกรมของชั้นนี้ยังมีแค่ไทย/อังกฤษ ญี่ปุ่น/จีนจึงได้อังกฤษจาก lang()
+  // ไปก่อน (คำแปล ja/zh ของชั้น WebUI มาใน PR ถัดไป) แต่ <html lang> ตั้งเป็นภาษาจริงเพื่อให้ฟอนต์ CJK ของ tokens.css ทำงาน
+  var UI_LANGS = ["th", "en", "ja", "zh"];
   var langOverride = null;
-  function lang() {
+  function uiLang() {
     if (langOverride) return langOverride;
     var s = shell(), l = s && s.lang;
-    if (l !== "th" && l !== "en") l = (root.getAttribute("lang") || "").slice(0, 2).toLowerCase();
-    return l === "th" ? "th" : "en";
+    if (UI_LANGS.indexOf(l) < 0) l = (root.getAttribute("lang") || "").slice(0, 2).toLowerCase();
+    return UI_LANGS.indexOf(l) >= 0 ? l : "en";
+  }
+  function lang() {
+    return uiLang() === "th" ? "th" : "en";
   }
   function S() { return STR[lang()]; }
 
@@ -2117,7 +2123,7 @@
   function wantLang() {
     if (langOverride) return langOverride;
     var sh = shell();
-    return sh && (sh.lang === "th" || sh.lang === "en") ? sh.lang : null;
+    return sh && UI_LANGS.indexOf(sh.lang) >= 0 ? sh.lang : null;
   }
   function syncRootAttrs() {
     var sh = shell(), wl = wantLang();
@@ -2309,14 +2315,14 @@
   // ตาม ข้อมูลของมันจะบอกภาษาหนึ่งขณะที่หน้าจอเป็นอีกภาษา และถ้า shell โหลด iframe ใหม่ (บันทึกคำสั่ง/เปลี่ยนโมเดล)
   // หน้าแชตจะบูตจากค่านั้นเป็นคนละภาษากับ shell รอบข้าง ภาษาของ shell เป็นของ shell (PATCH /api/settings แล้วโหลดใหม่)
   function setLang(l) {
-    if (l !== "th" && l !== "en") return false;
+    if (UI_LANGS.indexOf(l) < 0) return false;
     var prev = lang();
     langOverride = l;
     setAttr("lang", l);
-    if (prev !== l) {
+    if (prev !== lang()) {
       txRestore();
       restoreForkName();
-      txTree(document.body, l);
+      txTree(document.body, lang());
       bodyObs.takeRecords();
     }
     chips.removeAttribute("data-lang");

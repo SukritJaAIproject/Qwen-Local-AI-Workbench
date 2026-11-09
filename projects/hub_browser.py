@@ -90,6 +90,7 @@ GUIDANCE = (
     "the user to do that in the panel (browser_tabs action=window opens a real window for signing in), then continue.")
 
 PROJECT_DIRS = None                  # hub ตั้งให้: slug -> (โฟลเดอร์ attachments, โฟลเดอร์ outputs) ของโปรเจกต์
+UI_LOCALE = None                     # hub ตั้งให้: () -> BCP 47 ของภาษา UI (th-TH/en-GB/ja-JP/zh-CN) — ภาษาของเมนู/หน้าเว็บใน Edge
 DOWNLOAD_MAX = int(os.environ.get("QWEN_BROWSER_DOWNLOAD_MAX_MB") or 500) * 1024 * 1024
 DOWNLOAD_BURST = 20                  # ดาวน์โหลดได้ไม่เกินกี่ไฟล์ต่อ 10 นาที (กันหน้าเว็บยิงไฟล์ใส่รัวๆ)
 DOWNLOAD_TMP = ".browser-downloading"
@@ -1156,6 +1157,19 @@ class CdpClient:
 
 
 # ---------------------------------------------------------------------------- หาโปรแกรมเบราว์เซอร์
+def _ui_locale():
+    """ภาษาของเบราว์เซอร์ตามภาษา UI ที่ hub บอก (ไม่มี/พัง = th เหมือนเดิม) — เว็บจะเสิร์ฟหน้าเป็นภาษาเดียวกับผู้ใช้"""
+    fn = UI_LOCALE
+    if callable(fn):
+        try:
+            v = str(fn() or "")
+            if re.fullmatch(r"[a-z]{2}(-[A-Z]{2})?", v):
+                return v
+        except Exception:                       # noqa: BLE001 — ค่าเสริม ห้ามทำให้เบราว์เซอร์เปิดไม่ได้
+            pass
+    return "th"
+
+
 def find_browser():
     override = (os.environ.get("QWEN_BROWSER_EXE") or "").strip().strip('"')
     if override and os.path.isfile(override):
@@ -1628,7 +1642,7 @@ class PanelBrowser:
                     "--no-first-run", "--no-default-browser-check", "--disable-sync",
                     "--proxy-server=http://127.0.0.1:%d" % proxy_port(), "--proxy-bypass-list=<-loopback>",
                     "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-                    "--window-size=%d,%d" % DEFAULT_VIEW, "--lang=th"]
+                    "--window-size=%d,%d" % DEFAULT_VIEW, "--lang=" + _ui_locale()]
             if headful:
                 args.append("--window-position=80,60")
             else:

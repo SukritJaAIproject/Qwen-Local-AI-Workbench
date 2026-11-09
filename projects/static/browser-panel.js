@@ -15,7 +15,8 @@
   var API = "/_qwen/browser/";
   var LS_W = "qwen-bp-w", LS_OPEN = "qwen-bp-open";
   var NARROW = window.matchMedia("(max-width: 829.98px)");
-  var TH = document.documentElement.lang !== "en";
+  /* 2026-11: ไทยเฉพาะหน้าไทย — ญี่ปุ่น/จีนใช้อังกฤษไปก่อนจนกว่าชั้น WebUI จะมีคำแปล (PR ถัดไป) */
+  var TH = document.documentElement.lang === "th";
   var S = {
     open: false, state: null, seq: 0, fw: 0, fh: 0, url: null, loopId: 0, pollTimer: 0, lastModelSeq: -1,
     userClosedAt: 0, w: 0, dragging: false, inputQ: Promise.resolve(), lastMove: 0, wheel: null, viewSent: "",

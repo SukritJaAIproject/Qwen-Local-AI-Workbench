@@ -246,7 +246,8 @@ switch). Also project rename/delete, and a link to manage all projects.
 6. Project instructions (system prompt): edit → PATCH system_prompt → GET /_qwen/project →
    write `systemMessage` into `LlamaUi.config` → reload iframe (only if not streaming).
 7. Default model per project: PATCH model; iframe src carries `?model=`.
-8. Language th/en (PATCH /api/settings then reload); every visible string of ours translated.
+8. Language th/en/ja/zh (PATCH /api/settings then reload); every visible string of ours translated
+   (2026-11: Japanese and Simplified Chinese added — see `hub_i18n.py` for the registry and fallback rules).
 9. Model health status (poll hub /api/projects every ~10s).
 10. Chat navigation: new chat, open chat from Recents, search chats, rename/delete chat.
     Rename/delete = write IndexedDB (`conversations` record; for delete also all `messages`
@@ -326,15 +327,24 @@ Built by a workflow (2 builders → 3 independent verifiers → 2 fixers → acc
 Backup before this round: `C:\LLM\projects\backup\llm-20260929-111524`.
 
 ### 10a. Language switch (SHELL + PAGE, hub_i18n_parts.py)
-- Segmented pill `.lsw` "ไทย | EN" in the chat header (`#langSw`, before the Project button) and the
-  manage-page header (`#lang`). 28px pill, inset 0.5px `--qw-border-strong`; pressed = `--qw-bg-active`
+- Segmented pill `.lsw` "ไทย | EN | 日本語 | 中文" in the chat header (`#langSw`, before the Project button)
+  and the manage-page header (`#lang`). 28px pill, inset 0.5px `--qw-border-strong`; pressed = `--qw-bg-active`
   + `--qw-shadow-sm` + `--qw-border` hairline; hover = 55% mix of `--qw-bg-hover`; focus = `--qw-focus-ring`.
-  Below 640px the pressed button is `display:none` → one compact pill naming the other language.
+  640-900px the buttons get tighter padding. Below 640px only the button of the **next** language in the cycle
+  (`data-next`, set by `paintLang()` and by the pre-paint script) is shown → one compact pill; all four are in the
+  account menu's language row.
 - A11y: `role=group` + aria-label in the page language (`lang_group`); buttons `aria-pressed`;
-  ไทย `lang=th`, EN `lang=en aria-label="English"`. `paintLang()` puts `data-tip` and
-  `aria-keyshortcuts="Alt+Shift+L"` only on the non-pressed button. Tooltips are in the **page**
-  language (fix round changed this; no Thai text in English mode except the ไทย label). PAGE uses a CSS
-  `::after` tooltip (it has no `#tip`).
+  each button carries its own `lang=` (ไทย/EN/日本語/中文, EN also `aria-label="English"`). `paintLang()` puts
+  `data-tip` on every non-pressed button and `aria-keyshortcuts="Alt+Shift+L"` on the next-language button only.
+  Tooltips are in the **page** language (no Thai text outside Thai mode except the ไทย label). PAGE uses a CSS
+  `::after` tooltip (it has no `#tip`). `Alt+Shift+L` cycles th → en → ja → zh → th (`nextLang()`).
+- Fallback: `hub._merge_strings()` builds every language on top of English (then Thai), so a key that is not
+  translated yet shows English, never a bare key. API replies keep their `error_th/error_en` pairs; `hub_i18n.
+  localize_fields()` adds `error_ja/error_zh` from `API_TEXTS` in `_json()`, and `srvMsg()` reads
+  `error_<LANG> || error_en || error_th`. CJK fonts come from `tokens.css` (`html[lang="ja"|"zh"]` override the
+  font variables with the system's Yu Gothic UI / Microsoft YaHei UI stacks). The WebUI layer
+  (`webui-enhance.js`) still has only Thai/English dictionaries: for ja/zh it shows English and sets
+  `<html lang>` to the real language so the fonts apply.
 - Hotkey Alt+Shift+L matched on `e.code === 'KeyL'` (a Thai layout puts a Thai char in `e.key`); caught on
   the shell document, the iframe window (capture listener in `hookFrame`, next to Ctrl+K) and PAGE;
   ignored on repeat and while a shell/WebUI modal is open.
