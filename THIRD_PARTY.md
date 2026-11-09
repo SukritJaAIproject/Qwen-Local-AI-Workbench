@@ -18,7 +18,7 @@ The UI also asks the browser for *Leelawadee UI* (a Windows system font) by name
 | Component | Used for | License |
 |---|---|---|
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server`, built-in WebUI), build b10984, Windows CUDA 12.4 | model router, embedding server, the chat WebUI that this project re-themes | MIT |
-| [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) 5.4 + `tessdata_best` (tha, eng) | OCR of scanned PDFs and images | Apache-2.0 |
+| [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) 5.4 + `tessdata_best` (tha, eng; optional jpn, chi_sim) | OCR of scanned PDFs and images | Apache-2.0 |
 | [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [CTranslate2](https://github.com/OpenNMT/CTranslate2), [PyAV](https://github.com/PyAV-Org/PyAV) | speech-to-text service | MIT, MIT, BSD-3-Clause |
 | Whisper large-v3-turbo weights (CTranslate2 conversion) | speech-to-text model | MIT (OpenAI Whisper) — check the converted model's card |
 | [PyMuPDF](https://github.com/pymupdf/PyMuPDF) (`fitz`) | PDF text extraction and page rendering for OCR | **AGPL-3.0** or commercial license from Artifex |

@@ -28,6 +28,11 @@ API = "http://127.0.0.1:8171"
 DEMO = "http://127.0.0.1:8172"
 OCPP = "http://127.0.0.1:8173"
 THAI = "http://127.0.0.1:8174"
+JAPAN = "http://127.0.0.1:8176"
+CHINA = "http://127.0.0.1:8177"
+# chats seeded into an origin (default: every fixture chat); the ja/zh projects show only their own language
+SEED_ONLY = {JAPAN: ("demo-c8", "demo-c9"), CHINA: ("demo-c10", "demo-c11")}
+LOCAL_CHATS = {cid for ids in SEED_ONLY.values() for cid in ids}
 
 
 def prefs(lang, theme):
@@ -119,7 +124,13 @@ class Browser:
         if origin in self.seeded:
             return
         self.go(origin + "/?ui=1", settle=3.0)
-        n = S.evaluate(self.ws, S.SEED_JS % json.dumps(FIX, ensure_ascii=False))
+        keep = SEED_ONLY.get(origin)
+        fix = FIX
+        if keep or LOCAL_CHATS:
+            ok = (lambda cid: cid in keep) if keep else (lambda cid: cid not in LOCAL_CHATS)
+            fix = {"conversations": [c for c in FIX["conversations"] if ok(c["id"])],
+                   "messages": [m for m in FIX["messages"] if ok(m["convId"])]}
+        n = S.evaluate(self.ws, S.SEED_JS % json.dumps(fix, ensure_ascii=False))
         print("seeded", origin, n)
         self.seeded.add(origin)
 
@@ -253,6 +264,25 @@ def chat_th_dark(b):
     b.go(THAI + "/?lang=th", 5)
     print(b.ev(OPEN_CHAT % json.dumps("demo-c7"), 2))
     b.snap("09-chat-th-dark")
+
+
+def chat_ja_dark(b):
+    prefs("ja", "dark")
+    b.metrics(1440, 900)
+    b.seed(JAPAN)
+    b.go(JAPAN + "/?lang=ja", 5)
+    print(b.ev(OPEN_CHAT % json.dumps("demo-c8"), 2))
+    b.snap("15-chat-ja-dark")
+
+
+def chat_zh_light(b):
+    prefs("zh", "light")
+    b.metrics(1440, 900, scheme="light")
+    b.seed(CHINA)
+    b.go(CHINA + "/?lang=zh", 5)
+    print(b.ev(OPEN_CHAT % json.dumps("demo-c10"), 2))
+    b.snap("16-chat-zh-light")
+    b.metrics(1440, 900)
 
 
 def mobile_th(b):
@@ -409,7 +439,8 @@ def message_queue_en(b):
 
 
 ALL = [chat_en_dark, start_en_light, artifact_en_light, project_panel_en, usage_en, doctor_en, gpu_en,
-       account_menu_en, chat_th_dark, mobile_th, manage_th, browser_panel_en, message_queue_en]
+       account_menu_en, chat_th_dark, chat_ja_dark, chat_zh_light, mobile_th, manage_th, browser_panel_en,
+       message_queue_en]
 
 
 def main():

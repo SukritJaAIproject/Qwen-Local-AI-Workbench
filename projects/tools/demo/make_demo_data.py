@@ -32,6 +32,11 @@ PROJECTS = [
      "system_prompt": "ตอบเป็นภาษาไทย กระชับ อ้างอิงชื่อไฟล์ของโปรเจกต์เมื่อใช้ข้อมูลจากไฟล์"},
     {"slug": "data-analysis", "name": "Data analysis", "port": 8175, "think": "off", "model": CODER, "extend": True,
      "system_prompt": "Prefer pandas and matplotlib. Show the code you ran."},
+    # 2026-11: Japanese and Simplified Chinese UI screenshots (served by demo_hub.py on 8176 / 8177)
+    {"slug": "ja-docs", "name": "日本語ドキュメント", "port": 8176, "think": "off", "model": BIG, "extend": True,
+     "system_prompt": "日本語で簡潔に答え、プロジェクトのファイルを使ったときはファイル名を示してください。"},
+    {"slug": "zh-docs", "name": "中文文档", "port": 8177, "think": "off", "model": BIG, "extend": True,
+     "system_prompt": "用简体中文简洁回答，使用项目文件时注明文件名。"},
 ]
 
 T0 = 1791100000000  # fixed ms timestamp base for fixture ids/timestamps
@@ -221,6 +226,48 @@ THAI = """สรุปผลตรวจสถานีประจำเดื�
 | CP-05 | ต้องซ่อม | เปลี่ยนคอนแทคเตอร์ |
 """
 
+JA = """9月の充電ステーション点検結果の要約（`attachments/site-inspection-2026-09.pdf` より）
+
+## 要点
+
+- **CP-03** は盤内温度が最高 92 °C。吸気フィルターの清掃が必要です
+- **CP-05** はコンタクターの固着が 3 回。週末までの交換をおすすめします
+- 入力電圧の平均は 398 V で正常範囲です
+
+| 充電器 | 状態 | 対応 |
+|---|---|---|
+| CP-03 | 要監視 | フィルター清掃・ファン点検 |
+| CP-05 | 要修理 | コンタクター交換 |
+"""
+
+JA_EMAIL = """件名: 【お知らせ】B 拠点 充電器メンテナンスのため一時停止（土曜 9:00–12:00）
+
+いつもご利用いただきありがとうございます。
+土曜日の 9:00〜12:00 は、B 拠点の充電器 4 台を点検のため停止します。この時間帯は A 拠点（約 2 km）をご利用ください。
+ご不便をおかけしますが、ご理解のほどよろしくお願いいたします。
+"""
+
+ZH = """九月充电站巡检结果摘要（来自 `attachments/site-inspection-2026-09.pdf`）
+
+## 要点
+
+- **CP-03** 柜内温度最高 92 °C，需要清洗进风滤网
+- **CP-05** 接触器粘连 3 次，建议在周末前更换
+- 平均输入电压 398 V，处于正常范围
+
+| 充电桩 | 状态 | 处理 |
+|---|---|---|
+| CP-03 | 需关注 | 清洗滤网、检查风扇 |
+| CP-05 | 需维修 | 更换接触器 |
+"""
+
+ZH_EMAIL = """主题：【通知】B 站点充电桩周六维护（9:00–12:00 暂停服务）
+
+感谢您一直以来的使用。
+本周六 9:00–12:00，B 站点的 4 台充电桩将停机检修。期间请前往约 2 公里外的 A 站点充电。
+给您带来不便，敬请谅解。
+"""
+
 
 def fixture():
     convs, msgs = [], []
@@ -244,6 +291,16 @@ def fixture():
             ("user", "Regex for Thai mobile phone numbers?"), ("assistant", REGEX)], model=FAST, tps=79.7),
         chain("demo-c7", "สรุปผลตรวจสถานีประจำเดือน", [
             ("user", "สรุปผลตรวจสถานีเดือนกันยายนจากไฟล์ในโปรเจกต์ให้หน่อย"), ("assistant", THAI)]),
+        # seeded only into the ja-docs / zh-docs origins (shots.py SEED_ONLY)
+        chain("demo-c8", "9月の点検結果の要約", [
+            ("user", "プロジェクトのファイルから、9月の充電ステーション点検結果を要約してください。"), ("assistant", JA)]),
+        chain("demo-c9", "メンテナンスのお知らせ", [
+            ("user", "土曜日の B 拠点メンテナンスについて、お客様向けの短いお知らせを書いてください。"),
+            ("assistant", JA_EMAIL)]),
+        chain("demo-c10", "九月巡检结果摘要", [
+            ("user", "根据项目文件，总结一下九月充电站的巡检结果。"), ("assistant", ZH)]),
+        chain("demo-c11", "维护通知草稿", [
+            ("user", "帮我写一封简短的客户通知，说明周六 B 站点的维护安排。"), ("assistant", ZH_EMAIL)]),
     ]
     for c, m in items:
         convs.append(c)
@@ -322,7 +379,8 @@ def make_files():
         "message": {"th": "กำลังอ่านแหล่งที่ 4 จาก 8", "en": "Reading source 4 of 8"}}, indent=1))
     for p in PROJECTS[1:]:
         os.makedirs(os.path.join(DATA, p["slug"], "attachments"), exist_ok=True)
-    w(os.path.join(DATA, "thai-docs", "attachments", "site-inspection-2026-09.pdf"), "", mode="w")
+    for slug in ("thai-docs", "ja-docs", "zh-docs"):
+        w(os.path.join(DATA, slug, "attachments", "site-inspection-2026-09.pdf"), "", mode="w")
 
 
 def make_chart():
@@ -423,7 +481,7 @@ def main():
     os.makedirs(DATA, exist_ok=True)
     w(os.path.join(WORK, "fixtures", "demo-en.json"), json.dumps(fixture(), ensure_ascii=False, indent=1))
     for x, c in zip(PROJECTS, ("2026-09-02T08:10:00+00:00", "2026-09-10T03:22:00+00:00", "2026-09-18T06:40:00+00:00",
-                                "2026-09-27T09:05:00+00:00")):
+                                "2026-09-27T09:05:00+00:00", "2026-10-03T01:30:00+00:00", "2026-10-04T02:15:00+00:00")):
         x["created"] = c
     w(os.path.join(WORK, "projects.json"), json.dumps(PROJECTS, ensure_ascii=False, indent=2))
     w(os.path.join(WORK, "settings.json"), json.dumps({"lang": "en", "theme": "dark", "font": "serif"}))

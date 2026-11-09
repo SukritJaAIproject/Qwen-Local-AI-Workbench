@@ -9,7 +9,7 @@ image is present; the demo hub hides the MCP servers, so it cannot show a confir
 ```powershell
 cd C:\LLM\projects\tools\demo
 C:\Python313\python.exe make_demo_data.py          # fixtures/, data/, projects.json, settings.json, gpu/
-C:\Python313\python.exe demo_hub.py --minutes 30   # API on 8171, demo projects on 8172-8174
+C:\Python313\python.exe demo_hub.py --minutes 30   # API on 8171, demo projects on 8172-8174 and 8176-8177
 # in a second terminal
 C:\Python313\python.exe shots.py                    # raw/*.png (one headless Edge, temp profile in .\tmp)
 C:\Python313\python.exe finalize_shots.py           # re-encode without metadata -> ..\..\..\docs\screenshots
@@ -17,7 +17,10 @@ C:\Python313\python.exe finalize_shots.py           # re-encode without metadata
 
 How the demo hub stays harmless:
 
-- `hub.py` is imported as a module with `DATA_ROOT`, `projects.json` and `settings.json` pointed at this folder.
+- `hub.py` is imported as a module with `DATA_ROOT`, `projects.json` and `settings.json` pointed at this folder
+  (`QWEN_DEMO_HUB=<clone>\projects\hub.py` takes the hub of a clone instead of `C:\LLM`, e.g. for a branch that is
+  not installed yet; the live install's `secrets\local-services.token` is then read in place so the router accepts
+  the WebUI). The Japanese and Chinese demo projects (8176, 8177) hold only their own chats.
 - GPUs are simulated (`QWEN_GPU_SIMULATE`: RTX 1000 Ada + RTX 4090); "apply" is a dry run (`QWEN_GPU_DRYRUN=1`).
 - The doctor report is built by the real `hub_doctor` code from synthetic probe results (no live probes, no logs).
 - The upstream is a fake llama-server: `GET` requests are relayed to the router on 8099 only to serve the WebUI files

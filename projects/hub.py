@@ -3885,7 +3885,18 @@ def stt_forward(body, ctype, language=""):
     if not tok:
         return _stt_err(503, "stt_no_token", "ยังไม่มีโทเคนของบริการในเครื่อง — เปิดตัวเปิด Qwen3.8 อีกครั้ง",
                         "the local services token is missing — run the Qwen3.8 launcher again")
-    path = "/v1/transcribe" + ("?language=" + language if language in _STT_LANGS else "")
+    # 2026-11: hint = ภาษาของหน้าจอ — stt_server ใช้เป็นภาษาสำรองเมื่อตรวจเองแล้วไม่แน่ใจ และหน้าจอญี่ปุ่น/จีนทำให้ ja/zh
+    # ถูกเพิ่มเข้าชุดภาษาที่ตรวจได้ของคำขอนั้น (ค่าอื่นถูกเพิกเฉยฝั่งโน้น) — language= ที่หน้าเว็บสั่งมาชัดเจนยังชนะเหมือนเดิม
+    params = []
+    if language in _STT_LANGS:
+        params.append("language=" + language)
+    try:
+        hint = get_lang()
+    except Exception:                  # noqa: BLE001 — อ่าน settings ไม่ได้ = ไม่ส่ง hint
+        hint = ""
+    if hint in _STT_LANGS and hint != "auto":
+        params.append("hint=" + hint)
+    path = "/v1/transcribe" + ("?" + "&".join(params) if params else "")
     conn = None
     try:
         conn = http.client.HTTPConnection("127.0.0.1", STT_PORT, timeout=STT_TIMEOUT)
@@ -5822,6 +5833,8 @@ def doctor_config():
         "token_file": str(local_token_path()), "brave_key_file": str(LLM_ROOT / "secrets" / "brave-search.key"),
         "gateway_key_file": str(LLM_ROOT / "mcp-local" / "gateway_key.txt"),
         "tests_file": str(TESTS_LAST_FILE),
+        # 2026-11: ชุดข้อมูล OCR ของภาษาหน้าจอ (jpn/chi_sim) — ตรงกับ TESSDATA_DIR ของ mcp-local/extract.py
+        "tessdata_dir": str(LLM_ROOT / "tools" / "tesseract" / "tessdata"),
         # [fix-hub b3] พอร์ตจริงของสแตก — log ที่ชื่อลงท้ายด้วยพอร์ตอื่น (llama-8199, gpu-state-8197 …) เป็นของชุดทดสอบ ไม่นับ
         "live_ports": sorted({UPSTREAM_PORT, HUB_PORT, MCP_WEB_PORT, MCP_LOCAL_PORT, EMBED_PORT, STT_PORT, 8780}
                              | {p.get("port") for p in load_projects() if isinstance(p, dict)

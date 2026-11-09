@@ -511,6 +511,9 @@ Integration 2026-10-01 02:20-03:15: full suite 999 OK / 24 skipped; live E2E on 
   `services {embed, mcp, web(+provider), research(+running)}` probed every 8 s.
 
 ### 12b. Tools (fast surface)
+- 2026-11: with the UI in Japanese / Chinese, `extract.ocr_langs()` appends `jpn` / `chi_sim` to `OCR_LANGS` when that
+  `.traineddata` is in tessdata (`QWEN_OCR_LANGS` overrides the base set); cache records carry `langs` (no field = tha+eng)
+  and a page read with another set is read again. The Doctor adds an `ocr_pack` tip (info) on a ja/zh page without the pack.
 - `local_read extract` OCRs scanned PDF pages and images (Tesseract tha+eng, 300 dpi). Output marker
   `[OCR หน้า N · ความมั่นใจ X% (สูง|ปานกลาง|ต่ำ)]`; cache `data\<slug>\kb\ocr\<sha256>-<page>.json` (never pruned).
 - `local_read kb` has `mode=auto|lexical|semantic`; hybrid = RRF(k=60) of trigram + cosine (floor 0.40); hits found only by
@@ -558,6 +561,11 @@ skipped (+5 integrator tests in test_integ_b2b.py); stack started with the launc
 MCP/hub/STT by design); live auth spot checks 34/34; E2E on project1 (8103, Qwen3-4B) screenshots `shots/integ-b2b-*.png`.
 
 ### 13a. STT service (8795, owner voice)
+- 2026-11: the hub (`stt_forward`) and `tools_stt` send `hint=<UI language>`; `Engine.allowed_for(hint)` adds ja/zh
+  (`HINT_LANGS`) to `--languages` for that request, and the hint is the fallback language as before — a Thai or English
+  UI keeps the th,en set, so short Thai words misdetected as ja/zh still come back as Thai. `/v1/status` lists
+  `hint_languages`. Tests run in Thai whatever the machine's UI is (`QWEN_SETTINGS_FILE` in `test_security_common`,
+  `record_tests.py`, `test_browser_panel`).
 - `%USERPROFILE%\anaconda3\envs\flexxfast\python.exe -X utf8 C:\LLM\stt\stt_server.py --port 8795` (launcher step 1e, WMI clean env +
   HF_HUB_OFFLINE=1, CUDA_DEVICE_ORDER=PCI_BUS_ID; logs `C:\LLM\logs\stt.*.log`; `-SttOnly` / `-RestartStt` / `-NoStt`; restart_svc.ps1
   has no stt target). Model: faster-whisper large-v3-turbo from the HF cache on E: (E: missing = /health `no_model`, mic dimmed).

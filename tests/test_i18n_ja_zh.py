@@ -618,6 +618,37 @@ class DoctorTests(unittest.TestCase):
         self.assertIn("Docker Desktop はインストール済みですがエンジンが動いていません", fixes["docker"]["ja"])
         self.assertIn("已安装 Docker Desktop，但引擎未运行", fixes["docker"]["zh"])
 
+    def test_ocr_pack_tip_follows_page_language(self):
+        """2026-11: หน้าญี่ปุ่น/จีนที่ยังไม่มีชุดข้อมูล OCR ของภาษานั้นได้คำแนะนำ (info) — หน้าไทย/อังกฤษไม่ได้ รายงานในแคชไม่ถูกแก้"""
+        tmp = tempfile.mkdtemp()
+        try:
+            for name in ("tha", "eng", "jpn"):
+                open(os.path.join(tmp, name + ".traineddata"), "wb").close()
+            probe = doctor.ocr_packs(tmp)
+            self.assertEqual(probe["packs"], {"tha": True, "eng": True, "jpn": True, "chi_sim": False})
+            rep = self._rep()
+            rep["_meta"] = dict(rep.get("_meta") or {}, ocr=probe)
+
+            def ids(r):
+                return [f.get("id") for f in r.get("fixes") or [] if isinstance(f, dict)]
+            for code in ("th", "en", "ja"):                                  # ja มี jpn แล้ว
+                self.assertNotIn("ocr_pack", ids(doctor.localize(rep, code)), code)
+            loc = doctor.localize(rep, "zh")
+            tip = [f for f in loc["fixes"] if f.get("id") == "ocr_pack"][0]
+            self.assertEqual(tip["severity"], "info")
+            for code in ("en", "ja", "zh"):
+                self.assertIn("chi_sim.traineddata", tip[code])
+                self.assertIn(tmp, tip[code])
+                self.assertFalse(THAI.search(tip[code]), tip[code])
+            self.assertIn("中文", tip["zh"])
+            self.assertIn("จีน", tip["th"])
+            self.assertIn("chi_sim", doctor.report_text(loc, "zh"))
+            self.assertNotIn("ocr_pack", ids(rep))
+            rep["_meta"]["ocr"] = None                                         # ตรวจไม่ได้ = ไม่เดา
+            self.assertNotIn("ocr_pack", ids(doctor.localize(rep, "zh")))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
 
 class CompactionTests(unittest.TestCase):
     def test_tables(self):

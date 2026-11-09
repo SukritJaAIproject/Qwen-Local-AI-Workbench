@@ -303,7 +303,7 @@ _DO_INDEX.update({r[0]: r for r in DO_ROWS})
 READ_ROWS.append(
     ("transcribe", "path [start] [max_chars] [language]",
      "ถอดเสียงพูดในไฟล์เสียง/วิดีโอ (mp3 wav m4a ogg webm mp4 mov mkv ...) เป็นข้อความพร้อมเวลา [ชม:นาที:วิ] "
-     "ไทย/อังกฤษตรวจภาษาเอง (language=th|en บังคับได้) ชื่อไฟล์เปล่าๆ หาในไฟล์แนบให้ ไฟล์ยาวได้ทีละช่วง "
+     "ไทย/อังกฤษ/ญี่ปุ่น/จีนตรวจภาษาเอง (language=th|en|ja|zh บังคับได้) ชื่อไฟล์เปล่าๆ หาในไฟล์แนบให้ ไฟล์ยาวได้ทีละช่วง "
      "ต่อด้วย start=วินาที — ผลเก็บไว้และค้นซ้ำได้ด้วย kb"))
 _READ_INDEX.update({r[0]: r for r in READ_ROWS})
 _REQUIRED.update({"transcribe": ("path",)})

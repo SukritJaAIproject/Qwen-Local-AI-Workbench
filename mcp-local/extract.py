@@ -60,7 +60,7 @@ try:                                     # defusedxml ปฏิเสธ DTD/ent
 except Exception:                        # noqa: BLE001 — ไม่มีก็ยังปลอดภัยเพราะเราสแกน DOCTYPE ก่อนเสมอ
     _SafeET = None
 import xml.etree.ElementTree as _ET
-from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
+from i18n_tools import TR, ui_lang  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # ------------------------------------------------------------------ เพดาน
 MAX_FILE_BYTES = 100 * 1024 * 1024        # PDF/Office ใหญ่กว่านี้ไม่ใช่เอกสารที่คนอ่าน น่าจะเป็นไฟล์ผิดชนิด
@@ -1312,7 +1312,12 @@ def _text(path: str, res: Result, html: bool) -> None:
 #      ส่งให้ GDI/Ghostscript ในโปรเซสที่ถือ token
 TESSERACT_EXE = r"C:\LLM\tools\tesseract\tesseract.exe"
 TESSDATA_DIR = r"C:\LLM\tools\tesseract\tessdata"
-OCR_LANGS = "tha+eng"
+OCR_LANGS = os.environ.get("QWEN_OCR_LANGS") or "tha+eng"     # ชุดพื้นฐานของเครื่องนี้ (ต้องมีไฟล์ครบ — ดู ocr_status)
+# 2026-11: ภาษาของหน้าจอ -> ชุดข้อมูลของ Tesseract ที่ "เพิ่ม" ต่อท้ายชุดพื้นฐานเมื่อมีไฟล์ .traineddata (tessdata_best:
+# jpn, chi_sim) — ผู้ใช้ที่ตั้ง UI เป็นญี่ปุ่น/จีนมักอ่านเอกสารภาษาตัวเอง ส่วนหน้าจอไทย/อังกฤษได้ tha+eng เท่าเดิม
+# (ทุกภาษาใน -l ถูกลองพร้อมกัน ภาษาที่ไม่ตรงลดความแม่นเล็กน้อย จึงไม่เปิดทุกชุดตลอดเวลา) แคชต่อหน้าจำชุดภาษาที่ใช้
+# (ระเบียน "langs") — ชุดต่างกัน = OCR ใหม่  ไม่มีไฟล์ = ข้ามเงียบๆ (Doctor แนะนำให้ติดตั้ง)
+OCR_UI_PACKS = {"ja": "jpn", "zh": "chi_sim"}
 # "2" (docs2 fixer): ระเบียนแคชมี HMAC + คำที่ไม่แน่ใจ/บรรทัดขยะที่ตัดทิ้ง — แคชรุ่น "1" ไม่มีลายเซ็น ถูกข้ามแล้ว OCR ใหม่
 OCR_VERSION = "2"                        # เปลี่ยนวิธี OCR/รูปแบบแคช = เพิ่มเลขนี้ (แคชเก่าถูกข้ามเอง)
 OCR_DPI = 300                            # ความละเอียดที่โมเดล LSTM ของ Tesseract ถูกฝึกมาให้อ่านดีที่สุด
@@ -1357,6 +1362,19 @@ class OcrOpts:
     cache_dir: str = ""                  # "" = ไม่ใช้แคช
     goal: int = 0                        # extract: ข้อความสะสมถึงเท่านี้แล้วหยุด OCR หน้าถัดไป (0 = ไม่จำกัด)
     for_index: bool = False              # kb: ไม่ตัดหน่วยทิ้ง แต่บอกหน้าที่ค้างไว้ใน Result.ocr["pending"]
+
+
+def ocr_pack_installed(pack: str) -> bool:
+    """มีไฟล์ <pack>.traineddata ใน tessdata ไหม (jpn, chi_sim, ...)"""
+    return bool(pack) and os.path.isfile(os.path.join(TESSDATA_DIR, pack + ".traineddata"))
+
+
+def ocr_langs() -> str:
+    """ชุดภาษาของ tesseract สำหรับคำขอนี้: OCR_LANGS + ชุดข้อมูลของภาษาหน้าจอ (ja -> jpn, zh -> chi_sim) เมื่อติดตั้งไว้"""
+    pack = OCR_UI_PACKS.get(ui_lang())
+    if pack and pack not in OCR_LANGS.split("+") and ocr_pack_installed(pack):
+        return OCR_LANGS + "+" + pack
+    return OCR_LANGS
 
 
 def ocr_status() -> str:
@@ -1496,7 +1514,7 @@ def _parse_tess(out: str) -> dict:
 def _tesseract(png: bytes, psm: int, sauvola: bool, timeout: float) -> dict:
     # thresholding_method: 0 = Otsu (สแกนแสงเรียบ อ่านดีสุด), 2 = Sauvola (รูปถ่ายแสงไม่เท่ากัน) — วัดจริงกับ
     # fixture: สแกน Otsu 0.97 / Sauvola 0.95, รูปถ่าย Otsu 0.89 / Sauvola 0.97 (อัตราตัวอักษรถูก)
-    cmd = [TESSERACT_EXE, "stdin", "stdout", "--tessdata-dir", TESSDATA_DIR, "-l", OCR_LANGS,
+    cmd = [TESSERACT_EXE, "stdin", "stdout", "--tessdata-dir", TESSDATA_DIR, "-l", ocr_langs(),
            "--oem", "1", "--psm", str(int(psm)), "--dpi", str(OCR_DPI),
            "-c", "thresholding_method=%d" % (2 if sauvola else 0), "txt", "tsv"]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
@@ -1519,6 +1537,7 @@ def _ocr_png(png: bytes, photo: bool, deadline: float) -> dict:
     -> psm 6 (ข้อความก้อนเดียว — ภาพครอปย่อหน้าเดียว/บรรทัดเดียวที่ psm 3 หาบรรทัดไม่เจอ)"""
     t0 = time.monotonic()
     best = None
+    langs = ocr_langs()                      # ชุดภาษาที่หน้านี้ใช้ (จำลงแคช — ชุดต่างกันทีหลัง = OCR ใหม่)
     for step in range(3):
         if step == 0:
             psm, sau = 3, photo
@@ -1545,6 +1564,7 @@ def _ocr_png(png: bytes, photo: bool, deadline: float) -> dict:
         if best["conf"] >= OCR_GOOD_CONF and best["words"] >= 3:
             break
     best["secs"] = round(time.monotonic() - t0, 2)
+    best["langs"] = langs
     return best
 
 
@@ -2146,6 +2166,10 @@ class _OcrRun:
         rec = _cache_read(self.cache, self.sha(), n)
         if rec is None or (rec.get("error") and int(rec.get("tries") or 1) < 2):
             return None
+        # 2026-11: ระเบียนที่ OCR ด้วยชุดภาษาอื่น (หน้าจอเพิ่ง/เคยเป็นญี่ปุ่น-จีน) = OCR ใหม่ด้วยชุดของตอนนี้
+        # ระเบียนรุ่นก่อนไม่มี "langs" = tha+eng (ชุดเดียวที่เคยมี); หน้าว่าง/หน้าที่ล้มไม่ขึ้นกับภาษา
+        if not rec.get("blank") and not rec.get("error") and (rec.get("langs") or "tha+eng") != ocr_langs():
+            return None
         if not rec.get("blank"):
             self.hits += 1
         return rec
@@ -2191,7 +2215,7 @@ class _OcrRun:
         if self.done:
             extra = TR(" (จากแคช %d หน้า)") % self.hits if self.hits else ""
             res.notes.append(TR("อ่านด้วย OCR (Tesseract %s) %d หน้า%s — ข้อความจาก OCR อาจผิดบางคำ "
-                             "ตัวเลข/ชื่อเฉพาะที่สำคัญให้เทียบกับต้นฉบับ") % (OCR_LANGS, len(self.done), extra))
+                             "ตัวเลข/ชื่อเฉพาะที่สำคัญให้เทียบกับต้นฉบับ") % (ocr_langs(), len(self.done), extra))
         for n, why in self.failed[:5]:
             res.notes.append(TR("OCR หน้า %d ไม่สำเร็จ: %s") % (n, why))
         if self.regarbled:
