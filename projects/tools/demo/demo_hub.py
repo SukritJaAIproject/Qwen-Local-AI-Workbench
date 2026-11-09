@@ -9,7 +9,7 @@
     (requests naming a model are refused, so nothing is ever loaded); chat requests get a canned reply
   * MCP servers are hidden from the page (no token is put into the page)
 
-Usage: python demo_hub.py [--minutes 40]      API on 8171, project ports from projects.json (8172-8174)
+Usage: python demo_hub.py [--minutes 40]      API on 8171, project ports from projects.json (8172-8174, 8176-8177)
 """
 import datetime
 import http.client
@@ -25,10 +25,15 @@ from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
 WORK = Path(__file__).resolve().parent
-HUB = r"C:\LLM\projects\hub.py"
+# QWEN_DEMO_HUB: take the hub from a clone (e.g. a branch that is not installed yet) instead of the live install
+HUB = os.environ.get("QWEN_DEMO_HUB") or r"C:\LLM\projects\hub.py"
+if os.environ.get("QWEN_DEMO_HUB"):
+    # a clone has no secrets of its own: read the live install's local-services token in place (no copy), the one
+    # the router on 8099 accepts — otherwise the clone's hub makes a new token and the WebUI gets "access denied"
+    os.environ.setdefault("LLM_LOCAL_TOKEN_FILE", r"C:\LLM\secrets\local-services.token")
 API_PORT = 8171
 ROUTER_PORT = 8099
-SERVE_SLUGS = ("demo", "ocpp-research", "thai-docs")
+SERVE_SLUGS = ("demo", "ocpp-research", "thai-docs", "ja-docs", "zh-docs")
 FAST = "Qwen3-4B-Instruct-2507-Q4_K_M"
 MODELS = [FAST, "Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL", "Qwen3.8-27B-UD-Q4_K_M", "gpt-oss-20b-MXFP4"]
 

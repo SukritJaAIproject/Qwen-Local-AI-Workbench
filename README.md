@@ -29,12 +29,14 @@ in the chat.
 > GPU への自動配置を備えています。データはウェブ検索系のツールを使うとき以外 PC の外に出ません。インストール手順は
 > [Quick start](#quick-start)（英語）をご覧ください。ไทย | EN | 日本語 | 中文 ボタンか `Alt+Shift+L` で日本語に切り替えると、
 > ツールの説明・結果・確認画面、音声入力の言語判定、OCR（`jpn` データを追加した場合）も日本語に対応します。
+> [画面例（日本語）](docs/screenshots/15-chat-ja-dark.png)
 
 > **简体中文:** Qwen Local AI Workbench 是一套完全在本机运行的 AI 工作台（Windows 11 + NVIDIA GPU），基于 llama.cpp
 > 和 Qwen 模型，提供中文、英文、日文和泰文聊天界面、按项目划分的工作区、需确认的本机工具 (MCP)、文档读取与生成、
 > 文件检索、语音输入、内置浏览器以及 GPU 自动分配。除使用联网搜索类工具外，数据不会离开本机。安装步骤见
 > [Quick start](#quick-start)（英文）。用 ไทย | EN | 日本語 | 中文 按钮或 `Alt+Shift+L` 切换到中文后，工具说明、结果与
 > 确认页面、语音输入的语言识别以及 OCR（添加 `chi_sim` 数据后）也会支持中文。
+> [界面示例（中文）](docs/screenshots/16-chat-zh-light.png)
 
 ![Chat in a project: a summary table and action list built from a project file](docs/screenshots/01-chat-en-dark.png)
 
@@ -120,6 +122,7 @@ the author's machine. Taken with v1.1.0.
 | ![Usage dashboard: tokens per day stacked by model](docs/screenshots/06-usage-dashboard-en-light.png) **Usage dashboard** — tokens per day by model, cache reuse, model time; only numbers are logged, never messages. | ![Reply speed per model over 30 days, jumping when the RTX 4090 was attached](docs/screenshots/07-usage-speed-en-light.png) **Reply speed per model** — demo data modeled on the measured speeds before and after attaching the RTX 4090 eGPU. |
 | ![Doctor page: overall status, suggested fixes and the services table](docs/screenshots/08-doctor-en-dark.png) **Doctor** — overall status, a suggested fix for each problem, and every service with its status, response time and details. Further down the page (not in the picture): GPUs, memory, disks, model files and the last test run. Keys are reported as present/absent only. | ![Choose GPUs for models dialog with RTX 4090 and RTX 1000 Ada](docs/screenshots/09-gpu-picker-en-dark.png) **GPU picker** — per-model placement with fit/spill hints; saving restarts only the model server. |
 | ![Account menu with GPU plan, services, theme, font, language](docs/screenshots/10-account-menu-en-light.png) **Account menu** — GPU per model, service status, theme, reply font, language, notifications, personalization. | ![Thai interface with a Thai answer and table](docs/screenshots/11-chat-th-dark.png) **Thai interface** — the same chat UI in Thai, with Thai-friendly fonts and line height. |
+| ![Japanese interface with a Japanese answer and table](docs/screenshots/15-chat-ja-dark.png) **Japanese interface** — the chat UI, menus and the hub in Japanese (日本語); tools, dictation and OCR follow the same setting. | ![Simplified Chinese interface with a Chinese answer and table, light theme](docs/screenshots/16-chat-zh-light.png) **Simplified Chinese interface** — the same chat in Chinese (中文), light theme. |
 | ![Allow card showing the server-side review of a Python call](docs/screenshots/12-confirm-card-th.png) **Two-step confirmation** (Thai UI, from an earlier test run with a `print(1+1)` call) — the Allow card shows the exact code the server will run, fetched from the server, not from the model. The one-time code in the picture expired long ago. | |
 
 ## Features
