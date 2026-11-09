@@ -20,7 +20,7 @@
 
 > [!NOTE]
 > 本文是英文版 [README](README.md) 的摘要。架构、配置、安全和测试的详细说明请看英文版。
-> 日文和简体中文支持是在 v1.1.0 之后合入 `main` 分支的，按下面的[快速开始](#快速开始)用 `git clone` 获取即可使用。
+> 从 v1.2.0 起支持日文和简体中文（[发布说明](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/tag/v1.2.0)）。
 
 ## 简介
 

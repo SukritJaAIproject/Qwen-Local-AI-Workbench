@@ -42,14 +42,14 @@ in the chat.
 > See [Known limitations](#roadmap-and-known-limitations).
 
 > [!TIP]
-> **New on `main` since v1.1.0:** the whole stack in **Japanese and Simplified Chinese**: the chat UI and the
+> **New in v1.2.0** (November 2026): the whole stack in **Japanese and Simplified Chinese**: the chat UI and the
 > llama.cpp WebUI's menus, the manage page and Doctor, tool descriptions, results and confirmation reviews,
-> deep-research reports, dictation and OCR ([Languages](#languages)).
-> **v1.1.0** (November 2026) added a built-in browser panel beside the chat, a message queue with Auto Continue and
-> reconnectable replies, chat backups on the server, llama.cpp agent mode (on by default), per-project Bypass
-> permissions, video generation through a local Creative Studio, web search without an API key (DDGS) and an
-> optional Docker sandbox for Python; see the
-> [release notes](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/tag/v1.1.0).
+> deep-research reports, dictation and OCR ([Languages](#languages),
+> [release notes](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/tag/v1.2.0)).
+> **v1.1.0** added a built-in browser panel beside the chat, a message queue with Auto Continue and reconnectable
+> replies, chat backups on the server, llama.cpp agent mode (on by default), per-project Bypass permissions, video
+> generation through a local Creative Studio, web search without an API key (DDGS) and an optional Docker sandbox
+> for Python ([release notes](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/tag/v1.1.0)).
 
 ## Contents
 
@@ -105,7 +105,7 @@ in the chat.
 
 All but one screenshot come from a demo hub with synthetic projects, chats and numbers
 (see [`projects/tools/demo`](projects/tools/demo/README.md)); the confirmation card is from an earlier test run on
-the author's machine. Taken with v1.1.0; the Japanese and Chinese ones with `main` after it.
+the author's machine. Taken with v1.1.0; the Japanese and Chinese ones with v1.2.0.
 
 | | |
 |---|---|

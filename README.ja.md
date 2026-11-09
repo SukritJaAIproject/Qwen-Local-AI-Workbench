@@ -20,8 +20,7 @@
 
 > [!NOTE]
 > この文書は英語版 [README](README.md) の要約です。アーキテクチャ、設定、セキュリティ、テストの詳細は英語版をご覧ください。
-> 日本語と簡体字中国語への対応は v1.1.0 より後に `main` ブランチに入りました。下の[クイックスタート](#クイックスタート)のとおり
-> `git clone` すれば使えます。
+> 日本語と簡体字中国語には v1.2.0 から対応しています（[リリースノート](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/releases/tag/v1.2.0)）。
 
 ## 概要
 
