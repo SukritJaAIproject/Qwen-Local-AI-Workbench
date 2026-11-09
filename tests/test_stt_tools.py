@@ -235,11 +235,14 @@ class TranscribeTests(SttBase):
         finally:
             i18n.set_lang(None)
         self.assertEqual(self.fake.requests[-1]["hint"], "ja")
+        self.audio("d.wav", 5)                        # ไฟล์ใหม่: ผลของ c.wav อยู่ในแคชแล้ว จะไม่มีคำขอไปถึงบริการ
         i18n.set_lang("en")
         try:
-            self.run_t(path="c.wav")
+            self.run_t(path="d.wav")
         finally:
             i18n.set_lang(None)
+        self.assertEqual(self.fake.requests[-1]["path"], "/v1/transcribe")
+        self.assertEqual(len(self.fake.requests), 2)
         self.assertEqual(self.fake.requests[-1]["hint"], "")                    # หน้าจออังกฤษ: ไม่ส่ง
         self.assertIn("言語: タイ語 (th)", out)
         self.assertNotIn("ภาษา: ไทย", out)
