@@ -32,6 +32,7 @@ import subprocess
 import threading
 
 import guard
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # confirm_token ของคำขอปัจจุบัน — _tool ดึงออกจาก kwargs มาเก็บไว้ที่นี่
 # เพื่อให้ _write_path เรียกใช้ได้โดยไม่ต้องเพิ่มพารามิเตอร์ให้ทุกเครื่องมือ
@@ -179,7 +180,7 @@ def _ffprobe() -> str | None:
 
 
 def _missing(binname: str) -> str:
-    return ("ERROR: ไม่พบ %s บนเครื่องนี้ จึงใช้เครื่องมือสื่อไม่ได้\n%s"
+    return (TR("ERROR: ไม่พบ %s บนเครื่องนี้ จึงใช้เครื่องมือสื่อไม่ได้\n%s")
             % (binname, _INSTALL_HINT))
 
 
@@ -191,7 +192,7 @@ def _tail(text: str, limit: int = STDERR_TAIL) -> str:
     text = (text or "").strip()
     if len(text) <= limit:
         return text
-    return "...(ตัดส่วนต้นออก)...\n" + text[-limit:]
+    return TR("...(ตัดส่วนต้นออก)...\n") + text[-limit:]
 
 
 def _decode(raw: bytes) -> str:
@@ -224,12 +225,12 @@ def _run(argv: list[str]) -> tuple[int, str, str]:
 
 def _fail(rc: int, stderr: str, what: str) -> str:
     if rc == -1:
-        return ("ERROR: %s ใช้เวลาเกิน %d วินาที จึงถูกยกเลิก\n"
+        return (TR("ERROR: %s ใช้เวลาเกิน %d วินาที จึงถูกยกเลิก\n"
                 "  ลองตัดคลิปให้สั้นลงด้วย media_trim ก่อน แล้วค่อยประมวลผลทีละท่อน\n"
-                "%s" % (what, TIMEOUT, _tail(stderr)))
+                "%s") % (what, TIMEOUT, _tail(stderr)))
     if rc == -2:
-        return "ERROR: เรียก ffmpeg ไม่สำเร็จ — %s" % _tail(stderr, 500)
-    return "ERROR: %s ล้มเหลว (exit code %d)\n--- ffmpeg stderr (ท้ายสุด) ---\n%s" % (
+        return TR("ERROR: เรียก ffmpeg ไม่สำเร็จ — %s") % _tail(stderr, 500)
+    return TR("ERROR: %s ล้มเหลว (exit code %d)\n--- ffmpeg stderr (ท้ายสุด) ---\n%s") % (
         what, rc, _tail(stderr))
 
 
@@ -278,10 +279,10 @@ def _time_arg(value, label: str) -> str:
     """
     text = str(value).strip()
     if not text:
-        raise ValueError("%s ว่างเปล่า" % label)
+        raise ValueError(TR("%s ว่างเปล่า") % label)
     if not _TIME_RE.match(text):
-        raise ValueError("%s ต้องเป็นวินาที (เช่น 5 หรือ 12.5) หรือรูปแบบ HH:MM:SS "
-                         "(เช่น 00:01:30) แต่ได้รับ %r" % (label, text))
+        raise ValueError(TR("%s ต้องเป็นวินาที (เช่น 5 หรือ 12.5) หรือรูปแบบ HH:MM:SS "
+                         "(เช่น 00:01:30) แต่ได้รับ %r") % (label, text))
     return text
 
 
@@ -289,17 +290,17 @@ def _positive_number(value, label: str, minimum: float, maximum: float) -> float
     try:
         num = float(value)
     except (TypeError, ValueError):
-        raise ValueError("%s ต้องเป็นตัวเลข แต่ได้รับ %r" % (label, value)) from None
+        raise ValueError(TR("%s ต้องเป็นตัวเลข แต่ได้รับ %r") % (label, value)) from None
     if not (minimum <= num <= maximum):
-        raise ValueError("%s ต้องอยู่ระหว่าง %g ถึง %g แต่ได้รับ %g" % (label, minimum, maximum, num))
+        raise ValueError(TR("%s ต้องอยู่ระหว่าง %g ถึง %g แต่ได้รับ %g") % (label, minimum, maximum, num))
     return num
 
 
 def _codec_arg(value, label: str) -> str:
     text = str(value).strip()
     if not _CODEC_RE.match(text):
-        raise ValueError("%s ไม่ถูกต้อง: %r (ใช้ได้เฉพาะชื่อ codec เช่น libx264, libx265, "
-                         "aac, libmp3lame, copy)" % (label, text))
+        raise ValueError(TR("%s ไม่ถูกต้อง: %r (ใช้ได้เฉพาะชื่อ codec เช่น libx264, libx265, "
+                         "aac, libmp3lame, copy)") % (label, text))
     return text
 
 
@@ -347,9 +348,9 @@ def _reject_indirection(resolved: str) -> None:
     """ปฏิเสธไฟล์ที่เป็นรายการเล่น/สคริปต์ต่อไฟล์ ซึ่งทำให้ ffmpeg ไปเปิดไฟล์อื่นต่อ"""
     ext = os.path.splitext(resolved)[1].lower()
     if ext in _INDIRECT_EXT:
-        raise ValueError("ไฟล์ชนิดรายการเล่น/สคริปต์ต่อไฟล์ (%s) ไม่รองรับ เพราะมันสั่งให้ "
+        raise ValueError(TR("ไฟล์ชนิดรายการเล่น/สคริปต์ต่อไฟล์ (%s) ไม่รองรับ เพราะมันสั่งให้ "
                          "ffmpeg ไปเปิดไฟล์อื่นต่อ (ข้ามขอบเขตโปรเจกต์/เข้าถึงไฟล์ในเครื่องได้) "
-                         "ให้ใช้ไฟล์สื่อจริงโดยตรง" % (ext or "ไม่มีนามสกุล"))
+                         "ให้ใช้ไฟล์สื่อจริงโดยตรง") % (ext or TR("ไม่มีนามสกุล")))
     try:
         with open(resolved, "rb") as fh:
             head = fh.read(256)
@@ -359,19 +360,19 @@ def _reject_indirection(resolved: str) -> None:
         return
     probe = head.lstrip().decode("ascii", "ignore").upper()
     if any(probe.startswith(sig) or sig in probe[:64] for sig in _INDIRECT_HEADERS):
-        raise ValueError("เนื้อไฟล์นี้เป็นรายการเล่น/สคริปต์ต่อไฟล์ (playlist/ffconcat) ซึ่งสั่งให้ "
-                         "ffmpeg ไปเปิดไฟล์อื่นต่อ จึงไม่รองรับ ให้ใช้ไฟล์สื่อจริงโดยตรง")
+        raise ValueError(TR("เนื้อไฟล์นี้เป็นรายการเล่น/สคริปต์ต่อไฟล์ (playlist/ffconcat) ซึ่งสั่งให้ "
+                         "ffmpeg ไปเปิดไฟล์อื่นต่อ จึงไม่รองรับ ให้ใช้ไฟล์สื่อจริงโดยตรง"))
 
 
 def _read_path(path) -> str:
     """ผ่าน guard.check_read แล้วยืนยันว่าเป็นไฟล์จริง (และไม่ใช่รายการเล่นที่อ้อมไปไฟล์อื่น)"""
     if not str(path or "").strip():
-        raise ValueError("ไม่ได้ระบุ path ของไฟล์ต้นทาง")
+        raise ValueError(TR("ไม่ได้ระบุ path ของไฟล์ต้นทาง"))
     resolved = guard.check_read(str(path))
     if not os.path.exists(resolved):
-        raise ValueError("ไม่พบไฟล์ต้นทาง: %s" % resolved)
+        raise ValueError(TR("ไม่พบไฟล์ต้นทาง: %s") % resolved)
     if not os.path.isfile(resolved):
-        raise ValueError("path ต้นทางไม่ใช่ไฟล์: %s" % resolved)
+        raise ValueError(TR("path ต้นทางไม่ใช่ไฟล์: %s") % resolved)
     _reject_indirection(resolved)
     return resolved
 
@@ -379,15 +380,15 @@ def _read_path(path) -> str:
 def _overwrite_review(resolved: str) -> str:
     """ข้อความตรวจทาน (รอบ review R1) ของการเขียนทับไฟล์สื่อ = พารามิเตอร์ทั้งชุดของการเรียกนี้ที่ normalize แล้ว
     (ชุดเดียวกับที่ token ผูกอยู่ผ่าน _CTX.op) + ไฟล์ที่จะถูกแทนที่ — คนเห็นในกล่องอนุญาตว่าตัด/แปลงอะไร ทับไฟล์ไหน"""
-    lines = ["[media] เขียนทับไฟล์สื่อด้วยผลของ ffmpeg",
-             "ไฟล์ที่จะถูกแทนที่: %s (%s)" % (resolved, _human_size(_size_of(resolved)))]
+    lines = [TR("[media] เขียนทับไฟล์สื่อด้วยผลของ ffmpeg"),
+             TR("ไฟล์ที่จะถูกแทนที่: %s (%s)") % (resolved, _human_size(_size_of(resolved)))]
     try:
         op = json.loads(getattr(_CTX, "op", "") or "{}")
     except ValueError:
         op = {}
     if isinstance(op, dict) and op:
-        lines.append("เครื่องมือ: %s" % op.get("tool", "?"))
-        lines.append("พารามิเตอร์:")
+        lines.append(TR("เครื่องมือ: %s") % op.get("tool", "?"))
+        lines.append(TR("พารามิเตอร์:"))
         for k in sorted(op):
             if k != "tool":
                 lines.append("  %s = %s" % (k, json.dumps(op[k], ensure_ascii=False, default=str)))
@@ -397,15 +398,15 @@ def _overwrite_review(resolved: str) -> str:
 def _write_path(out, overwrite, src: str | None = None) -> str:
     """ผ่าน guard.check_write, กันเขียนทับ, กันเขียนทับไฟล์ต้นทาง, สร้างโฟลเดอร์ปลายทาง"""
     if not str(out or "").strip():
-        raise ValueError("ไม่ได้ระบุ path ของไฟล์ปลายทาง (out)")
+        raise ValueError(TR("ไม่ได้ระบุ path ของไฟล์ปลายทาง (out)"))
     resolved = guard.check_write(str(out))
     if src and os.path.normcase(os.path.abspath(resolved)) == os.path.normcase(os.path.abspath(src)):
-        raise ValueError("ไฟล์ปลายทางซ้ำกับไฟล์ต้นทาง — ffmpeg เขียนทับตัวเองไม่ได้ "
-                         "กรุณาตั้งชื่อไฟล์ผลลัพธ์ใหม่")
+        raise ValueError(TR("ไฟล์ปลายทางซ้ำกับไฟล์ต้นทาง — ffmpeg เขียนทับตัวเองไม่ได้ "
+                         "กรุณาตั้งชื่อไฟล์ผลลัพธ์ใหม่"))
     if os.path.exists(resolved):
         if not _truthy(overwrite):
-            raise ValueError("มีไฟล์ %s อยู่แล้ว จึงไม่เขียนทับ "
-                             "ถ้าต้องการเขียนทับจริงให้ส่ง overwrite=true" % resolved)
+            raise ValueError(TR("มีไฟล์ %s อยู่แล้ว จึงไม่เขียนทับ "
+                             "ถ้าต้องการเขียนทับจริงให้ส่ง overwrite=true") % resolved)
         # การเขียนทับลบไฟล์เดิมของผู้ใช้ทิ้ง จึงต้องผ่านการยืนยันสองขั้นตาม S03
         action = "media_overwrite:%s" % resolved.lower()
         op_detail = "%s\n%s" % (resolved, getattr(_CTX, "op", ""))
@@ -413,14 +414,14 @@ def _write_path(out, overwrite, src: str | None = None) -> str:
         if not token or not guard.consume_confirm(token, action, op_detail):
             raise ValueError(guard.confirm_hint(
                 guard.need_confirm(action, op_detail, review=_overwrite_review(resolved)),
-                "เขียนทับไฟล์สื่อ",
-                "%s (%s) จะถูกแทนที่ด้วยไฟล์ใหม่" % (resolved, _human_size(_size_of(resolved)))))
+                TR("เขียนทับไฟล์สื่อ"),
+                TR("%s (%s) จะถูกแทนที่ด้วยไฟล์ใหม่") % (resolved, _human_size(_size_of(resolved)))))
     parent = os.path.dirname(resolved)
     if parent:
         try:
             os.makedirs(parent, exist_ok=True)
         except OSError as exc:
-            raise ValueError("สร้างโฟลเดอร์ปลายทางไม่ได้: %s" % exc) from None
+            raise ValueError(TR("สร้างโฟลเดอร์ปลายทางไม่ได้: %s") % exc) from None
     return resolved
 
 
@@ -438,14 +439,14 @@ def _produced(out: str) -> bool:
 
 def _result_line(out: str, src: str | None = None, note: str = "") -> str:
     size = _size_of(out)
-    text = "OK: สร้างไฟล์ %s แล้ว (%s)" % (out, _human_size(size))
+    text = TR("OK: สร้างไฟล์ %s แล้ว (%s)") % (out, _human_size(size))
     if src:
         before = _size_of(src)
         if before > 0 and size > 0:
             pct = (1.0 - (size / float(before))) * 100.0
-            text += "\n  ขนาดเดิม %s -> ใหม่ %s (%s %.1f%%)" % (
+            text += TR("\n  ขนาดเดิม %s -> ใหม่ %s (%s %.1f%%)") % (
                 _human_size(before), _human_size(size),
-                "เล็กลง" if pct >= 0 else "ใหญ่ขึ้น", abs(pct))
+                TR("เล็กลง") if pct >= 0 else TR("ใหญ่ขึ้น"), abs(pct))
     if note:
         text += "\n  " + note
     return text
@@ -485,7 +486,7 @@ def _tool(fn):
         try:
             text = fn(*args, **kwargs)
         except guard.Denied as exc:
-            text = "ERROR: ถูกปฏิเสธการเข้าถึงไฟล์ — %s" % exc
+            text = TR("ERROR: ถูกปฏิเสธการเข้าถึงไฟล์ — %s") % exc
         except ValueError as exc:
             text = "ERROR: %s" % exc
         except Exception as exc:                    # ตาข่ายกันตกชั้นสุดท้าย
@@ -516,12 +517,12 @@ def media_probe(path: str) -> str:
         # จึงถอยไปอ่านข้อมูลจาก stderr ของ ffmpeg -i แทน ดีกว่าคืน ERROR เปล่าๆ
         ff = _ffmpeg()
         if not ff:
-            return _missing("ffprobe และ ffmpeg")
+            return _missing(TR("ffprobe และ ffmpeg"))
         rc, _, err = _run([ff, "-hide_banner", "-nostdin"] + _input_guard(ff) + ["-i", src])
         if rc == -1 or rc == -2:
-            return _fail(rc, err, "การอ่านข้อมูลไฟล์")
-        return ("ไม่พบ ffprobe จึงอ่านข้อมูลคร่าวๆ จาก ffmpeg แทน (ข้อมูลอาจไม่ครบ)\n"
-                "ไฟล์: %s\nขนาด: %s\n--- ffmpeg ---\n%s"
+            return _fail(rc, err, TR("การอ่านข้อมูลไฟล์"))
+        return (TR("ไม่พบ ffprobe จึงอ่านข้อมูลคร่าวๆ จาก ffmpeg แทน (ข้อมูลอาจไม่ครบ)\n"
+                "ไฟล์: %s\nขนาด: %s\n--- ffmpeg ---\n%s")
                 % (src, _human_size(_size_of(src)), _tail(err)))
 
     rc, out, err = _run([fp, "-v", "error"] + _input_guard(fp) + ["-print_format", "json",
@@ -531,26 +532,26 @@ def media_probe(path: str) -> str:
     try:
         data = json.loads(out)
     except ValueError:
-        return "ERROR: ffprobe คืนข้อมูลที่อ่านไม่ได้\n%s" % _tail(out)
+        return TR("ERROR: ffprobe คืนข้อมูลที่อ่านไม่ได้\n%s") % _tail(out)
 
     fmt = data.get("format") or {}
     streams = data.get("streams") or []
-    lines = ["ไฟล์: %s" % src,
-             "ขนาด: %s (%s bytes)" % (_human_size(fmt.get("size") or _size_of(src)),
+    lines = [TR("ไฟล์: %s") % src,
+             TR("ขนาด: %s (%s bytes)") % (_human_size(fmt.get("size") or _size_of(src)),
                                       fmt.get("size") or _size_of(src)),
-             "รูปแบบคอนเทนเนอร์: %s" % (fmt.get("format_long_name")
+             TR("รูปแบบคอนเทนเนอร์: %s") % (fmt.get("format_long_name")
                                         or fmt.get("format_name") or "?")]
     if fmt.get("duration"):
-        lines.append("ความยาว: %s (%.3f วินาที)"
+        lines.append(TR("ความยาว: %s (%.3f วินาที)")
                      % (_hms(fmt["duration"]), float(fmt["duration"])))
     else:
-        lines.append("ความยาว: ไม่มี (น่าจะเป็นภาพนิ่งหรือสตรีมที่ไม่ระบุความยาว)")
+        lines.append(TR("ความยาว: ไม่มี (น่าจะเป็นภาพนิ่งหรือสตรีมที่ไม่ระบุความยาว)"))
     if fmt.get("bit_rate"):
         try:
-            lines.append("บิตเรตรวม: %d kbps" % (int(fmt["bit_rate"]) // 1000))
+            lines.append(TR("บิตเรตรวม: %d kbps") % (int(fmt["bit_rate"]) // 1000))
         except (TypeError, ValueError):
             pass
-    lines.append("จำนวนสตรีม: %d" % len(streams))
+    lines.append(TR("จำนวนสตรีม: %d") % len(streams))
 
     for st in streams:
         kind = st.get("codec_type", "?")
@@ -572,7 +573,7 @@ def media_probe(path: str) -> str:
             if st.get("channel_layout"):
                 desc.append(str(st["channel_layout"]))
             elif st.get("channels"):
-                desc.append("%s ช่อง" % st["channels"])
+                desc.append(TR("%s ช่อง") % st["channels"])
         if st.get("bit_rate"):
             try:
                 desc.append("%d kbps" % (int(st["bit_rate"]) // 1000))
@@ -581,7 +582,7 @@ def media_probe(path: str) -> str:
         lang = (st.get("tags") or {}).get("language")
         if lang:
             desc.append("lang=%s" % lang)
-        lines.append("  สตรีม %s [%s]: %s" % (st.get("index", "?"), kind, " ".join(desc)))
+        lines.append(TR("  สตรีม %s [%s]: %s") % (st.get("index", "?"), kind, " ".join(desc)))
     return "\n".join(lines)
 
 
@@ -600,10 +601,10 @@ def media_trim(path: str, start: str, duration: str, out: str, overwrite: bool =
     rc, _, err = _run(_base(ff) + ["-ss", ss, "-i", src, "-t", dur,
                                    "-c", "copy", "-avoid_negative_ts", "make_zero", dst])
     if rc == 0 and _produced(dst):
-        return _result_line(dst, note="ใช้โหมด -c copy จึงไม่มีการเข้ารหัสใหม่ "
-                                      "(จุดตัดจะขยับไปที่ keyframe ที่ใกล้ที่สุด)")
+        return _result_line(dst, note=TR("ใช้โหมด -c copy จึงไม่มีการเข้ารหัสใหม่ "
+                                      "(จุดตัดจะขยับไปที่ keyframe ที่ใกล้ที่สุด)"))
     if rc in (-1, -2):
-        return _fail(rc, err, "การตัดคลิป")
+        return _fail(rc, err, TR("การตัดคลิป"))
 
     # รอบสอง: คอนเทนเนอร์ปลายทางไม่รับ codec เดิม ต้องเข้ารหัสใหม่
     copy_err = err
@@ -611,10 +612,10 @@ def media_trim(path: str, start: str, duration: str, out: str, overwrite: bool =
                                      "-c:v", "libx264", "-crf", "20", "-preset", "veryfast",
                                      "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", dst])
     if rc2 != 0 or not _produced(dst):
-        return ("ERROR: ตัดคลิปไม่สำเร็จทั้งแบบ copy และแบบเข้ารหัสใหม่\n"
-                "--- รอบ copy ---\n%s\n--- รอบเข้ารหัสใหม่ (exit %d) ---\n%s"
+        return (TR("ERROR: ตัดคลิปไม่สำเร็จทั้งแบบ copy และแบบเข้ารหัสใหม่\n"
+                "--- รอบ copy ---\n%s\n--- รอบเข้ารหัสใหม่ (exit %d) ---\n%s")
                 % (_tail(copy_err, 500), rc2, _tail(err2)))
-    return _result_line(dst, note="คัดลอกสตรีมตรงๆ ไม่ได้ จึงเข้ารหัสใหม่เป็น H.264/AAC ให้แทน")
+    return _result_line(dst, note=TR("คัดลอกสตรีมตรงๆ ไม่ได้ จึงเข้ารหัสใหม่เป็น H.264/AAC ให้แทน"))
 
 
 @_tool
@@ -632,8 +633,8 @@ def media_resize(path: str, width: int, out: str, overwrite: bool = False) -> st
     if os.path.splitext(src)[1].lower() in _IMAGE_EXT:
         rc, _, err = _run(_base(ff) + ["-i", src, "-vf", "scale=%d:-1" % w, dst])
         if rc != 0 or not _produced(dst):
-            return _fail(rc, err, "การย่อขนาดภาพ")
-        return _result_line(dst, src, "ย่อภาพนิ่งเป็นความกว้าง %d px" % w)
+            return _fail(rc, err, TR("การย่อขนาดภาพ"))
+        return _result_line(dst, src, TR("ย่อภาพนิ่งเป็นความกว้าง %d px") % w)
 
     # scale=w:-2 คือคงสัดส่วนและบังคับความสูงให้เป็นเลขคู่
     vf = "scale=%d:-2:flags=lanczos" % w
@@ -641,14 +642,14 @@ def media_resize(path: str, width: int, out: str, overwrite: bool = False) -> st
               "-preset", "veryfast", "-pix_fmt", "yuv420p"]
     rc, _, err = _run(_base(ff) + common + ["-c:a", "copy", dst])
     if rc == 0 and _produced(dst):
-        return _result_line(dst, src, "ความกว้าง %d px คงสัดส่วนเดิม เสียงคัดลอกมาทั้งดุ้น" % w)
+        return _result_line(dst, src, TR("ความกว้าง %d px คงสัดส่วนเดิม เสียงคัดลอกมาทั้งดุ้น") % w)
     if rc in (-1, -2):
-        return _fail(rc, err, "การย่อขนาดวิดีโอ")
+        return _fail(rc, err, TR("การย่อขนาดวิดีโอ"))
 
     rc2, _, err2 = _run(_base(ff) + common + ["-c:a", "aac", "-b:a", "160k", dst])
     if rc2 != 0 or not _produced(dst):
-        return _fail(rc2, err2 or err, "การย่อขนาดวิดีโอ")
-    return _result_line(dst, src, "ความกว้าง %d px คงสัดส่วนเดิม (เสียงถูกเข้ารหัสใหม่เป็น AAC)" % w)
+        return _fail(rc2, err2 or err, TR("การย่อขนาดวิดีโอ"))
+    return _result_line(dst, src, TR("ความกว้าง %d px คงสัดส่วนเดิม (เสียงถูกเข้ารหัสใหม่เป็น AAC)") % w)
 
 
 @_tool
@@ -667,7 +668,7 @@ def media_compress(path: str, out: str, crf: int = 28, overwrite: bool = False) 
                                    "-c:a", "aac", "-b:a", "128k",
                                    "-movflags", "+faststart", dst])
     if rc != 0 or not _produced(dst):
-        return _fail(rc, err, "การบีบอัดวิดีโอ")
+        return _fail(rc, err, TR("การบีบอัดวิดีโอ"))
     return _result_line(dst, src, "H.264 crf=%d + AAC 128k" % q)
 
 
@@ -683,16 +684,16 @@ def media_extract_audio(path: str, out: str, overwrite: bool = False) -> str:
     enc = _AUDIO_ENC.get(ext)
     if enc is None:
         enc = ["-c:a", "copy"]
-        note = "นามสกุล %s ไม่อยู่ในรายการที่รู้จัก จึงคัดลอกสตรีมเสียงเดิมมาตรงๆ" % (ext or "(ไม่มี)")
+        note = TR("นามสกุล %s ไม่อยู่ในรายการที่รู้จัก จึงคัดลอกสตรีมเสียงเดิมมาตรงๆ") % (ext or TR("(ไม่มี)"))
     else:
-        note = "เข้ารหัสเสียงตามนามสกุล %s" % ext
+        note = TR("เข้ารหัสเสียงตามนามสกุล %s") % ext
 
     rc, _, err = _run(_base(ff) + ["-i", src, "-vn", "-sn", "-dn"] + enc + [dst])
     if rc != 0 or not _produced(dst):
         extra = ""
         if "does not contain any stream" in (err or "") or "Output file" in (err or ""):
-            extra = "\n  เป็นไปได้ว่าไฟล์ต้นทางไม่มีสตรีมเสียงเลย ลองใช้ media_probe ดูก่อน"
-        return _fail(rc, err, "การดึงเสียง") + extra
+            extra = TR("\n  เป็นไปได้ว่าไฟล์ต้นทางไม่มีสตรีมเสียงเลย ลองใช้ media_probe ดูก่อน")
+        return _fail(rc, err, TR("การดึงเสียง")) + extra
     return _result_line(dst, note=note)
 
 
@@ -707,16 +708,16 @@ def media_mute(path: str, out: str, overwrite: bool = False) -> str:
 
     rc, _, err = _run(_base(ff) + ["-i", src, "-an", "-c", "copy", dst])
     if rc == 0 and _produced(dst):
-        return _result_line(dst, src, "ตัดเสียงออกแล้ว ภาพใช้ -c copy จึงไม่เสียคุณภาพ")
+        return _result_line(dst, src, TR("ตัดเสียงออกแล้ว ภาพใช้ -c copy จึงไม่เสียคุณภาพ"))
     if rc in (-1, -2):
-        return _fail(rc, err, "การตัดเสียงออก")
+        return _fail(rc, err, TR("การตัดเสียงออก"))
 
     rc2, _, err2 = _run(_base(ff) + ["-i", src, "-an",
                                      "-c:v", "libx264", "-crf", "20", "-preset", "veryfast",
                                      "-pix_fmt", "yuv420p", dst])
     if rc2 != 0 or not _produced(dst):
-        return _fail(rc2, err2 or err, "การตัดเสียงออก")
-    return _result_line(dst, src, "ตัดเสียงออกแล้ว (คัดลอกภาพตรงๆ ไม่ได้ จึงเข้ารหัสใหม่เป็น H.264)")
+        return _fail(rc2, err2 or err, TR("การตัดเสียงออก"))
+    return _result_line(dst, src, TR("ตัดเสียงออกแล้ว (คัดลอกภาพตรงๆ ไม่ได้ จึงเข้ารหัสใหม่เป็น H.264)"))
 
 
 @_tool
@@ -736,11 +737,11 @@ def media_to_gif(path: str, out: str, start: str = "0", duration: float = 3,
     warn = ""
     try:
         if float(dur) > 30:
-            warn = "\n  หมายเหตุ: ช่วงยาวเกิน 30 วินาที GIF จะไฟล์ใหญ่มาก แนะนำให้สั้นกว่านี้"
+            warn = TR("\n  หมายเหตุ: ช่วงยาวเกิน 30 วินาที GIF จะไฟล์ใหญ่มาก แนะนำให้สั้นกว่านี้")
     except ValueError:
         pass
     if os.path.splitext(dst)[1].lower() != ".gif":
-        warn += "\n  หมายเหตุ: ไฟล์ปลายทางไม่ได้ลงท้ายด้วย .gif แต่เนื้อในเป็น GIF"
+        warn += TR("\n  หมายเหตุ: ไฟล์ปลายทางไม่ได้ลงท้ายด้วย .gif แต่เนื้อในเป็น GIF")
 
     chain = ("fps=%d,scale=%d:-1:flags=lanczos,split[a][b];"
              "[a]palettegen=stats_mode=diff[p];"
@@ -749,8 +750,8 @@ def media_to_gif(path: str, out: str, start: str = "0", duration: float = 3,
                                    "-filter_complex", chain,
                                    "-loop", "0", "-f", "gif", dst])
     if rc != 0 or not _produced(dst):
-        return _fail(rc, err, "การแปลงเป็น GIF")
-    return _result_line(dst, note="เริ่มที่ %s ยาว %s วินาที, %d fps, กว้าง %d px%s"
+        return _fail(rc, err, TR("การแปลงเป็น GIF"))
+    return _result_line(dst, note=TR("เริ่มที่ %s ยาว %s วินาที, %d fps, กว้าง %d px%s")
                                   % (ss, dur, f, w, warn))
 
 
@@ -785,10 +786,10 @@ def media_transcode(path: str, out: str, vcodec: str = "libx264",
     if rc != 0 or not _produced(dst):
         hint = ""
         if "Unknown encoder" in (err or "") or "Automatic encoder selection" in (err or ""):
-            hint = ("\n  ffmpeg build บนเครื่องนี้อาจไม่มี encoder ตัวนั้น "
+            hint = (TR("\n  ffmpeg build บนเครื่องนี้อาจไม่มี encoder ตัวนั้น "
                     "ลองใช้ libx264 / libx265 / libvpx-vp9 สำหรับภาพ และ aac / libmp3lame / "
-                    "libopus สำหรับเสียง")
-        return _fail(rc, err, "การแปลง codec") + hint
+                    "libopus สำหรับเสียง"))
+        return _fail(rc, err, TR("การแปลง codec")) + hint
     return _result_line(dst, src, "vcodec=%s, acodec=%s" % (vc, ac))
 
 

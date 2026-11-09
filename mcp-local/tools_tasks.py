@@ -54,6 +54,7 @@ if _HERE_DIR not in sys.path:
 
 import guard  # noqa: E402
 from guard import Denied  # noqa: E402
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 HERE = Path(_HERE_DIR)
 TASKS_PATH = HERE / "tasks.json"
@@ -98,11 +99,11 @@ def _safe(fn):
         try:
             return fn(*args, **kwargs)
         except Denied as exc:
-            return "ERROR: ถูกปฏิเสธโดยนโยบายความปลอดภัย: %s" % exc
+            return TR("ERROR: ถูกปฏิเสธโดยนโยบายความปลอดภัย: %s") % exc
         except TypeError as exc:
-            return "ERROR: อาร์กิวเมนต์ไม่ถูกต้องสำหรับ %s: %s" % (fn.__name__, exc)
+            return TR("ERROR: อาร์กิวเมนต์ไม่ถูกต้องสำหรับ %s: %s") % (fn.__name__, exc)
         except Exception as exc:                      # noqa: BLE001 - กันทุกกรณี
-            return "ERROR: %s ล้มเหลว: %s: %s" % (fn.__name__, type(exc).__name__, exc)
+            return TR("ERROR: %s ล้มเหลว: %s: %s") % (fn.__name__, type(exc).__name__, exc)
     return wrapper
 
 
@@ -128,12 +129,12 @@ def _pad(text: str, width: int, right: bool = False) -> str:
 def _fmt_elapsed(seconds: float) -> str:
     seconds = max(0, int(seconds))
     if seconds < 60:
-        return "%dวิ" % seconds
+        return TR("%dวิ") % seconds
     if seconds < 3600:
-        return "%dน %dวิ" % (seconds // 60, seconds % 60)
+        return TR("%dน %dวิ") % (seconds // 60, seconds % 60)
     if seconds < 86400:
-        return "%dชม %dน" % (seconds // 3600, (seconds % 3600) // 60)
-    return "%dวัน %dชม" % (seconds // 86400, (seconds % 86400) // 3600)
+        return TR("%dชม %dน") % (seconds // 3600, (seconds % 3600) // 60)
+    return TR("%dวัน %dชม") % (seconds // 86400, (seconds % 86400) // 3600)
 
 
 def _started_epoch(task: dict) -> float:
@@ -211,7 +212,7 @@ def _parse_command(command: str) -> list[str]:
     """
     text = str(command or "").strip()
     if not text:
-        raise ValueError("command ว่าง")
+        raise ValueError(TR("command ว่าง"))
     if text.startswith("["):
         try:
             parsed = json.loads(text)
@@ -223,15 +224,15 @@ def _parse_command(command: str) -> list[str]:
                 parsed = json.loads(patched)
             except ValueError as exc:
                 raise ValueError(
-                    "command ขึ้นต้นด้วย [ แต่ไม่ใช่ JSON array ที่ถูกต้อง: %s "
-                    "(ถ้า path มี backslash ต้องเขียนซ้ำสองตัว เช่น C:\\\\Python313\\\\python.exe)"
+                    TR("command ขึ้นต้นด้วย [ แต่ไม่ใช่ JSON array ที่ถูกต้อง: %s "
+                    "(ถ้า path มี backslash ต้องเขียนซ้ำสองตัว เช่น C:\\\\Python313\\\\python.exe)")
                     % exc)
         if not isinstance(parsed, list) or not parsed:
-            raise ValueError("JSON array ของ command ต้องไม่ว่าง")
+            raise ValueError(TR("JSON array ของ command ต้องไม่ว่าง"))
         return [str(x) for x in parsed]
     argv = _split_command(text)
     if not argv:
-        raise ValueError("แตกคำสั่งออกมาไม่ได้เลย")
+        raise ValueError(TR("แตกคำสั่งออกมาไม่ได้เลย"))
     return argv
 
 
@@ -251,11 +252,11 @@ def _resolve_exe(argv: list[str], cwd: str) -> tuple[list[str], str]:
         base = base[:-4] if base.endswith(".exe") else base
         if base in _SHELL_BUILTINS:
             raise ValueError(
-                "\"%s\" เป็นคำสั่งภายในของ cmd.exe ไม่ใช่โปรแกรม และโมดูลนี้ไม่ใช้ shell "
-                "เพื่อความปลอดภัย ถ้าต้องการจริงให้เขียนเต็มว่า: cmd /c \"%s ...\"" % (exe, exe))
+                TR("\"%s\" เป็นคำสั่งภายในของ cmd.exe ไม่ใช่โปรแกรม และโมดูลนี้ไม่ใช้ shell "
+                "เพื่อความปลอดภัย ถ้าต้องการจริงให้เขียนเต็มว่า: cmd /c \"%s ...\"") % (exe, exe))
         raise ValueError(
-            "หาโปรแกรม \"%s\" ไม่เจอทั้งใน PATH และในโฟลเดอร์ทำงาน "
-            "ให้ระบุ path เต็ม เช่น C:\\Python313\\python.exe" % exe)
+            TR("หาโปรแกรม \"%s\" ไม่เจอทั้งใน PATH และในโฟลเดอร์ทำงาน "
+            "ให้ระบุ path เต็ม เช่น C:\\Python313\\python.exe") % exe)
     warn = ""
     low = found.lower()
     asked = os.path.basename(exe).lower()
@@ -263,13 +264,13 @@ def _resolve_exe(argv: list[str], cwd: str) -> tuple[list[str], str]:
     if asked in _SHELL_BUILTINS:
         # บนเครื่องนี้ Git for Windows วาง dir/echo/mkdir/rmdir แบบ POSIX ไว้ใน PATH
         # ซึ่งพฤติกรรมไม่เหมือน builtin ของ cmd เลย (dir.EXE ทำงานเหมือน ls)
-        warn = ("คำเตือน: \"%s\" ถูกจับคู่กับโปรแกรม %s ซึ่งเป็นเครื่องมือแบบ POSIX "
+        warn = (TR("คำเตือน: \"%s\" ถูกจับคู่กับโปรแกรม %s ซึ่งเป็นเครื่องมือแบบ POSIX "
                 "ไม่ใช่คำสั่งภายในของ cmd.exe พฤติกรรมและอาร์กิวเมนต์จะต่างออกไป "
-                "ถ้าต้องการคำสั่งของ cmd จริงๆ ให้เขียนว่า cmd /c \"%s ...\""
+                "ถ้าต้องการคำสั่งของ cmd จริงๆ ให้เขียนว่า cmd /c \"%s ...\"")
                 % (exe, found, asked))
     elif low.endswith((".bat", ".cmd")):
-        warn = ("หมายเหตุ: %s เป็นสคริปต์ batch ซึ่ง Windows จะรันผ่าน cmd.exe ให้เอง "
-                "เนื้อหาในไฟล์จึงทำงานได้เต็มรูปแบบ" % os.path.basename(found))
+        warn = (TR("หมายเหตุ: %s เป็นสคริปต์ batch ซึ่ง Windows จะรันผ่าน cmd.exe ให้เอง "
+                "เนื้อหาในไฟล์จึงทำงานได้เต็มรูปแบบ") % os.path.basename(found))
     return [found] + list(argv[1:]), warn
 
 
@@ -286,9 +287,9 @@ def _guard_argv(argv: list[str], raw: str, work_dir: str) -> None:
         guard.audit("task_start_denied", {"reason": reason,
                                           "command": guard.scrub_text(raw)[:300]})
         if reason == "secret_path":
-            raise Denied("คำสั่งนี้อ้างถึงโฟลเดอร์ความลับของระบบ (secrets/token) จึงรันไม่ได้ไม่ว่ากรณีใด")
-        raise Denied("งานเบื้องหลังห้ามแตะโค้ด/ค่าตั้งของระบบหรือจุดที่ทำให้โปรแกรมรันเองอัตโนมัติ "
-                     "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal")
+            raise Denied(TR("คำสั่งนี้อ้างถึงโฟลเดอร์ความลับของระบบ (secrets/token) จึงรันไม่ได้ไม่ว่ากรณีใด"))
+        raise Denied(TR("งานเบื้องหลังห้ามแตะโค้ด/ค่าตั้งของระบบหรือจุดที่ทำให้โปรแกรมรันเองอัตโนมัติ "
+                     "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal"))
     guard.check_workdir_for_exec(work_dir, readonly=False)
     for arg in argv:
         cand = tools_files._path_of(arg, work_dir)
@@ -299,8 +300,8 @@ def _guard_argv(argv: list[str], raw: str, work_dir: str) -> None:
             continue
         guard.check_read(cand)
         if guard.is_write_protected(cand):
-            raise Denied("งานเบื้องหลังห้ามอ้างถึง path ในเขตห้ามเขียน (%s) "
-                         "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal" % cand)
+            raise Denied(TR("งานเบื้องหลังห้ามอ้างถึง path ในเขตห้ามเขียน (%s) "
+                         "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal") % cand)
 
 
 def _visible(task: dict) -> bool:
@@ -467,18 +468,18 @@ def _refresh(tasks: list[dict]) -> bool:
 def _status_text(task: dict) -> str:
     st = task.get("status")
     if st == "running":
-        return "กำลังทำงาน"
+        return TR("กำลังทำงาน")
     if st == "stopped":
-        return "ถูกสั่งหยุด"
+        return TR("ถูกสั่งหยุด")
     if st == "failed":
-        return "เริ่มไม่สำเร็จ"
+        return TR("เริ่มไม่สำเร็จ")
     if st == "exited":
         if task.get("exit_unknown"):
-            return "จบแล้ว (ไม่ทราบรหัส)"
+            return TR("จบแล้ว (ไม่ทราบรหัส)")
         rc = task.get("exit_code")
         if rc == 0:
-            return "จบปกติ (0)"
-        return "จบผิดพลาด (%s)" % rc
+            return TR("จบปกติ (0)")
+        return TR("จบผิดพลาด (%s)") % rc
     return str(st)
 
 
@@ -569,16 +570,16 @@ def _read_tail(log_path: str, lines: int) -> tuple[str, int]:
     try:
         size = os.path.getsize(log_path)
     except OSError:
-        return ("(ยังไม่มีไฟล์ log)", 0)
+        return (TR("(ยังไม่มีไฟล์ log)"), 0)
     if size == 0:
-        return ("(log ยังว่าง)", 0)
+        return (TR("(log ยังว่าง)"), 0)
     try:
         with open(log_path, "rb") as fh:
             start = max(0, size - TAIL_READ_BYTES)
             fh.seek(start)
             raw = fh.read()
     except OSError as exc:
-        return ("(อ่าน log ไม่ได้: %s)" % exc, size)
+        return (TR("(อ่าน log ไม่ได้: %s)") % exc, size)
     raw = raw.replace(b"\x00", b"")
     # โปรแกรมที่ไม่ใช่ Python อาจพ่นข้อความไทยเป็น cp874/ANSI ลองไล่ให้ครบก่อนยอมแพ้
     text = ""
@@ -595,7 +596,7 @@ def _read_tail(log_path: str, lines: int) -> tuple[str, int]:
         text = text[nl + 1:] if nl >= 0 else text
     rows = text.splitlines()
     tail = rows[-lines:] if lines > 0 else []
-    body = "\n".join(tail) if tail else "(log ยังว่าง)"
+    body = "\n".join(tail) if tail else TR("(log ยังว่าง)")
     return (body, size)
 
 
@@ -607,7 +608,7 @@ def task_start(command: str, cwd: str = "", confirm_token: str = "") -> str:
     except ValueError as exc:
         guard.audit("task_start_denied", {"command": str(command)[:400],
                                           "reason": "parse_failed", "error": str(exc)})
-        return "ERROR: อ่านคำสั่งไม่ออก: %s" % exc
+        return TR("ERROR: อ่านคำสั่งไม่ออก: %s") % exc
 
     # หา cwd ก่อน เพราะต้องใช้ตอนค้นหาไฟล์โปรแกรมด้วย
     raw_cwd = str(cwd or "").strip()
@@ -615,7 +616,7 @@ def task_start(command: str, cwd: str = "", confirm_token: str = "") -> str:
         work_dir = guard.check_read(raw_cwd)
         if not os.path.isdir(work_dir):
             guard.audit("task_start_denied", {"cwd": work_dir, "reason": "no_such_dir"})
-            return "ERROR: โฟลเดอร์ทำงานไม่มีอยู่จริง: %s" % work_dir
+            return TR("ERROR: โฟลเดอร์ทำงานไม่มีอยู่จริง: %s") % work_dir
     else:
         # ไม่ระบุ cwd = โฟลเดอร์ของโปรเจกต์ที่เรียก (S04) ถ้าไม่ได้มาจาก tools/call ใช้ "tasks" แบบเดิม
         try:
@@ -645,27 +646,27 @@ def task_start(command: str, cwd: str = "", confirm_token: str = "") -> str:
             ok = False
     if not ok:
         # รอบ review (R1): review = argv ทีละชิ้น (สิ่งที่ส่งให้ CreateProcess จริง) + cwd — กล่องอนุญาตแสดงข้อความนี้
-        review = "\n".join(["[task_start] เริ่มโปรเซสเบื้องหลัง (ไม่ผ่าน shell — | > && เป็นข้อความธรรมดา)",
+        review = "\n".join([TR("[task_start] เริ่มโปรเซสเบื้องหลัง (ไม่ผ่าน shell — | > && เป็นข้อความธรรมดา)"),
                             "cwd: %s" % guard.review_oneline(work_dir),
-                            "โปรแกรมและอาร์กิวเมนต์ (argv) ทีละชิ้น เป็นสตริง JSON หนึ่งชิ้นต่อบรรทัด "
-                            "= สิ่งที่จะรันจริง:"]
+                            TR("โปรแกรมและอาร์กิวเมนต์ (argv) ทีละชิ้น เป็นสตริง JSON หนึ่งชิ้นต่อบรรทัด "
+                            "= สิ่งที่จะรันจริง:")]
                            + ["  [%d] %s" % (i, _argv_item(a)) for i, a in enumerate(argv)]
-                           + (["หมายเหตุ: %s" % guard.review_oneline(warn)] if warn else []))
+                           + ([TR("หมายเหตุ: %s") % guard.review_oneline(warn)] if warn else []))
         token = guard.need_confirm("task_start", preview, review=review)
         guard.audit("task_start_preview", {"command": guard.scrub_text(preview)[:400],
                                            "ref": guard.token_ref(token)})
-        head = ("จะเริ่มโปรเซสเบื้องหลังตามนี้ (ยังไม่ได้เริ่ม)\n"
+        head = (TR("จะเริ่มโปรเซสเบื้องหลังตามนี้ (ยังไม่ได้เริ่ม)\n"
                 "  โปรแกรมและอาร์กิวเมนต์ที่จะรันจริง:\n%s\n"
                 "  โฟลเดอร์ทำงาน: %s\n"
-                "  ผลลัพธ์ทั้ง stdout และ stderr จะถูกบันทึกลงไฟล์ log (เพดาน 2 MB)\n"
+                "  ผลลัพธ์ทั้ง stdout และ stderr จะถูกบันทึกลงไฟล์ log (เพดาน 2 MB)\n")
                 % (_argv_text(argv), work_dir))
         if token_in:
-            head = ("(confirm_token ที่ส่งมาใช้ไม่ได้หรือหมดอายุแล้ว จึงยังไม่เริ่ม "
-                    "ขอ token ใหม่)\n\n") + head
+            head = (TR("(confirm_token ที่ส่งมาใช้ไม่ได้หรือหมดอายุแล้ว จึงยังไม่เริ่ม "
+                    "ขอ token ใหม่)\n\n")) + head
         if warn:
             head += "  %s\n" % warn
-        head += ("  หมายเหตุ: ไม่ได้ใช้ shell ตัวดำเนินการอย่าง | > && จะกลายเป็น "
-                 "ข้อความธรรมดาที่ส่งให้โปรแกรม\n\n")
+        head += (TR("  หมายเหตุ: ไม่ได้ใช้ shell ตัวดำเนินการอย่าง | > && จะกลายเป็น "
+                 "ข้อความธรรมดาที่ส่งให้โปรแกรม\n\n"))
         # อาร์กิวเมนต์มาจากโมเดล: อักขระ bidi/zero-width ในข้อความประกอบก็ต้องแสดงเป็นรหัสเหมือนใน review
         # และบรรทัด "รายละเอียด" ใช้ argv แบบ JSON (preview ดิบที่ token ผูกอยู่มี \n ของ argv ได้ = บรรทัดปลอม)
         shown = "%s\n(cwd: %s)" % (" ".join(_argv_item(a) for a in argv), work_dir)
@@ -676,7 +677,7 @@ def task_start(command: str, cwd: str = "", confirm_token: str = "") -> str:
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        return "ERROR: สร้างโฟลเดอร์ log ไม่ได้: %s" % exc
+        return TR("ERROR: สร้างโฟลเดอร์ log ไม่ได้: %s") % exc
 
     record = {
         "id": task_id,
@@ -698,7 +699,7 @@ def task_start(command: str, cwd: str = "", confirm_token: str = "") -> str:
     }
 
     try:
-        header = ("=== task %s ===\nคำสั่ง: %s\nโฟลเดอร์: %s\nเริ่ม: %s\n%s\n"
+        header = (TR("=== task %s ===\nคำสั่ง: %s\nโฟลเดอร์: %s\nเริ่ม: %s\n%s\n")
                   % (task_id, record["command"], work_dir, record["started_at"], "-" * 60))
         with open(str(log_path), "ab", buffering=0) as fh:
             fh.write(header.encode("utf-8", "replace"))
@@ -735,7 +736,7 @@ def task_start(command: str, cwd: str = "", confirm_token: str = "") -> str:
             _save_tasks(tasks)
         guard.audit("task_start_failed", {"id": task_id, "command": record["command"],
                                           "error": record["error"]})
-        return "ERROR: เริ่มโปรเซสไม่ได้: %s (บันทึกไว้เป็นงาน %s สถานะ failed)" % (
+        return TR("ERROR: เริ่มโปรเซสไม่ได้: %s (บันทึกไว้เป็นงาน %s สถานะ failed)") % (
             record["error"], task_id)
 
     record["pid"] = proc.pid
@@ -751,13 +752,13 @@ def task_start(command: str, cwd: str = "", confirm_token: str = "") -> str:
 
     guard.audit("task_start", {"id": task_id, "command": record["command"],
                                "cwd": work_dir, "pid": proc.pid})
-    out = ("เริ่มงานเบื้องหลังแล้ว\n"
+    out = (TR("เริ่มงานเบื้องหลังแล้ว\n"
            "  id      : %s\n"
            "  คำสั่ง  : %s\n"
            "  โฟลเดอร์: %s\n"
            "  pid     : %d\n"
            "  log     : %s\n\n"
-           "ดูความคืบหน้าด้วย task_get(id=\"%s\") หรือดูงานทั้งหมดด้วย task_list()"
+           "ดูความคืบหน้าด้วย task_get(id=\"%s\") หรือดูงานทั้งหมดด้วย task_list()")
            % (task_id, record["command"], work_dir, proc.pid, log_path, task_id))
     if warn:
         out += "\n%s" % warn
@@ -773,17 +774,17 @@ def task_list() -> str:
         snapshot = [t for t in tasks if _visible(t)]
     guard.audit("task_list", {"count": len(snapshot)})
     if not snapshot:
-        return ("ยังไม่มีงานเบื้องหลังในทะเบียน\n"
-                "เริ่มงานใหม่ด้วย task_start(command=\"...\")")
+        return (TR("ยังไม่มีงานเบื้องหลังในทะเบียน\n"
+                "เริ่มงานใหม่ด้วย task_start(command=\"...\")"))
 
     snapshot.sort(key=_started_epoch, reverse=True)
-    rows = [("id", "สถานะ", "pid", "ใช้เวลา", "คำสั่ง")]
+    rows = [("id", TR("สถานะ"), "pid", TR("ใช้เวลา"), TR("คำสั่ง"))]
     for t in snapshot:
         cmd = str(t.get("command", ""))
         if len(cmd) > 58:
             cmd = cmd[:55] + "..."
         if t.get("log_capped"):
-            cmd += "  [log เต็ม]"
+            cmd += TR("  [log เต็ม]")
         rows.append((str(t.get("id", "?")), _status_text(t),
                      str(t.get("pid") or "-"), _elapsed_text(t), cmd))
 
@@ -797,7 +798,7 @@ def task_list() -> str:
             lines.append("-" * min(100, _dwidth(lines[0])))
     active = sum(1 for t in snapshot if t.get("status") in _ACTIVE)
     lines.append("")
-    lines.append("รวม %d งาน กำลังทำงานอยู่ %d งาน (ดูรายละเอียดด้วย task_get)"
+    lines.append(TR("รวม %d งาน กำลังทำงานอยู่ %d งาน (ดูรายละเอียดด้วย task_get)")
                  % (len(snapshot), active))
     return "\n".join(lines)
 
@@ -813,40 +814,40 @@ def task_get(id: str = "", tail: int = 50) -> str:   # noqa: A002 - ชื่อ
         task = dict(task) if task and _visible(task) else None
     if task is None:
         guard.audit("task_get_missing", {"id": str(id)[:80]})
-        return ("ERROR: ไม่พบงาน id=\"%s\" ในทะเบียน (ดูรายการทั้งหมดด้วย task_list)"
+        return (TR("ERROR: ไม่พบงาน id=\"%s\" ในทะเบียน (ดูรายการทั้งหมดด้วย task_list)")
                 % str(id))
 
     guard.audit("task_get", {"id": task["id"], "tail": n})
     body, size = _read_tail(str(task.get("log", "")), n)
     info = [
-        "งาน %s" % task["id"],
-        "  คำสั่ง    : %s" % task.get("command", ""),
-        "  โฟลเดอร์  : %s" % task.get("cwd", ""),
-        "  สถานะ     : %s" % _status_text(task),
+        TR("งาน %s") % task["id"],
+        TR("  คำสั่ง    : %s") % task.get("command", ""),
+        TR("  โฟลเดอร์  : %s") % task.get("cwd", ""),
+        TR("  สถานะ     : %s") % _status_text(task),
         "  pid       : %s" % (task.get("pid") or "-"),
-        "  เริ่มเมื่อ : %s (UTC)" % task.get("started_at", "?"),
-        "  ใช้เวลา   : %s" % _elapsed_text(task),
+        TR("  เริ่มเมื่อ : %s (UTC)") % task.get("started_at", "?"),
+        TR("  ใช้เวลา   : %s") % _elapsed_text(task),
     ]
     if task.get("ended_at"):
-        info.append("  จบเมื่อ    : %s (UTC)" % task["ended_at"])
+        info.append(TR("  จบเมื่อ    : %s (UTC)") % task["ended_at"])
     if task.get("error"):
-        info.append("  ข้อผิดพลาด: %s" % task["error"])
-    info.append("  log       : %s (%s ไบต์)" % (task.get("log", "-"), format(size, ",")))
+        info.append(TR("  ข้อผิดพลาด: %s") % task["error"])
+    info.append(TR("  log       : %s (%s ไบต์)") % (task.get("log", "-"), format(size, ",")))
     if task.get("log_capped"):
-        info.append("  หมายเหตุ  : log ชนเพดาน 2 MB แล้ว ส่วนที่เกินถูกทิ้ง "
-                    "แต่โปรเซสยังทำงานต่อได้ปกติ")
+        info.append(TR("  หมายเหตุ  : log ชนเพดาน 2 MB แล้ว ส่วนที่เกินถูกทิ้ง "
+                    "แต่โปรเซสยังทำงานต่อได้ปกติ"))
     if task.get("exit_unknown"):
-        info.append("  หมายเหตุ  : งานนี้เริ่มโดยเซิร์ฟเวอร์รอบก่อน จึงรู้แค่ว่าโปรเซสหายไปแล้ว "
-                    "แต่อ่านรหัสจบไม่ได้")
+        info.append(TR("  หมายเหตุ  : งานนี้เริ่มโดยเซิร์ฟเวอร์รอบก่อน จึงรู้แค่ว่าโปรเซสหายไปแล้ว "
+                    "แต่อ่านรหัสจบไม่ได้"))
         if task.get("owner_pid") != os.getpid():
-            info.append("             ถ้างานถูกปิดตอนเซิร์ฟเวอร์รีสตาร์ตพอดี สาเหตุน่าจะเป็น "
+            info.append(TR("             ถ้างานถูกปิดตอนเซิร์ฟเวอร์รีสตาร์ตพอดี สาเหตุน่าจะเป็น "
                         "ท่อรับผลลัพธ์ถูกปิด (broken pipe) งานที่พิมพ์ข้อความออกมาตลอดจะจบไปด้วย "
-                        "ส่วนงานที่เงียบๆ จะรอดและยังทำงานต่อ")
+                        "ส่วนงานที่เงียบๆ จะรอดและยังทำงานต่อ"))
     if task.get("status") in _ACTIVE and task.get("owner_pid") != os.getpid():
-        info.append("  หมายเหตุ  : เซิร์ฟเวอร์ถูกรีสตาร์ตหลังงานนี้เริ่ม "
-                    "การบันทึก log จึงหยุดไว้แค่ตอนรีสตาร์ต (ตัวงานยังทำงานอยู่)")
+        info.append(TR("  หมายเหตุ  : เซิร์ฟเวอร์ถูกรีสตาร์ตหลังงานนี้เริ่ม "
+                    "การบันทึก log จึงหยุดไว้แค่ตอนรีสตาร์ต (ตัวงานยังทำงานอยู่)"))
     info.append("")
-    info.append("--- log %d บรรทัดท้าย ---" % n)
+    info.append(TR("--- log %d บรรทัดท้าย ---") % n)
     info.append(body)
     return "\n".join(info)
 
@@ -861,18 +862,18 @@ def task_stop(id: str = "", confirm_token: str = "") -> str:   # noqa: A002
         snapshot = dict(task) if task and _visible(task) else None
     if snapshot is None:
         guard.audit("task_stop_missing", {"id": str(id)[:80]})
-        return ("ERROR: ไม่พบงาน id=\"%s\" ในทะเบียน — หยุดได้เฉพาะงานที่เริ่มผ่าน "
-                "task_start เท่านั้น ไม่รับ pid ตรงๆ" % str(id))
+        return (TR("ERROR: ไม่พบงาน id=\"%s\" ในทะเบียน — หยุดได้เฉพาะงานที่เริ่มผ่าน "
+                "task_start เท่านั้น ไม่รับ pid ตรงๆ") % str(id))
 
     if snapshot.get("status") not in _ACTIVE:
-        return ("งาน %s ไม่ได้ทำงานอยู่แล้ว (สถานะ: %s) จึงไม่มีอะไรให้หยุด"
+        return (TR("งาน %s ไม่ได้ทำงานอยู่แล้ว (สถานะ: %s) จึงไม่มีอะไรให้หยุด")
                 % (snapshot["id"], _status_text(snapshot)))
 
     pid = _as_int(snapshot.get("pid"), 0)
     if pid <= 0:
-        return "ERROR: งาน %s ไม่มี pid ที่ใช้ได้" % snapshot["id"]
+        return TR("ERROR: งาน %s ไม่มี pid ที่ใช้ได้") % snapshot["id"]
 
-    preview = "งาน %s (pid %d): %s" % (snapshot["id"], pid, snapshot.get("command", ""))
+    preview = TR("งาน %s (pid %d): %s") % (snapshot["id"], pid, snapshot.get("command", ""))
 
     ok = False
     token_in = str(confirm_token or "").strip()
@@ -883,22 +884,22 @@ def task_stop(id: str = "", confirm_token: str = "") -> str:   # noqa: A002
             ok = False
     if not ok:
         # รอบ review (R1): review = งานที่จะถูกหยุด (id/pid/คำสั่ง) ตามทะเบียน ค่าเดียวกับที่ token ผูกอยู่
-        review = "\n".join(["[task_stop] หยุดงานเบื้องหลังพร้อมโปรเซสลูกทั้งหมด",
+        review = "\n".join([TR("[task_stop] หยุดงานเบื้องหลังพร้อมโปรเซสลูกทั้งหมด"),
                             "id: %s" % guard.review_oneline(snapshot["id"]), "pid: %d" % pid,
                             # คำสั่งในทะเบียนมาจากโมเดลตอน task_start — มี \n ได้ ต้องไม่แตกเป็นบรรทัดปลอม
-                            "คำสั่ง: %s" % guard.review_oneline(snapshot.get("command", ""))])
+                            TR("คำสั่ง: %s") % guard.review_oneline(snapshot.get("command", ""))])
         token = guard.need_confirm("task_stop", preview, review=review)
         guard.audit("task_stop_preview", {"id": snapshot["id"], "pid": pid,
                                           "ref": guard.token_ref(token)})
-        head = ("จะสั่งหยุดงานนี้ (ยังไม่ได้หยุด)\n"
+        head = (TR("จะสั่งหยุดงานนี้ (ยังไม่ได้หยุด)\n"
                 "  id      : %s\n"
                 "  คำสั่ง  : %s\n"
                 "  pid     : %d\n"
                 "  ใช้เวลา : %s\n"
-                "  จะปิดทั้งโปรเซสนี้และโปรเซสลูกที่มันสร้างไว้ งานที่ค้างอยู่จะไม่ถูกบันทึกต่อ\n\n"
+                "  จะปิดทั้งโปรเซสนี้และโปรเซสลูกที่มันสร้างไว้ งานที่ค้างอยู่จะไม่ถูกบันทึกต่อ\n\n")
                 % (snapshot["id"], snapshot.get("command", ""), pid, _elapsed_text(snapshot)))
         if token_in:
-            head = "(confirm_token ใช้ไม่ได้หรือหมดอายุ จึงยังไม่หยุด ขอ token ใหม่)\n\n" + head
+            head = TR("(confirm_token ใช้ไม่ได้หรือหมดอายุ จึงยังไม่หยุด ขอ token ใหม่)\n\n") + head
         return guard.visible(head) + guard.confirm_hint(token, "task_stop", preview)
 
     # ด่านสุดท้ายกัน pid reuse: ถ้าอิมเมจไม่ตรงกับตอนเริ่ม แปลว่า Windows เอา pid ไปใช้ซ้ำแล้ว
@@ -906,16 +907,16 @@ def task_stop(id: str = "", confirm_token: str = "") -> str:   # noqa: A002
     if pid not in alive:
         _mark(snapshot["id"], {"status": "exited", "ended_at": _utc_iso(),
                                "ended_epoch": _now(), "exit_unknown": True})
-        return "งาน %s จบไปเองแล้วก่อนจะสั่งหยุด ไม่ได้ทำอะไรเพิ่ม" % snapshot["id"]
+        return TR("งาน %s จบไปเองแล้วก่อนจะสั่งหยุด ไม่ได้ทำอะไรเพิ่ม") % snapshot["id"]
     if not _image_matches(snapshot, alive[pid]):
         guard.audit("task_stop_refused", {"id": snapshot["id"], "pid": pid,
                                           "expected": snapshot.get("image"),
                                           "actual": alive[pid], "reason": "pid_reuse"})
         _mark(snapshot["id"], {"status": "exited", "ended_at": _utc_iso(),
                                "ended_epoch": _now(), "exit_unknown": True})
-        return ("ERROR: ไม่หยุดให้ เพราะ pid %d ตอนนี้เป็นของโปรแกรมอื่นแล้ว "
+        return (TR("ERROR: ไม่หยุดให้ เพราะ pid %d ตอนนี้เป็นของโปรแกรมอื่นแล้ว "
                 "(คาดว่า %s แต่เจอ %s) งานเดิมคงจบไปแล้วและ Windows เอา pid ไปใช้ซ้ำ "
-                "จึงไม่ฆ่าเพื่อความปลอดภัย" % (pid, snapshot.get("image"), alive[pid]))
+                "จึงไม่ฆ่าเพื่อความปลอดภัย") % (pid, snapshot.get("image"), alive[pid]))
 
     _mark(snapshot["id"], {"stop_requested": True})
     try:
@@ -925,7 +926,7 @@ def task_stop(id: str = "", confirm_token: str = "") -> str:   # noqa: A002
         rc = res.returncode
     except (OSError, subprocess.SubprocessError) as exc:
         guard.audit("task_stop_failed", {"id": snapshot["id"], "pid": pid, "error": str(exc)})
-        return "ERROR: สั่ง taskkill ไม่สำเร็จ: %s" % exc
+        return TR("ERROR: สั่ง taskkill ไม่สำเร็จ: %s") % exc
 
     time.sleep(0.4)
     still = _tasklist_map([pid])
@@ -946,11 +947,11 @@ def task_stop(id: str = "", confirm_token: str = "") -> str:   # noqa: A002
     guard.audit("task_stop", {"id": snapshot["id"], "pid": pid,
                               "taskkill_rc": rc, "gone": gone})
     if gone:
-        return ("หยุดงาน %s แล้ว (pid %d ปิดพร้อมโปรเซสลูกทั้งหมด)\n"
-                "log ที่บันทึกไว้ยังอ่านย้อนหลังได้ด้วย task_get(id=\"%s\")"
+        return (TR("หยุดงาน %s แล้ว (pid %d ปิดพร้อมโปรเซสลูกทั้งหมด)\n"
+                "log ที่บันทึกไว้ยังอ่านย้อนหลังได้ด้วย task_get(id=\"%s\")")
                 % (snapshot["id"], pid, snapshot["id"]))
-    return ("ERROR: สั่งหยุดงาน %s แล้วแต่ pid %d ยังอยู่ (taskkill คืนค่า %d) "
-            "อาจเป็นเพราะโปรเซสรันด้วยสิทธิ์สูงกว่าเซิร์ฟเวอร์นี้"
+    return (TR("ERROR: สั่งหยุดงาน %s แล้วแต่ pid %d ยังอยู่ (taskkill คืนค่า %d) "
+            "อาจเป็นเพราะโปรเซสรันด้วยสิทธิ์สูงกว่าเซิร์ฟเวอร์นี้")
             % (snapshot["id"], pid, rc))
 
 

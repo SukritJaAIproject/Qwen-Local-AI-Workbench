@@ -70,6 +70,7 @@ from html.parser import HTMLParser
 
 import guard
 import netguard
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # ---------------------------------------------------------------------------
 # ค่าคงที่
@@ -180,7 +181,7 @@ def _clip(text: str, limit: int) -> str:
     text = _s(text)
     if len(text) <= limit:
         return text
-    return text[:limit] + "\n...(ตัดเนื้อหาที่เหลือออก %d ตัวอักษร)" % (len(text) - limit)
+    return text[:limit] + TR("\n...(ตัดเนื้อหาที่เหลือออก %d ตัวอักษร)") % (len(text) - limit)
 
 
 def _flat(text, limit: int = 300) -> str:
@@ -235,13 +236,13 @@ def _tool(fn):
         try:
             text = fn(*args, **kwargs)
         except guard.Denied as exc:
-            text = "ERROR: ถูกปฏิเสธโดยนโยบายความปลอดภัย: %s" % exc
+            text = TR("ERROR: ถูกปฏิเสธโดยนโยบายความปลอดภัย: %s") % exc
         except ValueError as exc:
             text = "ERROR: %s" % exc
         except TypeError as exc:
-            text = "ERROR: อาร์กิวเมนต์ไม่ถูกต้องสำหรับ %s: %s" % (fn.__name__, exc)
+            text = TR("ERROR: อาร์กิวเมนต์ไม่ถูกต้องสำหรับ %s: %s") % (fn.__name__, exc)
         except Exception as exc:                       # noqa: BLE001 - ตาข่ายกันตกชั้นสุดท้าย
-            text = "ERROR: %s ล้มเหลว: %s: %s" % (fn.__name__, type(exc).__name__, exc)
+            text = TR("ERROR: %s ล้มเหลว: %s: %s") % (fn.__name__, type(exc).__name__, exc)
         if not isinstance(text, str):
             text = str(text)
         try:
@@ -302,16 +303,16 @@ def _local_confirmed(tool: str, project: str, target: str, allow_local: bool,
     detail = "%s\n%s" % (guard.project_slug(project), target)
     if _s(confirm_token).strip() and guard.consume_confirm(_s(confirm_token).strip(), action, detail):
         return ""
-    head = ("คำขอนี้จะเข้าที่อยู่ภายในเครือข่าย/เครื่องนี้ (allow_local=true) ซึ่งปกติถูกกันไว้\n"
-            "  URL: %s\n\n" % _safe_url(target))
+    head = (TR("คำขอนี้จะเข้าที่อยู่ภายในเครือข่าย/เครื่องนี้ (allow_local=true) ซึ่งปกติถูกกันไว้\n"
+            "  URL: %s\n\n") % _safe_url(target))
     # รอบ review (R1): review แสดง URL เต็ม (ไม่ปิดบัง query) — ค่าที่ถูกปิดบังคือที่ที่ข้อมูลรั่วออกได้
     # ถ้าคนเห็นแค่ ?token=*** จะไม่รู้ว่ากำลังส่งอะไรออกไป (review อยู่ในหน่วยความจำ ไม่ลง audit.log)
     # รอบ FIXER: + บรรทัดโฮสต์ (และรูป punycode ถ้าโดเมนมีอักษรที่ไม่ใช่ ASCII — กันโดเมนหน้าตาเหมือน)
-    review = "\n".join(["[%s] เข้าที่อยู่ภายในเครือข่าย/เครื่องนี้ (allow_local=true)" % tool,
+    review = "\n".join([TR("[%s] เข้าที่อยู่ภายในเครือข่าย/เครื่องนี้ (allow_local=true)") % tool,
                         "project: %s" % guard.project_slug(project),
-                        "URL เต็ม: %s" % guard.review_oneline(target)] + guard.review_url_lines(target))
+                        TR("URL เต็ม: %s") % guard.review_oneline(target)] + guard.review_url_lines(target))
     return guard.visible(head) + guard.confirm_hint(guard.need_confirm(action, detail, review=review),
-                                                    "เข้าที่อยู่ภายใน (%s)" % tool, _safe_url(target))
+                                                    TR("เข้าที่อยู่ภายใน (%s)") % tool, _safe_url(target))
 
 
 # ---------------------------------------------------------------------------
@@ -328,12 +329,12 @@ def _assert_isolated(path: str) -> str:
     norm = os.path.normcase(os.path.realpath(path))
     root = os.path.normcase(os.path.realpath(PROFILE_ROOT))
     if not (norm == root or norm.startswith(root + os.sep)):
-        raise ValueError("โฟลเดอร์โปรไฟล์ต้องอยู่ใต้ %s เท่านั้น แต่ได้ %s" % (PROFILE_ROOT, path))
+        raise ValueError(TR("โฟลเดอร์โปรไฟล์ต้องอยู่ใต้ %s เท่านั้น แต่ได้ %s") % (PROFILE_ROOT, path))
     for marker in _REAL_PROFILE_MARKERS:
         if marker in norm:
             raise ValueError(
-                "ปฏิเสธ: path นี้ชี้ไปที่โปรไฟล์จริงของเบราว์เซอร์ (%s) ซึ่งเก็บคุกกี้ "
-                "โทเคน และรหัสผ่านของผู้ใช้ เครื่องมือนี้ใช้เฉพาะโปรไฟล์แยกเท่านั้น" % marker)
+                TR("ปฏิเสธ: path นี้ชี้ไปที่โปรไฟล์จริงของเบราว์เซอร์ (%s) ซึ่งเก็บคุกกี้ "
+                "โทเคน และรหัสผ่านของผู้ใช้ เครื่องมือนี้ใช้เฉพาะโปรไฟล์แยกเท่านั้น") % marker)
     return norm
 
 
@@ -350,7 +351,7 @@ def _profile_dir(project: str) -> str:
     try:
         os.makedirs(path, exist_ok=True)
     except OSError as exc:
-        raise ValueError("สร้างโฟลเดอร์โปรไฟล์ไม่ได้: %s" % exc) from None
+        raise ValueError(TR("สร้างโฟลเดอร์โปรไฟล์ไม่ได้: %s") % exc) from None
     return path
 
 
@@ -416,11 +417,11 @@ def _find_browser() -> tuple[str, str]:
             return os.path.abspath(path), label
 
     raise ValueError(
-        "ไม่พบเบราว์เซอร์ที่รองรับบนเครื่องนี้ (มองหา Microsoft Edge, Google Chrome, "
+        TR("ไม่พบเบราว์เซอร์ที่รองรับบนเครื่องนี้ (มองหา Microsoft Edge, Google Chrome, "
         "Brave, Chromium ตามตำแหน่งติดตั้งมาตรฐาน)\n"
         "  ถ้าติดตั้งไว้ที่อื่น ให้ตั้งตัวแปรสภาพแวดล้อม MCP_LOCAL_BROWSER "
         "ชี้ไปที่ไฟล์ .exe โดยตรง\n"
-        "  ระหว่างนี้ใช้ browser_fetch อ่านหน้าเว็บแทนได้ เพราะไม่ต้องใช้เบราว์เซอร์เลย")
+        "  ระหว่างนี้ใช้ browser_fetch อ่านหน้าเว็บแทนได้ เพราะไม่ต้องใช้เบราว์เซอร์เลย"))
 
 
 # ---------------------------------------------------------------------------
@@ -494,7 +495,7 @@ def _endpoint(project: str, timeout: float = CDP_TIMEOUT) -> tuple[int, dict]:
         # พอร์ตตรงแต่ไม่ใช่อินสแตนซ์เดิม = ของคนอื่น ห้ามแตะเด็ดขาด
         guard.audit("browser_port_mismatch",
                     {"project": guard.project_slug(project), "port": port,
-                     "reason": "DevToolsActivePort ชี้ไปที่เบราว์เซอร์ที่ไม่ใช่ของเรา"})
+                     "reason": TR("DevToolsActivePort ชี้ไปที่เบราว์เซอร์ที่ไม่ใช่ของเรา")})
         return 0, {}
     return port, info
 
@@ -556,26 +557,26 @@ class _WebSocket:
         while b"\r\n\r\n" not in self.buf:
             chunk = self.sock.recv(4096)
             if not chunk:
-                raise OSError("เซิร์ฟเวอร์ปิดการเชื่อมต่อระหว่าง handshake")
+                raise OSError(TR("เซิร์ฟเวอร์ปิดการเชื่อมต่อระหว่าง handshake"))
             self.buf += chunk
         head, _, self.buf = self.buf.partition(b"\r\n\r\n")
         lines = head.decode("latin-1").splitlines()
         if not lines or " 101" not in lines[0]:
-            raise OSError("handshake ไม่สำเร็จ: %s" % (lines[0] if lines else "(ไม่มีคำตอบ)"))
+            raise OSError(TR("handshake ไม่สำเร็จ: %s") % (lines[0] if lines else TR("(ไม่มีคำตอบ)")))
         want = base64.b64encode(hashlib.sha1((key + _WS_GUID).encode()).digest()).decode("ascii")
         got = ""
         for line in lines[1:]:
             if line.lower().startswith("sec-websocket-accept:"):
                 got = line.split(":", 1)[1].strip()
         if got != want:
-            raise OSError("Sec-WebSocket-Accept ไม่ตรง ปลายทางอาจไม่ใช่ websocket จริง")
+            raise OSError(TR("Sec-WebSocket-Accept ไม่ตรง ปลายทางอาจไม่ใช่ websocket จริง"))
 
     # ------------------------------------------------------------- ระดับไบต์
     def _recv_exact(self, count: int) -> bytes:
         while len(self.buf) < count:
             chunk = self.sock.recv(65536)
             if not chunk:
-                raise OSError("การเชื่อมต่อถูกปิดกลางคัน")
+                raise OSError(TR("การเชื่อมต่อถูกปิดกลางคัน"))
             self.buf += chunk
         out, self.buf = self.buf[:count], self.buf[count:]
         return out
@@ -608,7 +609,7 @@ class _WebSocket:
             if mask:
                 data = bytes(b ^ mask[i % 4] for i, b in enumerate(data))
             if opcode == 0x8:
-                raise OSError("ปลายทางส่ง close frame")
+                raise OSError(TR("ปลายทางส่ง close frame"))
             if opcode == 0x9:                       # ping -> ตอบ pong เปล่าแบบ mask
                 self.sock.sendall(bytes([0x8A, 0x80]) + os.urandom(4))
                 continue
@@ -633,7 +634,7 @@ class _WebSocket:
                 continue
             if isinstance(msg, dict) and msg.get("id") == msg_id:
                 return msg
-        raise OSError("รอคำตอบของ %s นานเกินไป" % method)
+        raise OSError(TR("รอคำตอบของ %s นานเกินไป") % method)
 
     def close(self) -> None:
         try:
@@ -785,7 +786,7 @@ def _launch(project: str, exe: str, profile: str, url: str) -> tuple[int, int, s
             close_fds=True,
         )
     except (OSError, ValueError) as exc:
-        raise ValueError("เริ่มเบราว์เซอร์ไม่ได้: %s: %s" % (type(exc).__name__, exc)) from None
+        raise ValueError(TR("เริ่มเบราว์เซอร์ไม่ได้: %s: %s") % (type(exc).__name__, exc)) from None
 
     _PROCS[guard.project_slug(project)] = proc
     deadline = time.time() + LAUNCH_TIMEOUT
@@ -796,8 +797,8 @@ def _launch(project: str, exe: str, profile: str, url: str) -> tuple[int, int, s
         if port:
             break
     if not port:
-        return proc.pid, 0, ("เบราว์เซอร์เริ่มแล้ว (pid %d) แต่ยังไม่เขียนไฟล์ %s ภายใน %d วินาที "
-                             "จึงอ่านแท็บกลับมาไม่ได้" % (proc.pid, PORT_FILE, int(LAUNCH_TIMEOUT)))
+        return proc.pid, 0, (TR("เบราว์เซอร์เริ่มแล้ว (pid %d) แต่ยังไม่เขียนไฟล์ %s ภายใน %d วินาที "
+                             "จึงอ่านแท็บกลับมาไม่ได้") % (proc.pid, PORT_FILE, int(LAUNCH_TIMEOUT)))
 
     # พอร์ตเปิดแล้วไม่ได้แปลว่าพร้อมรับคำสั่ง รอจน /json/version ตอบก่อน
     while time.time() < deadline:
@@ -953,12 +954,12 @@ def _http_get(url: str, allow_local: bool) -> tuple[str, str, str, bytes, object
 def _fetch_readable(url: str, allow_local: bool) -> dict:
     """ดึงหน้าเว็บแล้วแปลงเป็นข้อความ คืน dict พร้อมข้อมูลที่ต้องรายงาน"""
     final, status, ctype, body, headers = _http_get(url, allow_local)
-    out = {"url": final, "status": status, "ctype": ctype or "(ไม่ระบุ)",
+    out = {"url": final, "status": status, "ctype": ctype or TR("(ไม่ระบุ)"),
            "bytes": len(body), "title": "", "desc": "", "text": ""}
     if ctype and not (ctype.startswith("text/") or ctype in
                       ("application/xhtml+xml", "application/xml", "application/json",
                        "application/javascript")):
-        out["text"] = ("(ไม่ใช่ไฟล์ข้อความ ชนิด %s ขนาด %s ไบต์ จึงไม่แปลงเป็นตัวอักษรให้)"
+        out["text"] = (TR("(ไม่ใช่ไฟล์ข้อความ ชนิด %s ขนาด %s ไบต์ จึงไม่แปลงเป็นตัวอักษรให้)")
                        % (ctype, format(len(body), ",")))
         return out
     text = _decode(body, _charset(headers, body))
@@ -982,12 +983,12 @@ def _fetch_readable(url: str, allow_local: bool) -> dict:
 
 def _explain_http_error(url: str, exc: Exception) -> str:
     if isinstance(exc, urllib.error.HTTPError):
-        return "ERROR: เซิร์ฟเวอร์ตอบ %s %s สำหรับ %s" % (exc.code, exc.reason, url)
+        return TR("ERROR: เซิร์ฟเวอร์ตอบ %s %s สำหรับ %s") % (exc.code, exc.reason, url)
     if isinstance(exc, urllib.error.URLError):
-        return "ERROR: เชื่อมต่อ %s ไม่ได้: %s" % (url, exc.reason)
+        return TR("ERROR: เชื่อมต่อ %s ไม่ได้: %s") % (url, exc.reason)
     if isinstance(exc, socket.timeout):
-        return "ERROR: หมดเวลารอ %s (เกิน %d วินาที)" % (url, int(FETCH_TIMEOUT))
-    return "ERROR: ดึง %s ไม่สำเร็จ: %s: %s" % (url, type(exc).__name__, exc)
+        return TR("ERROR: หมดเวลารอ %s (เกิน %d วินาที)") % (url, int(FETCH_TIMEOUT))
+    return TR("ERROR: ดึง %s ไม่สำเร็จ: %s: %s") % (url, type(exc).__name__, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -1005,7 +1006,7 @@ def browser_open(project: str, url: str = "", confirm_token: str = "",
 
     port, _info = _endpoint(project)
     running = bool(port)
-    preview = "%s -> %s (โปรไฟล์แยก %s)" % (label, _safe_url(target), profile)
+    preview = TR("%s -> %s (โปรไฟล์แยก %s)") % (label, _safe_url(target), profile)
 
     # กฎ S03: เปิดเบราว์เซอร์ = เริ่มโปรเซสใหม่ + ยิงเครือข่าย ต้องให้ผู้ใช้อนุมัติก่อน
     token_in = _s(confirm_token).strip()
@@ -1020,26 +1021,26 @@ def browser_open(project: str, url: str = "", confirm_token: str = "",
     if not approved:
         # รอบ review (R1): review = URL เต็ม + เบราว์เซอร์ + โปรไฟล์ + allow_local (ค่าเดียวกับที่ token ผูกอยู่)
         # รอบ FIXER: + บรรทัดโฮสต์ (และรูป punycode ถ้าโดเมนมีอักษรที่ไม่ใช่ ASCII — กันโดเมนหน้าตาเหมือน)
-        review = "\n".join(["[browser_open] เปิดหน้าเว็บในเบราว์เซอร์โปรไฟล์แยกของโปรเจกต์ %s" % slug,
-                            "URL เต็ม: %s" % guard.review_oneline(target)] + guard.review_url_lines(target)
-                           + ["เบราว์เซอร์: %s" % label, "โปรไฟล์: %s" % profile,
+        review = "\n".join([TR("[browser_open] เปิดหน้าเว็บในเบราว์เซอร์โปรไฟล์แยกของโปรเจกต์ %s") % slug,
+                            TR("URL เต็ม: %s") % guard.review_oneline(target)] + guard.review_url_lines(target)
+                           + [TR("เบราว์เซอร์: %s") % label, TR("โปรไฟล์: %s") % profile,
                               "allow_local: %s" % _truthy(allow_local),
-                              "สถานะ: %s" % ("เปิดอยู่แล้ว จะเพิ่มแท็บใหม่" if running else "จะเปิดหน้าต่างใหม่")])
+                              TR("สถานะ: %s") % (TR("เปิดอยู่แล้ว จะเพิ่มแท็บใหม่") if running else TR("จะเปิดหน้าต่างใหม่"))])
         token = guard.need_confirm("browser_open", confirm_detail, review=review)
-        head = ("จะเปิดหน้าเว็บนี้ในเบราว์เซอร์ (ยังไม่ได้เปิด)\n"
+        head = (TR("จะเปิดหน้าเว็บนี้ในเบราว์เซอร์ (ยังไม่ได้เปิด)\n"
                 "  URL       : %s\n"
                 "  เบราว์เซอร์: %s\n"
                 "  โปรไฟล์   : %s\n"
                 "  สถานะตอนนี้: %s\n"
                 "  โปรไฟล์นี้แยกจากโปรไฟล์จริงของคุณคนละโฟลเดอร์ จึงไม่มีคุกกี้ "
                 "บัญชีที่ล็อกอินค้าง หรือรหัสผ่านที่บันทึกไว้ของคุณอยู่ในนั้นเลย\n"
-                "  การเปิดจะเริ่มโปรเซสเบราว์เซอร์จริงและเชื่อมต่ออินเทอร์เน็ต\n\n"
+                "  การเปิดจะเริ่มโปรเซสเบราว์เซอร์จริงและเชื่อมต่ออินเทอร์เน็ต\n\n")
                 % (_safe_url(target), label,
-                   profile, "มีเบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่แล้ว จะเพิ่มแท็บใหม่"
-                   if running else "ยังไม่มีเบราว์เซอร์ของโปรเจกต์นี้ จะเปิดหน้าต่างใหม่"))
+                   profile, TR("มีเบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่แล้ว จะเพิ่มแท็บใหม่")
+                   if running else TR("ยังไม่มีเบราว์เซอร์ของโปรเจกต์นี้ จะเปิดหน้าต่างใหม่")))
         if token_in:
-            head = ("(confirm_token ที่ส่งมาใช้ไม่ได้หรือหมดอายุแล้ว จึงยังไม่เปิด "
-                    "ขอ token ใหม่)\n\n") + head
+            head = (TR("(confirm_token ที่ส่งมาใช้ไม่ได้หรือหมดอายุแล้ว จึงยังไม่เปิด "
+                    "ขอ token ใหม่)\n\n")) + head
         return guard.visible(head) + guard.confirm_hint(token, "browser_open", preview)
 
     state = _load_state(project)
@@ -1059,7 +1060,7 @@ def browser_open(project: str, url: str = "", confirm_token: str = "",
         if isinstance(created, dict):
             tab_id = _s(created.get("id"))
         else:
-            warn = "เปิดแท็บผ่าน CDP ไม่สำเร็จ"
+            warn = TR("เปิดแท็บผ่าน CDP ไม่สำเร็จ")
         pid = int(state.get("pid") or 0)
     else:
         pid, port, warn = _launch(project, exe, profile, target)
@@ -1071,24 +1072,24 @@ def browser_open(project: str, url: str = "", confirm_token: str = "",
     state["port"] = port
     _remember_url(project, target, state)
 
-    lines = ["เปิดหน้าเว็บแล้วในเบราว์เซอร์โปรไฟล์แยก",
+    lines = [TR("เปิดหน้าเว็บแล้วในเบราว์เซอร์โปรไฟล์แยก"),
              "  URL       : %s" % _safe_url(target),
-             "  เบราว์เซอร์: %s (pid %s)" % (label, pid or "?"),
-             "  โปรไฟล์   : %s" % profile]
+             TR("  เบราว์เซอร์: %s (pid %s)") % (label, pid or "?"),
+             TR("  โปรไฟล์   : %s") % profile]
     if port:
         tab = _wait_title(port, tab_id, target)
         if tab:
-            lines.append("  ชื่อหน้า   : %s" % (_flat(tab.get("title"), 120) or "(ยังไม่มี title)"))
-            lines.append("  URL จริง   : %s" % _safe_url(tab.get("url", "")))
+            lines.append(TR("  ชื่อหน้า   : %s") % (_flat(tab.get("title"), 120) or TR("(ยังไม่มี title)")))
+            lines.append(TR("  URL จริง   : %s") % _safe_url(tab.get("url", "")))
         else:
-            lines.append("  ชื่อหน้า   : (ยังอ่านไม่ได้ใน %d วินาที หน้าอาจยังโหลดอยู่)"
+            lines.append(TR("  ชื่อหน้า   : (ยังอ่านไม่ได้ใน %d วินาที หน้าอาจยังโหลดอยู่)")
                          % int(SETTLE_TIMEOUT))
-        lines.append("  พอร์ต CDP : %d (เฉพาะ 127.0.0.1 และผูกกับโปรไฟล์นี้เท่านั้น)" % port)
+        lines.append(TR("  พอร์ต CDP : %d (เฉพาะ 127.0.0.1 และผูกกับโปรไฟล์นี้เท่านั้น)") % port)
     if warn:
-        lines.append("  หมายเหตุ  : %s" % warn)
+        lines.append(TR("  หมายเหตุ  : %s") % warn)
     lines.append("")
-    lines.append("อ่านเนื้อหาด้วย browser_title() ดูแท็บทั้งหมดด้วย browser_list() "
-                 "ปิดด้วย browser_close()")
+    lines.append(TR("อ่านเนื้อหาด้วย browser_title() ดูแท็บทั้งหมดด้วย browser_list() "
+                 "ปิดด้วย browser_close()"))
     return "\n".join(lines)
 
 
@@ -1102,22 +1103,22 @@ def browser_title(project: str, url: str = "", allow_local: bool = False,
     # ไม่ระบุ URL = ถามว่า "ตอนนี้เปิดอะไรค้างอยู่" ต้องมีเบราว์เซอร์ของโปรเจกต์นี้อยู่จริง
     if not target:
         if not port:
-            return ("ยังไม่มีเบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่ จึงไม่มี title ให้อ่าน\n"
+            return (TR("ยังไม่มีเบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่ จึงไม่มี title ให้อ่าน\n"
                     "  ถ้าอยากอ่านหน้าเว็บโดยไม่เปิดเบราว์เซอร์ ให้ส่ง url เข้ามาด้วย "
-                    "(หรือใช้ browser_fetch ซึ่งถูกกว่า)")
+                    "(หรือใช้ browser_fetch ซึ่งถูกกว่า)"))
         tabs = _pages(port)
         if not tabs:
-            return "เบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่ แต่ยังไม่มีแท็บเว็บสักแท็บ"
-        lines = ["แท็บที่เปิดอยู่ในเบราว์เซอร์โปรไฟล์แยกของโปรเจกต์นี้ (%d แท็บ)" % len(tabs),
-                 DATA_MARKER + " (ชื่อหน้าและ URL ข้างล่างนี้หน้าเว็บตั้งเองได้)"]
+            return TR("เบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่ แต่ยังไม่มีแท็บเว็บสักแท็บ")
+        lines = [TR("แท็บที่เปิดอยู่ในเบราว์เซอร์โปรไฟล์แยกของโปรเจกต์นี้ (%d แท็บ)") % len(tabs),
+                 DATA_MARKER + TR(" (ชื่อหน้าและ URL ข้างล่างนี้หน้าเว็บตั้งเองได้)")]
         for tab in tabs:
-            lines.append("  • %s" % (_flat(tab.get("title"), 120) or "(ไม่มี title)"))
+            lines.append("  • %s" % (_flat(tab.get("title"), 120) or TR("(ไม่มี title)")))
             lines.append("    %s" % _safe_url(tab.get("url", "")))
         live = _live_page_text(_s(tabs[0].get("webSocketDebuggerUrl")))
         if live.get("text"):
             lines.append("")
             lines.append(DATA_MARKER)
-            lines.append("--- สรุปเนื้อหาแท็บแรก ---")
+            lines.append(TR("--- สรุปเนื้อหาแท็บแรก ---"))
             lines.append(_clip(live["text"], SUMMARY_MAX))
         return "\n".join(lines)
 
@@ -1128,15 +1129,15 @@ def browser_title(project: str, url: str = "", allow_local: bool = False,
                 continue
             live = _live_page_text(_s(tab.get("webSocketDebuggerUrl")))
             title = _flat(live.get("title"), 200) or _flat(tab.get("title"), 200)
-            lines = ["อ่านจากแท็บที่เปิดอยู่จริงในเบราว์เซอร์ (เนื้อหาหลัง JavaScript ทำงานแล้ว)",
-                     "  title : %s" % (title or "(ไม่มี)"),
+            lines = [TR("อ่านจากแท็บที่เปิดอยู่จริงในเบราว์เซอร์ (เนื้อหาหลัง JavaScript ทำงานแล้ว)"),
+                     "  title : %s" % (title or TR("(ไม่มี)")),
                      "  url   : %s" % _safe_url(live.get("url") or tab.get("url", ""))]
             if live.get("desc"):
-                lines.append("  คำโปรย: %s" % _flat(live["desc"], 300))
+                lines.append(TR("  คำโปรย: %s") % _flat(live["desc"], 300))
             lines.append("")
             lines.append(DATA_MARKER)
-            lines.append("--- สรุปเนื้อหา ---")
-            lines.append(_clip(_s(live.get("text")) or "(อ่านเนื้อหาผ่าน CDP ไม่ได้)",
+            lines.append(TR("--- สรุปเนื้อหา ---"))
+            lines.append(_clip(_s(live.get("text")) or TR("(อ่านเนื้อหาผ่าน CDP ไม่ได้)"),
                                SUMMARY_MAX))
             return "\n".join(lines)
 
@@ -1150,16 +1151,16 @@ def browser_title(project: str, url: str = "", allow_local: bool = False,
     except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError) as exc:
         return _explain_http_error(target, exc)
 
-    lines = ["อ่านด้วย urllib (ไม่ได้เปิดเบราว์เซอร์ หน้าที่ต้องพึ่ง JavaScript อาจได้ไม่ครบ)",
-             "  title : %s" % (got["title"] or "(หน้านี้ไม่มีแท็ก <title>)"),
+    lines = [TR("อ่านด้วย urllib (ไม่ได้เปิดเบราว์เซอร์ หน้าที่ต้องพึ่ง JavaScript อาจได้ไม่ครบ)"),
+             "  title : %s" % (got["title"] or TR("(หน้านี้ไม่มีแท็ก <title>)")),
              "  url   : %s" % _safe_url(got["url"]),
-             "  สถานะ : %s  ชนิด: %s" % (got["status"], got["ctype"])]
+             TR("  สถานะ : %s  ชนิด: %s") % (got["status"], got["ctype"])]
     if got["desc"]:
-        lines.append("  คำโปรย: %s" % _clip(got["desc"], 300))
+        lines.append(TR("  คำโปรย: %s") % _clip(got["desc"], 300))
     lines.append("")
     lines.append(DATA_MARKER)
-    lines.append("--- สรุปเนื้อหา ---")
-    lines.append(_clip(got["text"] or "(ไม่มีเนื้อหาที่เป็นตัวอักษร)", SUMMARY_MAX))
+    lines.append(TR("--- สรุปเนื้อหา ---"))
+    lines.append(_clip(got["text"] or TR("(ไม่มีเนื้อหาที่เป็นตัวอักษร)"), SUMMARY_MAX))
     return "\n".join(lines)
 
 
@@ -1174,37 +1175,37 @@ def browser_list(project: str) -> str:
         return "ERROR: %s" % exc
     port, info = _endpoint(project)
 
-    lines = ["เบราว์เซอร์โปรไฟล์แยกของโปรเจกต์ \"%s\"" % slug,
-             "  โฟลเดอร์โปรไฟล์: %s" % profile,
-             "  (แยกจากโปรไฟล์จริงของผู้ใช้เด็ดขาด ไม่มีคุกกี้หรือบัญชีของผู้ใช้อยู่ในนั้น)"]
+    lines = [TR("เบราว์เซอร์โปรไฟล์แยกของโปรเจกต์ \"%s\"") % slug,
+             TR("  โฟลเดอร์โปรไฟล์: %s") % profile,
+             TR("  (แยกจากโปรไฟล์จริงของผู้ใช้เด็ดขาด ไม่มีคุกกี้หรือบัญชีของผู้ใช้อยู่ในนั้น)")]
 
     if not port:
         pid = int(state.get("pid") or 0)
         if pid and _browser_alive(project, pid, _s(state.get("image"))):
-            lines.append("  สถานะ: โปรเซส pid %d ยังอยู่ แต่พอร์ต CDP ตอบไม่ได้ "
-                         "(อาจปิด DevTools ไปแล้ว) สั่งงานต่อไม่ได้" % pid)
+            lines.append(TR("  สถานะ: โปรเซส pid %d ยังอยู่ แต่พอร์ต CDP ตอบไม่ได้ "
+                         "(อาจปิด DevTools ไปแล้ว) สั่งงานต่อไม่ได้") % pid)
         else:
-            lines.append("  สถานะ: ไม่ได้เปิดอยู่")
+            lines.append(TR("  สถานะ: ไม่ได้เปิดอยู่"))
     else:
-        lines.append("  สถานะ: กำลังเปิดอยู่")
-        lines.append("  เบราว์เซอร์: %s" % _s(info.get("Browser"), "?"))
-        lines.append("  pid: %s   พอร์ต CDP: %d (ผูกกับ 127.0.0.1 เท่านั้น)"
+        lines.append(TR("  สถานะ: กำลังเปิดอยู่"))
+        lines.append(TR("  เบราว์เซอร์: %s") % _s(info.get("Browser"), "?"))
+        lines.append(TR("  pid: %s   พอร์ต CDP: %d (ผูกกับ 127.0.0.1 เท่านั้น)")
                      % (state.get("pid") or "?", port))
         if state.get("started_at"):
-            lines.append("  เปิดมาตั้งแต่: %s (UTC)" % state["started_at"])
+            lines.append(TR("  เปิดมาตั้งแต่: %s (UTC)") % state["started_at"])
         tabs = _pages(port)
         lines.append("")
         if not tabs:
-            lines.append("  ยังไม่มีแท็บเว็บเปิดอยู่")
+            lines.append(TR("  ยังไม่มีแท็บเว็บเปิดอยู่"))
         else:
-            rows = [("ชื่อหน้า", "URL")]
+            rows = [(TR("ชื่อหน้า"), "URL")]
             for tab in tabs:
-                rows.append((_flat(tab.get("title"), 44) or "(ไม่มี title)",
+                rows.append((_flat(tab.get("title"), 44) or TR("(ไม่มี title)"),
                              _safe_url(tab.get("url", ""))[:70]))
             width = max(_dwidth(r[0]) for r in rows)
             ruler = min(96, width + 2 + max(_dwidth(r[1]) for r in rows))
-            lines.append("  แท็บที่เปิดอยู่ %d แท็บ" % len(tabs))
-            lines.append("  " + DATA_MARKER + " (ชื่อหน้าและ URL หน้าเว็บตั้งเองได้)")
+            lines.append(TR("  แท็บที่เปิดอยู่ %d แท็บ") % len(tabs))
+            lines.append("  " + DATA_MARKER + TR(" (ชื่อหน้าและ URL หน้าเว็บตั้งเองได้)"))
             for i, row in enumerate(rows):
                 lines.append("    %s  %s" % (_pad(row[0], width), row[1]))
                 if i == 0:
@@ -1213,7 +1214,7 @@ def browser_list(project: str) -> str:
     history = [h for h in state.get("history", []) if isinstance(h, dict)]
     if history:
         lines.append("")
-        lines.append("  URL ล่าสุดที่โปรเจกต์นี้เคยเปิด (ใหม่สุดอยู่บน)")
+        lines.append(TR("  URL ล่าสุดที่โปรเจกต์นี้เคยเปิด (ใหม่สุดอยู่บน)"))
         for item in reversed(history[-10:]):
             lines.append("    %s  %s" % (_s(item.get("at"), "?"), _s(item.get("url"))))
     return "\n".join(lines)
@@ -1243,18 +1244,18 @@ def browser_close(project: str, confirm_token: str = "") -> str:
             state.pop("pid", None)
             state.pop("port", None)
             _save_state(project, state)
-            return ("พอร์ต CDP ของโปรเจกต์นี้ไม่ตอบแล้ว จึงยืนยันไม่ได้ว่าโปรเซสไหนเป็นของเรา "
+            return (TR("พอร์ต CDP ของโปรเจกต์นี้ไม่ตอบแล้ว จึงยืนยันไม่ได้ว่าโปรเซสไหนเป็นของเรา "
                     "และจะไม่สั่งปิดโปรเซสใดทั้งสิ้น\n"
                     "  ไฟล์สถานะค้าง pid %d ไว้ และยังมีโปรเซสชื่อ %s ใช้ pid นี้อยู่จริง "
                     "แต่ Windows เอา pid ไปใช้ซ้ำได้ ถ้าฆ่าไปอาจโดนเบราว์เซอร์ส่วนตัว "
                     "ของผู้ใช้ที่บังเอิญได้ pid เดิมมา จึงล้างค่าที่ค้างในไฟล์สถานะแทน\n"
-                    "  ถ้ายังมีหน้าต่างของโปรเจกต์นี้ค้างอยู่จริง ให้ผู้ใช้ปิดเองจากหน้าต่างนั้น"
+                    "  ถ้ายังมีหน้าต่างของโปรเจกต์นี้ค้างอยู่จริง ให้ผู้ใช้ปิดเองจากหน้าต่างนั้น")
                     % (pid, image or "?"))
-        return ("ไม่มีเบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่ จึงไม่มีอะไรให้ปิด "
-                "(ดูสถานะได้ด้วย browser_list)")
+        return (TR("ไม่มีเบราว์เซอร์ของโปรเจกต์นี้เปิดอยู่ จึงไม่มีอะไรให้ปิด "
+                "(ดูสถานะได้ด้วย browser_list)"))
 
     tabs = _pages(port) if port else []
-    preview = "ปิดเบราว์เซอร์ของโปรเจกต์ %s (pid %s, %d แท็บ)" % (
+    preview = TR("ปิดเบราว์เซอร์ของโปรเจกต์ %s (pid %s, %d แท็บ)") % (
         guard.project_slug(project), pid or "?", len(tabs))
 
     token_in = _s(confirm_token).strip()
@@ -1267,25 +1268,25 @@ def browser_close(project: str, confirm_token: str = "") -> str:
     if not approved:
         # รอบ review (R1): review = โปรเซส/แท็บที่จะถูกปิด ชื่อแท็บมาจากหน้าเว็บ (ตั้งเองได้) จึงยุบเป็นบรรทัดเดียว
         # และ guard แสดงอักขระซ่อนเป็นรหัส — หน้าเว็บปลอมบรรทัดใน review ไม่ได้
-        review = "\n".join(["[browser_close] ปิดเบราว์เซอร์ของโปรเจกต์ %s" % guard.project_slug(project),
-                            "pid: %s" % (pid or "?"), "แท็บที่จะถูกปิด %d แท็บ:" % len(tabs)]
-                           + ["  • %s — %s" % (_flat(t.get("title"), 200) or "(ไม่มี title)",
+        review = "\n".join([TR("[browser_close] ปิดเบราว์เซอร์ของโปรเจกต์ %s") % guard.project_slug(project),
+                            "pid: %s" % (pid or "?"), TR("แท็บที่จะถูกปิด %d แท็บ:") % len(tabs)]
+                           + ["  • %s — %s" % (_flat(t.get("title"), 200) or TR("(ไม่มี title)"),
                                                _flat(t.get("url", ""), 400)) for t in tabs[:20]]
-                           + (["  … และอีก %d แท็บ" % (len(tabs) - 20)] if len(tabs) > 20 else []))
+                           + ([TR("  … และอีก %d แท็บ") % (len(tabs) - 20)] if len(tabs) > 20 else []))
         token = guard.need_confirm("browser_close", preview, review=review)
-        head = ("จะปิดเบราว์เซอร์ของโปรเจกต์นี้ (ยังไม่ได้ปิด)\n"
+        head = (TR("จะปิดเบราว์เซอร์ของโปรเจกต์นี้ (ยังไม่ได้ปิด)\n"
                 "  เบราว์เซอร์: %s\n"
                 "  pid       : %s\n"
-                "  แท็บที่จะถูกปิด %d แท็บ:\n" % (_s(info.get("Browser"), "?"), pid or "?", len(tabs)))
+                "  แท็บที่จะถูกปิด %d แท็บ:\n") % (_s(info.get("Browser"), "?"), pid or "?", len(tabs)))
         if tabs:
-            head += "    " + DATA_MARKER + " (ชื่อหน้าและ URL หน้าเว็บตั้งเองได้)\n"
+            head += "    " + DATA_MARKER + TR(" (ชื่อหน้าและ URL หน้าเว็บตั้งเองได้)\n")
         for tab in tabs[:10]:
-            head += "    • %s — %s\n" % (_flat(tab.get("title"), 100) or "(ไม่มี title)",
+            head += "    • %s — %s\n" % (_flat(tab.get("title"), 100) or TR("(ไม่มี title)"),
                                          _safe_url(tab.get("url", "")))
-        head += ("  สิ่งที่พิมพ์ค้างไว้ในหน้าเว็บจะหายไป ส่วนโฟลเดอร์โปรไฟล์ยังอยู่ "
-                 "เปิดใหม่ครั้งหน้าจะได้สถานะเดิมกลับมา\n\n")
+        head += (TR("  สิ่งที่พิมพ์ค้างไว้ในหน้าเว็บจะหายไป ส่วนโฟลเดอร์โปรไฟล์ยังอยู่ "
+                 "เปิดใหม่ครั้งหน้าจะได้สถานะเดิมกลับมา\n\n"))
         if token_in:
-            head = "(confirm_token ใช้ไม่ได้หรือหมดอายุ จึงยังไม่ปิด ขอ token ใหม่)\n\n" + head
+            head = TR("(confirm_token ใช้ไม่ได้หรือหมดอายุ จึงยังไม่ปิด ขอ token ใหม่)\n\n") + head
         return guard.visible(head) + guard.confirm_hint(token, "browser_close", preview)
 
     # ทางที่สุภาพก่อน: สั่ง Browser.close ผ่าน websocket ระดับเบราว์เซอร์ ให้มันเซฟของแล้วจบเอง
@@ -1296,7 +1297,7 @@ def browser_close(project: str, confirm_token: str = "") -> str:
         try:
             sock = _WebSocket(ws_url, timeout=8.0)
             sock.call("Browser.close")
-            method = "Browser.close ผ่าน CDP"
+            method = TR("Browser.close ผ่าน CDP")
         except (OSError, ValueError):
             method = ""
         finally:
@@ -1323,12 +1324,12 @@ def browser_close(project: str, confirm_token: str = "") -> str:
                                capture_output=True, timeout=30, creationflags=_NO_WINDOW)
                 method = (method + " + taskkill") if method else "taskkill /T /F"
             except (OSError, subprocess.SubprocessError) as exc:
-                return "ERROR: สั่งปิดไม่สำเร็จ: %s" % exc
+                return TR("ERROR: สั่งปิดไม่สำเร็จ: %s") % exc
             deadline = time.time() + 5.0
             while time.time() < deadline and _endpoint(project, timeout=1.5)[0]:
                 time.sleep(0.3)
     if not method:
-        method = "โปรเซสจบไปเองก่อนแล้ว"
+        method = TR("โปรเซสจบไปเองก่อนแล้ว")
 
     # ถึงตรงนี้ CDP เงียบแล้ว แปลว่าหน้าต่างและแท็บปิดหมดจริง แต่ Edge ชอบทิ้งโปรเซสหลัก
     # ไว้ต่ออีกเป็นนาที (โหมด background / startup boost ที่เอาไว้ให้เปิดครั้งหน้าเร็วขึ้น)
@@ -1343,7 +1344,7 @@ def browser_close(project: str, confirm_token: str = "") -> str:
             try:
                 subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"],
                                capture_output=True, timeout=30, creationflags=_NO_WINDOW)
-                method += " + เก็บกวาดโปรเซสที่ค้าง"
+                method += TR(" + เก็บกวาดโปรเซสที่ค้าง")
             except (OSError, subprocess.SubprocessError):
                 pass                       # ปิดสำเร็จไปแล้ว เก็บกวาดไม่ได้ก็ไม่ถือว่าล้มเหลว
 
@@ -1360,15 +1361,15 @@ def browser_close(project: str, confirm_token: str = "") -> str:
         pass
 
     if still:
-        return ("ERROR: สั่งปิดแล้ว (%s) แต่เบราว์เซอร์ยังตอบอยู่ (pid %s) "
-                "อาจรันด้วยสิทธิ์สูงกว่าเซิร์ฟเวอร์นี้" % (method, pid or "?"))
+        return (TR("ERROR: สั่งปิดแล้ว (%s) แต่เบราว์เซอร์ยังตอบอยู่ (pid %s) "
+                "อาจรันด้วยสิทธิ์สูงกว่าเซิร์ฟเวอร์นี้") % (method, pid or "?"))
     tail = ""
     if pid and _alive(pid, image):
-        tail = ("\n  หมายเหตุ: หน้าต่างและแท็บปิดหมดแล้ว ส่วนโปรเซส msedge.exe (pid %d) "
-                "ยังเก็บของอยู่อีกสักครู่ก่อนจะหายไปเอง เป็นพฤติกรรมปกติของเบราว์เซอร์" % pid)
-    return ("ปิดเบราว์เซอร์ของโปรเจกต์นี้แล้ว (%s%s)\n"
-            "  โฟลเดอร์โปรไฟล์ยังอยู่ที่ %s เปิดครั้งหน้าจะใช้ซ้ำได้เลย%s"
-            % (method, ", ปิดไป %d แท็บ" % len(tabs) if tabs else "",
+        tail = (TR("\n  หมายเหตุ: หน้าต่างและแท็บปิดหมดแล้ว ส่วนโปรเซส msedge.exe (pid %d) "
+                "ยังเก็บของอยู่อีกสักครู่ก่อนจะหายไปเอง เป็นพฤติกรรมปกติของเบราว์เซอร์") % pid)
+    return (TR("ปิดเบราว์เซอร์ของโปรเจกต์นี้แล้ว (%s%s)\n"
+            "  โฟลเดอร์โปรไฟล์ยังอยู่ที่ %s เปิดครั้งหน้าจะใช้ซ้ำได้เลย%s")
+            % (method, TR(", ปิดไป %d แท็บ") % len(tabs) if tabs else "",
                _profile_dir(project), tail))
 
 
@@ -1391,18 +1392,18 @@ def browser_fetch(project: str, url: str = "", allow_local: bool = False,
     except (OSError, ValueError, guard.Denied):
         pass
 
-    lines = ["ดึงด้วย urllib ไม่ได้เปิดเบราว์เซอร์ (หน้าที่เนื้อหาสร้างด้วย JavaScript "
-             "จะได้ไม่ครบ ถ้าจำเป็นค่อยใช้ browser_open)",
+    lines = [TR("ดึงด้วย urllib ไม่ได้เปิดเบราว์เซอร์ (หน้าที่เนื้อหาสร้างด้วย JavaScript "
+             "จะได้ไม่ครบ ถ้าจำเป็นค่อยใช้ browser_open)"),
              "  url   : %s" % _safe_url(got["url"]),
-             "  สถานะ : %s   ชนิด: %s   ขนาด: %s ไบต์"
+             TR("  สถานะ : %s   ชนิด: %s   ขนาด: %s ไบต์")
              % (got["status"], got["ctype"], format(got["bytes"], ",")),
-             "  title : %s" % (got["title"] or "(ไม่มี)")]
+             "  title : %s" % (got["title"] or TR("(ไม่มี)"))]
     if got["desc"]:
-        lines.append("  คำโปรย: %s" % _clip(got["desc"], 300))
+        lines.append(TR("  คำโปรย: %s") % _clip(got["desc"], 300))
     lines.append("")
     lines.append(DATA_MARKER)
-    lines.append("--- เนื้อหา ---")
-    lines.append(got["text"] or "(ไม่มีเนื้อหาที่เป็นตัวอักษร)")
+    lines.append(TR("--- เนื้อหา ---"))
+    lines.append(got["text"] or TR("(ไม่มีเนื้อหาที่เป็นตัวอักษร)"))
     return "\n".join(lines)
 
 

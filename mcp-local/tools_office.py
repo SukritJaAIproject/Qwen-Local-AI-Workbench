@@ -41,6 +41,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import guard
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
@@ -292,9 +293,9 @@ def explain(res: dict, kind: str = "") -> str:
     sheets = res.get("sheets") or []
     tmpl = _CODE_TEXT.get(code)
     if tmpl is None:
-        return "Office ตอบข้อผิดพลาด (%s): %s" % (code, _one(res.get("error") or "", 300))
+        return TR("Office ตอบข้อผิดพลาด (%s): %s") % (code, _one(res.get("error") or "", 300))
     return tmpl.format(app=app, err=_one(res.get("error") or "", 120), total=res.get("total", "?"),
-                       sheets=(" (มี: %s)" % ", ".join(_one(x, 40) for x in sheets[:20])) if sheets else "")
+                       sheets=(TR(" (มี: %s)") % ", ".join(_one(x, 40) for x in sheets[:20])) if sheets else "")
 
 
 # ================================================================== ด่าน path ของเอกสาร
@@ -323,13 +324,13 @@ def doc_denied(info: dict, write: bool) -> str:
     if re.match(r"(?i)^https?://", full) or re.match(r"(?i)^https?://", path):
         target = _cloud_proxy(full)
         if not target:
-            return "ตรวจตำแหน่งของเอกสารบนคลาวด์ไม่ได้"
+            return TR("ตรวจตำแหน่งของเอกสารบนคลาวด์ไม่ได้")
     try:
         (guard.check_write if write else guard.check_read)(target)
     except guard.Denied as exc:
         return str(exc)
     except Exception as exc:  # noqa: BLE001 — ตรวจไม่ได้ = ไม่อนุญาต (fail closed)
-        return "ตรวจสิทธิ์ของตำแหน่งเอกสารไม่ได้ (%s)" % type(exc).__name__
+        return TR("ตรวจสิทธิ์ของตำแหน่งเอกสารไม่ได้ (%s)") % type(exc).__name__
     return ""
 
 
@@ -382,13 +383,13 @@ def col_letter(n: int) -> str:
 def _doc_line(info: dict) -> str:
     bits = []
     if info.get("path"):
-        bits.append("ไฟล์ %s" % _one(info.get("full"), 240))
+        bits.append(TR("ไฟล์ %s") % _one(info.get("full"), 240))
     else:
-        bits.append("ยังไม่เคยบันทึก")
+        bits.append(TR("ยังไม่เคยบันทึก"))
     if info.get("saved") is False:
-        bits.append("มีการแก้ที่ยังไม่บันทึก")
+        bits.append(TR("มีการแก้ที่ยังไม่บันทึก"))
     if info.get("readonly"):
-        bits.append("เปิดแบบอ่านอย่างเดียว")
+        bits.append(TR("เปิดแบบอ่านอย่างเดียว"))
     return " · ".join(bits)
 
 
@@ -404,28 +405,28 @@ def _cap_lines(lines: list, max_chars: int) -> tuple[list, bool]:
 
 def fmt_excel(res: dict, max_chars: int) -> str:
     doc = res.get("doc") or {}
-    mode = {"selection": "ช่วงที่เลือกอยู่", "used": "ทั้งช่วงที่มีข้อมูลของชีต", "range": "ช่วงที่ระบุ"}.get(
+    mode = {"selection": TR("ช่วงที่เลือกอยู่"), "used": TR("ทั้งช่วงที่มีข้อมูลของชีต"), "range": TR("ช่วงที่ระบุ")}.get(
         res.get("mode"), _s(res.get("mode")))
-    head = ["Excel · สมุดงาน \"%s\" · ชีต \"%s\"" % (_one(doc.get("name")), _one(res.get("sheet"))),
+    head = [TR("Excel · สมุดงาน \"%s\" · ชีต \"%s\"") % (_one(doc.get("name")), _one(res.get("sheet"))),
             _doc_line(doc)]
     sheets = res.get("sheets") or []
     if len(sheets) > 1:
-        head.append("ชีตในสมุดงาน: %s" % ", ".join("\"%s\"" % _one(x, 40) for x in sheets[:30]))
+        head.append(TR("ชีตในสมุดงาน: %s") % ", ".join("\"%s\"" % _one(x, 40) for x in sheets[:30]))
     rows, cols = int(res.get("rows") or 0), int(res.get("cols") or 0)
     rt, ct = int(res.get("rows_total") or 0), int(res.get("cols_total") or 0)
-    line = "อ่าน: %s %s (%d แถว × %d คอลัมน์)" % (mode, _one(res.get("address"), 40), rt, ct)
+    line = TR("อ่าน: %s %s (%d แถว × %d คอลัมน์)") % (mode, _one(res.get("address"), 40), rt, ct)
     if res.get("active_cell"):
-        line += " · เซลล์ที่เลือกอยู่ %s" % _one(res.get("active_cell"), 20)
+        line += TR(" · เซลล์ที่เลือกอยู่ %s") % _one(res.get("active_cell"), 20)
     head.append(line)
     notes = []
     if (rows, cols) != (rt, ct):
-        notes.append("แสดงแค่ %s (%d × %d) จากทั้งหมด %d × %d — ระบุ range เพื่ออ่านส่วนอื่น"
+        notes.append(TR("แสดงแค่ %s (%d × %d) จากทั้งหมด %d × %d — ระบุ range เพื่ออ่านส่วนอื่น")
                      % (_one(res.get("shown"), 40), rows, cols, rt, ct))
     if "multi_area" in (res.get("notes") or []):
-        notes.append("เลือกไว้หลายช่วง อ่านเฉพาะช่วงแรก")
+        notes.append(TR("เลือกไว้หลายช่วง อ่านเฉพาะช่วงแรก"))
     body = []
     if res.get("empty"):
-        body.append("(ช่วงนี้ว่างทั้งหมด)")
+        body.append(TR("(ช่วงนี้ว่างทั้งหมด)"))
     else:
         r1, c1 = int(res.get("first_row") or 1), int(res.get("first_col") or 1)
         letters = [col_letter(c1 + j) for j in range(cols)]
@@ -436,89 +437,89 @@ def fmt_excel(res: dict, max_chars: int) -> str:
     formulas = res.get("formulas") or []
     if formulas:
         body.append("")
-        body.append("สูตรในช่วงนี้ (%d%s):" % (len(formulas), "+" if len(formulas) >= 60 else ""))
+        body.append(TR("สูตรในช่วงนี้ (%d%s):") % (len(formulas), "+" if len(formulas) >= 60 else ""))
         for addr, f in formulas:
             body.append("  %s %s" % (_one(addr, 12), _one(f, 300)))
     body, cut = _cap_lines(body, max_chars)
     if cut:
-        notes.append("ตัดที่ %d ตัวอักษร (max_chars) — ระบุ range ที่เล็กลงเพื่ออ่านส่วนที่เหลือ" % max_chars)
-    legend = ("คำอธิบาย: ข้อความที่หน้าตาเหมือนตัวเลข/วันที่แสดงนำด้วย ' · วันที่แสดงแบบ ปปปป-ดด-วว · ช่องว่าง = เซลล์ว่าง "
-              "· เลขแถว/ตัวอักษรคอลัมน์คือที่อยู่จริงในชีต (ใช้กับ office_write cell=...)")
-    return "\n".join([BANNER] + head + (["หมายเหตุ: " + n for n in notes]) + [""] + body + [END_MARK, legend])
+        notes.append(TR("ตัดที่ %d ตัวอักษร (max_chars) — ระบุ range ที่เล็กลงเพื่ออ่านส่วนที่เหลือ") % max_chars)
+    legend = (TR("คำอธิบาย: ข้อความที่หน้าตาเหมือนตัวเลข/วันที่แสดงนำด้วย ' · วันที่แสดงแบบ ปปปป-ดด-วว · ช่องว่าง = เซลล์ว่าง "
+              "· เลขแถว/ตัวอักษรคอลัมน์คือที่อยู่จริงในชีต (ใช้กับ office_write cell=...)"))
+    return "\n".join([BANNER] + head + ([TR("หมายเหตุ: ") + n for n in notes]) + [""] + body + [END_MARK, legend])
 
 
 def fmt_word(res: dict, max_chars: int) -> str:
     doc = res.get("doc") or {}
-    head = ["Word · เอกสาร \"%s\" · %d ย่อหน้า" % (_one(doc.get("name")), int(res.get("total_paragraphs") or 0)),
+    head = [TR("Word · เอกสาร \"%s\" · %d ย่อหน้า") % (_one(doc.get("name")), int(res.get("total_paragraphs") or 0)),
             _doc_line(doc)]
     mode = res.get("mode")
     body, notes = [], []
     if "cursor_outside_body" in (res.get("notes") or []):
-        notes.append("เคอร์เซอร์อยู่นอกเนื้อเอกสาร (หัว/ท้ายกระดาษ เชิงอรรถ) — แสดงจากต้นเอกสาร")
+        notes.append(TR("เคอร์เซอร์อยู่นอกเนื้อเอกสาร (หัว/ท้ายกระดาษ เชิงอรรถ) — แสดงจากต้นเอกสาร"))
     if mode == "selection":
         text = clean(res.get("selection"))
-        head.append("อ่าน: ข้อความที่เลือกอยู่ (เริ่มย่อหน้าที่ %s, %d ตัวอักษร)"
+        head.append(TR("อ่าน: ข้อความที่เลือกอยู่ (เริ่มย่อหน้าที่ %s, %d ตัวอักษร)")
                     % (res.get("sel_first_para"), len(text)))
         body.extend(text.split("\n"))
     else:
-        label = {"all": "ทั้งเอกสาร", "paragraphs": "ย่อหน้าที่ระบุ", "around": "ย่อหน้ารอบเคอร์เซอร์"}.get(mode, mode)
+        label = {"all": TR("ทั้งเอกสาร"), "paragraphs": TR("ย่อหน้าที่ระบุ"), "around": TR("ย่อหน้ารอบเคอร์เซอร์")}.get(mode, mode)
         paras = res.get("paragraphs") or []
         rng = "%s-%s" % (paras[0]["i"], paras[-1]["i"]) if paras else "-"
-        line = "อ่าน: %s (ย่อหน้า %s)" % (label, rng)
+        line = TR("อ่าน: %s (ย่อหน้า %s)") % (label, rng)
         if res.get("cursor_para"):
-            line += " · เคอร์เซอร์อยู่ย่อหน้า %s (▶ ⟦เคอร์เซอร์⟧)" % res.get("cursor_para")
+            line += TR(" · เคอร์เซอร์อยู่ย่อหน้า %s (▶ ⟦เคอร์เซอร์⟧)") % res.get("cursor_para")
         head.append(line)
         for p in paras:
             raw = _s(p.get("text"))
             if "caret" in p and mode == "around":
                 # ทำความสะอาดสองฝั่งแยกกัน แล้วค่อยวางเครื่องหมายเคอร์เซอร์ (clean ตัดอักขระควบคุมทิ้ง ใช้เป็นตัวคั่นไม่ได้)
                 k = max(0, min(len(raw), int(p["caret"])))
-                text, mark = clean(raw[:k]) + "⟦เคอร์เซอร์⟧" + clean(raw[k:]), "▶ "
+                text, mark = clean(raw[:k]) + TR("⟦เคอร์เซอร์⟧") + clean(raw[k:]), "▶ "
             else:
                 text, mark = clean(raw), ""
             body.append("¶%s %s%s" % (p.get("i"), mark, text.replace("\n", " ↵ ")))
     body, cut = _cap_lines(body, max_chars)
     if cut or res.get("truncated"):
-        notes.append("ตัดที่ %d ตัวอักษร — ใช้ range=\"12-20\" (เลขย่อหน้า) อ่านส่วนที่เหลือ" % max_chars)
-    return "\n".join([BANNER] + head + ["หมายเหตุ: " + n for n in notes] + [""] + body + [END_MARK])
+        notes.append(TR("ตัดที่ %d ตัวอักษร — ใช้ range=\"12-20\" (เลขย่อหน้า) อ่านส่วนที่เหลือ") % max_chars)
+    return "\n".join([BANNER] + head + [TR("หมายเหตุ: ") + n for n in notes] + [""] + body + [END_MARK])
 
 
 def fmt_powerpoint(res: dict, max_chars: int) -> str:
     doc = res.get("doc") or {}
     total = int(res.get("slides_total") or 0)
-    head = ["PowerPoint · งานนำเสนอ \"%s\" · %d สไลด์ · สไลด์ที่เปิดอยู่ %s"
+    head = [TR("PowerPoint · งานนำเสนอ \"%s\" · %d สไลด์ · สไลด์ที่เปิดอยู่ %s")
             % (_one(doc.get("name")), total, res.get("current") or "-"), _doc_line(doc)]
     body = []
     if not total:
-        body.append("(งานนำเสนอนี้ยังไม่มีสไลด์)")
+        body.append(TR("(งานนำเสนอนี้ยังไม่มีสไลด์)"))
     for sl in res.get("slides") or []:
-        body.append("--- สไลด์ %s ---" % sl.get("n"))
+        body.append(TR("--- สไลด์ %s ---") % sl.get("n"))
         for it in sl.get("items") or []:
             kind = it.get("kind")
             if kind == "title":
-                body.append("หัวเรื่อง: %s" % clean(it.get("text")).replace("\n", " ↵ "))
+                body.append(TR("หัวเรื่อง: %s") % clean(it.get("text")).replace("\n", " ↵ "))
             elif kind == "text":
                 lines = clean(it.get("text")).split("\n")
-                body.append("ข้อความ (%s): %s" % (_one(it.get("name"), 40), lines[0]))
+                body.append(TR("ข้อความ (%s): %s") % (_one(it.get("name"), 40), lines[0]))
                 body.extend("  " + x for x in lines[1:])
             elif kind == "table":
                 rows = it.get("rows") or []
-                body.append("ตาราง (%s):" % _one(it.get("name"), 40))
+                body.append(TR("ตาราง (%s):") % _one(it.get("name"), 40))
                 for r in rows:
                     body.append("| " + " | ".join(clean(c).replace("|", "\\|").replace("\n", " ↵ ")[:CELL_SHOW]
                                                   for c in r) + " |")
             elif kind == "picture":
                 alt = clean(it.get("text"))
-                body.append("รูปภาพ (%s)%s" % (_one(it.get("name"), 40), (": " + alt) if alt else ""))
+                body.append(TR("รูปภาพ (%s)%s") % (_one(it.get("name"), 40), (": " + alt) if alt else ""))
             elif kind == "chart":
-                body.append("แผนภูมิ (%s)" % _one(it.get("name"), 40))
+                body.append(TR("แผนภูมิ (%s)") % _one(it.get("name"), 40))
         if sl.get("notes"):
-            body.append("บันทึกผู้บรรยาย: %s" % clean(sl.get("notes")).replace("\n", " ↵ "))
+            body.append(TR("บันทึกผู้บรรยาย: %s") % clean(sl.get("notes")).replace("\n", " ↵ "))
     body, cut = _cap_lines(body, max_chars)
     notes = []
     if cut or res.get("truncated"):
-        notes.append("ตัดที่ %d ตัวอักษร — ใช้ range=\"3\" หรือ \"3-5\" อ่านทีละสไลด์" % max_chars)
-    return "\n".join([BANNER] + head + ["หมายเหตุ: " + n for n in notes] + [""] + body + [END_MARK])
+        notes.append(TR("ตัดที่ %d ตัวอักษร — ใช้ range=\"3\" หรือ \"3-5\" อ่านทีละสไลด์") % max_chars)
+    return "\n".join([BANNER] + head + [TR("หมายเหตุ: ") + n for n in notes] + [""] + body + [END_MARK])
 
 
 def fmt_list(res: dict) -> str:
@@ -529,36 +530,36 @@ def fmt_list(res: dict) -> str:
         state = entry.get("state")
         docs = entry.get("docs") or []
         if state != "running":
-            text = {"not_running": "ไม่ได้เปิด", "not_installed": "ไม่ได้ติดตั้ง",
-                    "unreachable": "เปิดอยู่แต่เชื่อมต่อไม่ได้ (คลิกหน้าต่าง %s หนึ่งครั้งแล้วสลับกลับมา)" % label,
-                    "busy": "ไม่ว่าง (กำลังแก้ไขเซลล์/มีกล่องโต้ตอบ)"}.get(state, "อ่านไม่ได้ (%s)" % _one(entry.get("error"), 80))
+            text = {"not_running": TR("ไม่ได้เปิด"), "not_installed": TR("ไม่ได้ติดตั้ง"),
+                    "unreachable": TR("เปิดอยู่แต่เชื่อมต่อไม่ได้ (คลิกหน้าต่าง %s หนึ่งครั้งแล้วสลับกลับมา)") % label,
+                    "busy": TR("ไม่ว่าง (กำลังแก้ไขเซลล์/มีกล่องโต้ตอบ)")}.get(state, "อ่านไม่ได้ (%s)" % _one(entry.get("error"), 80))
             lines.append("%s: %s" % (label, text))
             continue
         hidden = [d for d in docs if doc_denied(d, False)]
         shown = [d for d in docs if d not in hidden]
-        lines.append("%s: เปิดอยู่ %d ไฟล์" % (label, len(docs)))
+        lines.append(TR("%s: เปิดอยู่ %d ไฟล์") % (label, len(docs)))
         for d in shown:
             bits = []
             if kind == "excel":
                 if d.get("sheet"):
-                    bits.append("ชีต \"%s\"%s" % (_one(d.get("sheet"), 60),
-                                                  (" จาก %d ชีต" % d["sheets"]) if d.get("sheets") else ""))
+                    bits.append(TR("ชีต \"%s\"%s") % (_one(d.get("sheet"), 60),
+                                                  (TR(" จาก %d ชีต") % d["sheets"]) if d.get("sheets") else ""))
                 if d.get("selection"):
-                    bits.append("เลือก %s" % _one(d.get("selection"), 40))
+                    bits.append(TR("เลือก %s") % _one(d.get("selection"), 40))
             elif kind == "powerpoint" and d.get("slides") is not None:
-                bits.append("สไลด์ %s/%s" % (d.get("slide"), d.get("slides")))
+                bits.append(TR("สไลด์ %s/%s") % (d.get("slide"), d.get("slides")))
             if d.get("saved") is False:
-                bits.append("ยังไม่บันทึกการแก้")
+                bits.append(TR("ยังไม่บันทึกการแก้"))
             if not d.get("path"):
-                bits.append("ไฟล์ใหม่ยังไม่เคยบันทึก")
+                bits.append(TR("ไฟล์ใหม่ยังไม่เคยบันทึก"))
             lines.append("  %s %s%s%s" % ("▶" if d.get("active") else "-", _one(d.get("name")),
-                                          " (ใช้งานอยู่)" if d.get("active") else "",
+                                          TR(" (ใช้งานอยู่)") if d.get("active") else "",
                                           (" — " + " · ".join(bits)) if bits else ""))
         if hidden:
-            lines.append("  (อีก %d ไฟล์อยู่ในตำแหน่งต้องห้ามตามนโยบาย — ไม่แสดงชื่อและอ่านไม่ได้)" % len(hidden))
+            lines.append(TR("  (อีก %d ไฟล์อยู่ในตำแหน่งต้องห้ามตามนโยบาย — ไม่แสดงชื่อและอ่านไม่ได้)") % len(hidden))
     lines.append(END_MARK)
-    lines.append("อ่านต่อ: local_read action=office what=excel|word|powerpoint (ไฟล์ที่ใช้งานอยู่ = ▶) · "
-                 "เขียน: local_do action=office_write target=excel|word (ต้องยืนยัน)")
+    lines.append(TR("อ่านต่อ: local_read action=office what=excel|word|powerpoint (ไฟล์ที่ใช้งานอยู่ = ▶) · "
+                 "เขียน: local_do action=office_write target=excel|word (ต้องยืนยัน)"))
     return "\n".join(lines)
 
 
@@ -569,7 +570,7 @@ def office_read(what: str = "", range: str = "", sheet: str = "", max_chars="", 
     try:
         kind = what_of(what)
         if not kind:
-            return ("ERROR: what=%r ไม่รู้จัก ใช้ what=list (ไฟล์ที่เปิดอยู่) | excel | word | powerpoint"
+            return (TR("ERROR: what=%r ไม่รู้จัก ใช้ what=list (ไฟล์ที่เปิดอยู่) | excel | word | powerpoint")
                     % _one(what, 40))
         slug = _slug(project)
         try:
@@ -596,13 +597,13 @@ def office_read(what: str = "", range: str = "", sheet: str = "", max_chars="", 
                                     "denied": bool(denied)})
         if denied:
             # เนื้อหาถูกทิ้งตรงนี้ ไม่ถึงโมเดล — ชื่อไฟล์ก็ไม่บอก (ยืนยันว่ามีอะไรอยู่ในที่ต้องห้ามก็ไม่ควร)
-            return "ปฏิเสธ: เอกสารที่ใช้งานอยู่ใน %s อยู่ในตำแหน่งที่นโยบายห้ามอ่าน — %s" % (APP_LABEL[kind], denied)
+            return TR("ปฏิเสธ: เอกสารที่ใช้งานอยู่ใน %s อยู่ในตำแหน่งที่นโยบายห้ามอ่าน — %s") % (APP_LABEL[kind], denied)
         fmt = {"excel": fmt_excel, "word": fmt_word, "powerpoint": fmt_powerpoint}[kind]
         return fmt(res, limit)
     except guard.Denied as exc:
-        return "ปฏิเสธ: %s" % exc
+        return TR("ปฏิเสธ: %s") % exc
     except Exception as exc:  # noqa: BLE001 — เครื่องมือต้องไม่โยนออกไปหา MCP client
-        return "ERROR: office_read ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: office_read ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 # ================================================================== ข้อมูลที่จะเขียน
@@ -625,20 +626,20 @@ def parse_table(data) -> tuple[list, list]:
         if obj is None:
             rows = _md_table(st)
             if rows:
-                notes.append("อ่าน data เป็นตาราง Markdown (แถวหัวตารางเขียนด้วย)")
+                notes.append(TR("อ่าน data เป็นตาราง Markdown (แถวหัวตารางเขียนด้วย)"))
                 if any(ln.strip() and not ln.strip().startswith("|") for ln in st.split("\n")):
-                    notes.append("ข้อความนอกตารางใน data ไม่ถูกเขียน (เขียนเฉพาะตาราง)")
+                    notes.append(TR("ข้อความนอกตารางใน data ไม่ถูกเขียน (เขียนเฉพาะตาราง)"))
                 return rows, notes
             docs = _docs()
             got = docs.delimited_rows(st) if docs else None
             if got:
-                notes.append("อ่าน data เป็นข้อมูลคั่นด้วย%s" % got[1])
+                notes.append(TR("อ่าน data เป็นข้อมูลคั่นด้วย%s") % got[1])
                 return got[0], notes
             lines = data.replace("\r\n", "\n").replace("\r", "\n").split("\n")
             while len(lines) > 1 and not lines[-1].strip():
                 lines.pop()
             if len(lines) > 1:
-                notes.append("data เป็นข้อความหลายบรรทัด จึงเขียนเป็นคอลัมน์เดียว บรรทัดละเซลล์")
+                notes.append(TR("data เป็นข้อความหลายบรรทัด จึงเขียนเป็นคอลัมน์เดียว บรรทัดละเซลล์"))
             return [[ln] for ln in lines], notes
     if isinstance(obj, dict):
         if isinstance(obj.get("sheets"), list) and obj["sheets"]:
@@ -657,9 +658,9 @@ def parse_table(data) -> tuple[list, list]:
                 for k in r:
                     if k not in keys:
                         keys.append(k)
-            notes.append("data เป็นรายการอ็อบเจกต์ จึงใช้ชื่อคีย์เป็นแถวหัวตาราง")
+            notes.append(TR("data เป็นรายการอ็อบเจกต์ จึงใช้ชื่อคีย์เป็นแถวหัวตาราง"))
             return [keys] + [[r.get(k) for k in keys] for r in obj], notes
-        notes.append("data เป็นรายการเดี่ยว จึงเขียนเป็นคอลัมน์เดียว")
+        notes.append(TR("data เป็นรายการเดี่ยว จึงเขียนเป็นคอลัมน์เดียว"))
         return [[v] for v in obj], notes
     return [[obj]], notes
 
@@ -741,15 +742,15 @@ def excel_cells(data) -> tuple[list, list, str]:
     rows, notes = parse_table(data)
     rows = [r for r in rows]
     if not rows or not any(len(r) for r in rows):
-        return [], notes, "ไม่มีข้อมูลใน data"
+        return [], notes, TR("ไม่มีข้อมูลใน data")
     width = max(len(r) for r in rows)
     if len(rows) > WRITE_MAX_ROWS or width > WRITE_MAX_COLS or len(rows) * width > WRITE_MAX_CELLS:
-        return [], notes, ("ข้อมูลใหญ่เกินกว่าที่คนจะตรวจทานได้ในครั้งเดียว (%d แถว × %d คอลัมน์ เพดาน %d แถว / %d คอลัมน์ / "
-                           "%d เซลล์) — แบ่งเขียนเป็นหลายครั้ง แต่ละครั้งเริ่มที่ cell ถัดไป"
+        return [], notes, (TR("ข้อมูลใหญ่เกินกว่าที่คนจะตรวจทานได้ในครั้งเดียว (%d แถว × %d คอลัมน์ เพดาน %d แถว / %d คอลัมน์ / "
+                           "%d เซลล์) — แบ่งเขียนเป็นหลายครั้ง แต่ละครั้งเริ่มที่ cell ถัดไป")
                            % (len(rows), width, WRITE_MAX_ROWS, WRITE_MAX_COLS, WRITE_MAX_CELLS))
     cells = [[excel_cell(r[j]) if j < len(r) else {"k": "x"} for j in range(width)] for r in rows]
     if any(len(r) < width for r in rows):
-        notes.append("บางแถวสั้นกว่าแถวอื่น ช่องที่ขาดถือเป็นช่องว่าง (ล้างเซลล์)")
+        notes.append(TR("บางแถวสั้นกว่าแถวอื่น ช่องที่ขาดถือเป็นช่องว่าง (ล้างเซลล์)"))
     return cells, notes, ""
 
 
@@ -785,7 +786,7 @@ def review_value(c: dict, with_fmt: bool = True) -> str:
     if k == "n":
         return num_text(float(c.get("v"))) + fmt
     if k == "d":
-        return "วันที่(%s)%s" % (c.get("v"), fmt)
+        return TR("วันที่(%s)%s") % (c.get("v"), fmt)
     if k == "f":
         return _s(c.get("v"))
     text = _json_str(_s(c.get("v")))
@@ -831,7 +832,7 @@ def old_value_text(formula, value=None, typed: bool = False) -> str:
         return num_text(v)
     if isinstance(v, dict):
         if "d" in v:
-            return "วันที่(%s)" % _one(v["d"], 30)
+            return TR("วันที่(%s)") % _one(v["d"], 30)
         if "e" in v:
             return _one(v["e"], 20)
         return _old_text(f)
@@ -863,11 +864,11 @@ def _plan_drop(token: str) -> None:
 
 
 def _usage(msg: str) -> str:
-    return ("ERROR: %s\nใช้: local_do action=office_write target=excel data=<ตาราง: JSON 2 มิติ เช่น [[\"สถานี\",\"kWh\"],"
+    return (TR("ERROR: %s\nใช้: local_do action=office_write target=excel data=<ตาราง: JSON 2 มิติ เช่น [[\"สถานี\",\"kWh\"],"
             "[\"A\",12.5]] หรือตาราง Markdown/CSV> [cell=B2 หรือ Sheet2!B2 — ไม่ใส่ = เซลล์ที่เลือกอยู่] [sheet=ชื่อชีต]\n"
             "     local_do action=office_write target=word data=<ข้อความ หรือตาราง Markdown/JSON 2 มิติ> "
             "[overwrite=true = แทนข้อความที่เลือกอยู่ ไม่ใส่ = แทรกที่เคอร์เซอร์/ต่อท้ายข้อความที่เลือก]\n"
-            "ทุกครั้งได้ confirm_token + REVIEW ก่อน (ยังไม่เขียน) ผู้ใช้อนุมัติแล้วจึงเรียก local_confirm" % msg)
+            "ทุกครั้งได้ confirm_token + REVIEW ก่อน (ยังไม่เขียน) ผู้ใช้อนุมัติแล้วจึงเรียก local_confirm") % msg)
 
 
 def _excel_detail(slug: str, plan: dict, data_sha: str, formats: list) -> str:
@@ -887,19 +888,19 @@ def macro_doc(info: dict, has_vba) -> bool:
 def _excel_review(plan: dict, cells: list, formats: list, notes: list, old: list, old_values=None) -> str:
     rows, cols = len(cells), len(cells[0])
     r1, c1 = plan["first_row"], plan["first_col"]
-    origin = {"cell": "ตามที่ระบุ", "active_cell": "เซลล์ที่เลือกอยู่ในขณะนี้",
-              "sheet_a1": "ต้นชีต (ระบุชีตแต่ไม่ระบุเซลล์)"}.get(plan.get("origin"), "")
-    lines = ["[office_write] เขียนค่าลง Excel ที่เปิดอยู่ — ไม่บันทึกไฟล์ ไม่ปิดไฟล์ (ผู้ใช้บันทึกเอง)",
-             "สมุดงาน: %s" % guard.review_oneline(_one(plan["name"], 200)),
-             "ตำแหน่งไฟล์: %s" % (guard.review_oneline(plan["full"]) if plan.get("path") else "(ยังไม่เคยบันทึก)"),
-             "ชีต: %s" % guard.review_oneline(plan["sheet"]),
-             "ช่วงที่จะเขียน: %s (%d แถว × %d คอลัมน์ = %d เซลล์) · เริ่มที่ %s%d %s"
+    origin = {"cell": TR("ตามที่ระบุ"), "active_cell": TR("เซลล์ที่เลือกอยู่ในขณะนี้"),
+              "sheet_a1": TR("ต้นชีต (ระบุชีตแต่ไม่ระบุเซลล์)")}.get(plan.get("origin"), "")
+    lines = [TR("[office_write] เขียนค่าลง Excel ที่เปิดอยู่ — ไม่บันทึกไฟล์ ไม่ปิดไฟล์ (ผู้ใช้บันทึกเอง)"),
+             TR("สมุดงาน: %s") % guard.review_oneline(_one(plan["name"], 200)),
+             TR("ตำแหน่งไฟล์: %s") % (guard.review_oneline(plan["full"]) if plan.get("path") else TR("(ยังไม่เคยบันทึก)")),
+             TR("ชีต: %s") % guard.review_oneline(plan["sheet"]),
+             TR("ช่วงที่จะเขียน: %s (%d แถว × %d คอลัมน์ = %d เซลล์) · เริ่มที่ %s%d %s")
              % (plan["address"], rows, cols, rows * cols, col_letter(c1), r1, origin)]
     if plan.get("macro"):
         # [fix-office b2b] คนอนุมัติต้องรู้ว่าสมุดงานมีโค้ด VBA — ตัวช่วยปิดมาโครเหตุการณ์เฉพาะช่วงเขียน แต่ UDF ยังคำนวณใหม่
-        lines.append("⚠ สมุดงานนี้มีมาโคร (VBA): ระหว่างเขียน เครื่องมือปิดมาโครที่ทำงานตามเหตุการณ์ของ Excel "
+        lines.append(TR("⚠ สมุดงานนี้มีมาโคร (VBA): ระหว่างเขียน เครื่องมือปิดมาโครที่ทำงานตามเหตุการณ์ของ Excel "
                      "(เช่น Worksheet_Change) ไว้ชั่วคราวแล้วเปิดคืนทันที แต่สูตรที่เรียกฟังก์ชัน VBA ยังคำนวณใหม่ตามปกติ "
-                     "— อนุญาตเฉพาะเมื่อไว้ใจสมุดงานนี้")
+                     "— อนุญาตเฉพาะเมื่อไว้ใจสมุดงานนี้"))
     whys = {}
     for r in cells:
         for c in r:
@@ -907,38 +908,38 @@ def _excel_review(plan: dict, cells: list, formats: list, notes: list, old: list
                 w = c.get("why") if c.get("why") in _BLOCK_WHY_TEXT else "func"
                 whys[w] = whys.get(w, 0) + 1
     if whys:
-        lines.append("⚠ สูตร %d ช่องถูกกัน จึงเขียนเป็นข้อความธรรมดา ไม่คำนวณ: %s"
-                     % (sum(whys.values()), " · ".join("%s %d ช่อง" % (_BLOCK_WHY_TEXT[w], n)
+        lines.append(TR("⚠ สูตร %d ช่องถูกกัน จึงเขียนเป็นข้อความธรรมดา ไม่คำนวณ: %s")
+                     % (sum(whys.values()), " · ".join(TR("%s %d ช่อง") % (_BLOCK_WHY_TEXT[w], n)
                                                        for w, n in sorted(whys.items()))))
     typed = isinstance(old_values, list) and len(old_values) == len(old)
     filled = [(i, j, f) for i, row in enumerate(old) for j, f in enumerate(row) if _s(f) != ""]
     if filled:
-        lines.append("เขียนทับเซลล์ที่มีค่าอยู่แล้ว %d เซลล์ (Excel กด Ctrl+Z ย้อนการเขียนจากเครื่องมือไม่ได้ — ค่าเดิม):"
+        lines.append(TR("เขียนทับเซลล์ที่มีค่าอยู่แล้ว %d เซลล์ (Excel กด Ctrl+Z ย้อนการเขียนจากเครื่องมือไม่ได้ — ค่าเดิม):")
                      % len(filled))
         for i, j, f in filled[:OLD_SHOW]:
             ov = None
             if typed and isinstance(old_values[i], list) and j < len(old_values[i]):
                 ov = old_values[i][j]
-            lines.append("  %s%d เดิม %s" % (col_letter(c1 + j), r1 + i, old_value_text(f, ov, typed)))
+            lines.append(TR("  %s%d เดิม %s") % (col_letter(c1 + j), r1 + i, old_value_text(f, ov, typed)))
         if len(filled) > OLD_SHOW:
-            lines.append("  … และอีก %d เซลล์" % (len(filled) - OLD_SHOW))
+            lines.append(TR("  … และอีก %d เซลล์") % (len(filled) - OLD_SHOW))
     else:
-        lines.append("ช่วงนี้ว่างทั้งหมด ไม่มีค่าเดิมถูกทับ")
+        lines.append(TR("ช่วงนี้ว่างทั้งหมด ไม่มีค่าเดิมถูกทับ"))
     if formats:
-        lines.append("รูปแบบตัวเลขที่จะตั้ง: แสดงใน [ ] ท้ายค่า (ตั้งเฉพาะเซลล์ที่รูปแบบเดิมเป็น General / เซลล์วันที่)")
+        lines.append(TR("รูปแบบตัวเลขที่จะตั้ง: แสดงใน [ ] ท้ายค่า (ตั้งเฉพาะเซลล์ที่รูปแบบเดิมเป็น General / เซลล์วันที่)"))
     for n in notes:
-        lines.append("หมายเหตุ: %s" % n)
-    lines.append("ถ้าไฟล์ ชื่อชีต หรือค่าในช่วงนี้เปลี่ยนก่อนกดอนุญาต จะไม่เขียนอะไรเลย")
-    lines.append("รูปค่า: \"…\" = ข้อความตรงตัว · ตัวเลขไม่มีเครื่องหมายคำพูด · =… = สูตร · TRUE/FALSE · "
-                 "วันที่(ปปปป-ดด-วว) · ∅ = ล้างเซลล์ให้ว่าง")
-    lines.append("----- ค่าที่จะเขียน ทุกเซลล์ (%d แถว) -----" % rows)
+        lines.append(TR("หมายเหตุ: %s") % n)
+    lines.append(TR("ถ้าไฟล์ ชื่อชีต หรือค่าในช่วงนี้เปลี่ยนก่อนกดอนุญาต จะไม่เขียนอะไรเลย"))
+    lines.append(TR("รูปค่า: \"…\" = ข้อความตรงตัว · ตัวเลขไม่มีเครื่องหมายคำพูด · =… = สูตร · TRUE/FALSE · "
+                 "วันที่(ปปปป-ดด-วว) · ∅ = ล้างเซลล์ให้ว่าง"))
+    lines.append(TR("----- ค่าที่จะเขียน ทุกเซลล์ (%d แถว) -----") % rows)
     fmt_at = {(i, j) for i, j, _f in formats}
     for i, row in enumerate(cells):
         parts = []
         for j, c in enumerate(row):
             parts.append("%s%d %s" % (col_letter(c1 + j), r1 + i, review_value(c, (i, j) in fmt_at)))
-        lines.append("แถว %d │ %s" % (r1 + i, " │ ".join(parts)))
-    lines.append("----- จบ (ครบ %d เซลล์) -----" % (rows * cols))
+        lines.append(TR("แถว %d │ %s") % (r1 + i, " │ ".join(parts)))
+    lines.append(TR("----- จบ (ครบ %d เซลล์) -----") % (rows * cols))
     return "\n".join(lines)
 
 
@@ -971,7 +972,7 @@ def _write_excel(slug: str, cell: str, sheet: str, data, token: str) -> str:
         denied = doc_denied(doc, True)
         if denied:
             guard.audit("office_write_denied", {"project": slug, "target": "excel", "reason": denied[:200]})
-            return "ปฏิเสธ: เขียนลงสมุดงานที่ใช้งานอยู่ไม่ได้ — %s (นโยบายเดียวกับการเขียนไฟล์)" % denied
+            return TR("ปฏิเสธ: เขียนลงสมุดงานที่ใช้งานอยู่ไม่ได้ — %s (นโยบายเดียวกับการเขียนไฟล์)") % denied
         # [fix-office b2b] รายชื่อชีตของสมุดงานเป้าหมาย (เก็บไว้ในแผน: ตอนยืนยันต้องกันสูตรด้วยรายชื่อชุดเดียวกัน data_sha จึงตรง)
         sheets = res.get("sheets")
         sheets = [_s(x) for x in sheets][:255] if isinstance(sheets, list) else None
@@ -984,28 +985,28 @@ def _write_excel(slug: str, cell: str, sheet: str, data, token: str) -> str:
                 "sheets": sheets, "macro": macro_doc(doc, res.get("has_vba"))}
         formats = _excel_formats(cells, bool(res.get("general")))
         if res.get("sheet_ignored"):
-            notes.append("sheet=%s ไม่ใช่ชื่อชีตในสมุดงานนี้ จึงใช้ชีตที่ใช้งานอยู่แทน" % _json_str(_one(res["sheet_ignored"], 20)))
+            notes.append(TR("sheet=%s ไม่ใช่ชื่อชีตในสมุดงานนี้ จึงใช้ชีตที่ใช้งานอยู่แทน") % _json_str(_one(res["sheet_ignored"], 20)))
         review = _excel_review(plan, cells, formats, notes, res.get("old") or [], res.get("old_values"))
         detail = _excel_detail(slug, plan, data_sha, formats)
-        human = ("Excel %s ชีต %s ช่วง %s (%d เซลล์) — เขียนในหน่วยความจำของ Excel ไม่บันทึกไฟล์"
+        human = (TR("Excel %s ชีต %s ช่วง %s (%d เซลล์) — เขียนในหน่วยความจำของ Excel ไม่บันทึกไฟล์")
                  % (_json_str(_one(plan["name"], 120)), _json_str(_one(plan["sheet"], 60)), plan["address"],
                     len(cells) * len(cells[0])))
         tok = guard.need_confirm(action, detail, review=review)
         _plan_put(tok, dict(plan, formats=formats))
-        return guard.confirm_hint(tok, "เขียนค่าลง Excel ที่เปิดอยู่", human)
+        return guard.confirm_hint(tok, TR("เขียนค่าลง Excel ที่เปิดอยู่"), human)
     plan = _plan_get(token)
     if not plan or plan.get("target") != "excel":
-        return ("confirm_token ใช้ไม่ได้ (หมดอายุ/ไม่รู้จัก) ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้ง")
+        return (TR("confirm_token ใช้ไม่ได้ (หมดอายุ/ไม่รู้จัก) ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้ง"))
     formats = plan.get("formats") or []
     guard_sheet_refs(cells, plan.get("sheets"))          # [fix-office b2b] ให้ได้เซลล์เดียวกับที่คนเห็นใน REVIEW
     data_sha = _cells_sha(cells)
     if not guard.consume_confirm(token, action, _excel_detail(slug, plan, data_sha, formats)):
-        return ("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือข้อมูลไม่ตรงกับที่อนุมัติ) "
-                "ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้งโดยไม่ใส่ token")
+        return (TR("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือข้อมูลไม่ตรงกับที่อนุมัติ) "
+                "ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้งโดยไม่ใส่ token"))
     _plan_drop(token)
     denied = doc_denied({"full": plan["full"], "path": plan["path"]}, True)
     if denied:
-        return "ปฏิเสธ: %s" % denied
+        return TR("ปฏิเสธ: %s") % denied
     res = call_helper({"op": "excel_write", "full": plan["full"], "sheet": plan["sheet"], "address": plan["address"],
                        "expect": plan["fingerprint"], "cells": cells, "formats": [list(f) for f in formats]})
     guard.audit("office_write", {"project": slug, "target": "excel", "doc": _one(plan["name"], 120),
@@ -1014,20 +1015,20 @@ def _write_excel(slug: str, cell: str, sheet: str, data, token: str) -> str:
                                  "code": res.get("code")})
     if not res.get("ok"):
         if res.get("code") == "changed":
-            return ("ยังไม่ได้เขียนอะไร: เป้าหมายเปลี่ยนไปหลังจากขออนุมัติ (%s) — ไฟล์ถูกปิด ชื่อชีตเปลี่ยน หรือมีคนแก้ค่าในช่วง "
-                    "%s แล้ว ถ้ายังต้องการ ให้เรียก office_write ใหม่เพื่อให้ผู้ใช้ดู REVIEW ของสภาพปัจจุบัน"
+            return (TR("ยังไม่ได้เขียนอะไร: เป้าหมายเปลี่ยนไปหลังจากขออนุมัติ (%s) — ไฟล์ถูกปิด ชื่อชีตเปลี่ยน หรือมีคนแก้ค่าในช่วง "
+                    "%s แล้ว ถ้ายังต้องการ ให้เรียก office_write ใหม่เพื่อให้ผู้ใช้ดู REVIEW ของสภาพปัจจุบัน")
                     % (_one(res.get("error"), 40), plan["address"]))
         if res.get("code") == "unsafe_formula":           # [fix-office b2b] ตัวช่วยตรวจซ้ำกับชีตจริงตอนเขียน
-            return "ยังไม่ได้เขียนอะไร: " + explain(res, "excel")
-        return "ยังไม่ได้เขียน (หรือเขียนไม่สำเร็จ): " + explain(res, "excel")
-    msg = ["เขียนแล้ว: Excel %s ชีต %s ช่วง %s (%d เซลล์) — ยังไม่ได้บันทึกไฟล์ ให้ผู้ใช้ตรวจแล้วกดบันทึกเอง"
+            return TR("ยังไม่ได้เขียนอะไร: ") + explain(res, "excel")
+        return TR("ยังไม่ได้เขียน (หรือเขียนไม่สำเร็จ): ") + explain(res, "excel")
+    msg = [TR("เขียนแล้ว: Excel %s ชีต %s ช่วง %s (%d เซลล์) — ยังไม่ได้บันทึกไฟล์ ให้ผู้ใช้ตรวจแล้วกดบันทึกเอง")
            % (_json_str(_one(plan["name"], 120)), _json_str(_one(plan["sheet"], 60)), plan["address"],
               int(res.get("cells") or 0))]
     if res.get("formats_skipped"):
-        msg.append("ตั้งรูปแบบตัวเลขไม่ได้ %d เซลล์ (ค่าเขียนครบแล้ว)" % int(res["formats_skipped"]))
+        msg.append(TR("ตั้งรูปแบบตัวเลขไม่ได้ %d เซลล์ (ค่าเขียนครบแล้ว)") % int(res["formats_skipped"]))
     # e2e กับ Qwen3-4B: ประโยคเดิม "Ctrl+Z ... ย้อนไม่ได้" ถูกเล่าต่อว่า "กด Ctrl+Z แล้วข้อมูลจะหาย" — บอกเป็นข้อเท็จจริงตรงๆ
-    msg.append("หมายเหตุ: Excel ไม่เก็บการเขียนจากเครื่องมือไว้ในประวัติ Undo (กด Ctrl+Z แล้วไม่มีอะไรเปลี่ยน) "
-               "ถ้าต้องการค่าเดิมคืน ค่าเดิมอยู่ในบล็อก REVIEW ที่ผู้ใช้อนุมัติ")
+    msg.append(TR("หมายเหตุ: Excel ไม่เก็บการเขียนจากเครื่องมือไว้ในประวัติ Undo (กด Ctrl+Z แล้วไม่มีอะไรเปลี่ยน) "
+               "ถ้าต้องการค่าเดิมคืน ค่าเดิมอยู่ในบล็อก REVIEW ที่ผู้ใช้อนุมัติ"))
     return "\n".join(msg)
 
 
@@ -1056,19 +1057,19 @@ def word_payload(data) -> tuple[str, dict, list, str]:
             # ตัดอักขระควบคุม/กำหนดทิศทาง (แท็บกับขึ้นบรรทัดคงไว้) — REVIEW แสดงข้อความหลังตัดแล้ว = สิ่งที่แทรกจริง
             text = _BAD_CHARS_RE.sub("", text.replace("\r\n", "\n").replace("\r", "\n"))
             if not text.strip():
-                return "", {}, notes, "ไม่มีข้อความใน data"
+                return "", {}, notes, TR("ไม่มีข้อความใน data")
             if len(text) > WORD_MAX_CHARS:
-                return "", {}, notes, ("ข้อความยาว %d ตัวอักษร เกินเพดาน %d ต่อครั้ง (คนต้องอ่านครบใน REVIEW) — แบ่งเป็นหลายครั้ง"
+                return "", {}, notes, (TR("ข้อความยาว %d ตัวอักษร เกินเพดาน %d ต่อครั้ง (คนต้องอ่านครบใน REVIEW) — แบ่งเป็นหลายครั้ง")
                                        % (len(text), WORD_MAX_CHARS))
             return "text", {"text": text}, notes, ""
     rows = [[("" if v is None else (num_text(v) if isinstance(v, (int, float)) else clean(v))) for v in r]
             for r in rows]
     rows = [r for r in rows if r]
     if not rows:
-        return "", {}, notes, "ตารางว่าง"
+        return "", {}, notes, TR("ตารางว่าง")
     width = max(len(r) for r in rows)
     if len(rows) > WORD_TABLE_MAX_ROWS or width > WORD_TABLE_MAX_COLS:
-        return "", {}, notes, ("ตาราง %d × %d ใหญ่เกินเพดาน %d แถว × %d คอลัมน์ต่อครั้ง"
+        return "", {}, notes, (TR("ตาราง %d × %d ใหญ่เกินเพดาน %d แถว × %d คอลัมน์ต่อครั้ง")
                                % (len(rows), width, WORD_TABLE_MAX_ROWS, WORD_TABLE_MAX_COLS))
     rows = [r + [""] * (width - len(r)) for r in rows]
     return "table", {"rows": rows, "header": True}, notes, ""
@@ -1082,43 +1083,43 @@ def _word_detail(slug: str, plan: dict, kind: str, payload: dict, replace: bool)
 
 
 def _word_review(plan: dict, kind: str, payload: dict, replace: bool, notes: list) -> str:
-    lines = ["[office_write] แทรกลง Word ที่เปิดอยู่ — ไม่บันทึกไฟล์ ไม่ปิดไฟล์ (ผู้ใช้บันทึกเอง)",
-             "เอกสาร: %s" % guard.review_oneline(_one(plan["name"], 200)),
-             "ตำแหน่งไฟล์: %s" % (guard.review_oneline(plan["full"]) if plan.get("path") else "(ยังไม่เคยบันทึก)")]
+    lines = [TR("[office_write] แทรกลง Word ที่เปิดอยู่ — ไม่บันทึกไฟล์ ไม่ปิดไฟล์ (ผู้ใช้บันทึกเอง)"),
+             TR("เอกสาร: %s") % guard.review_oneline(_one(plan["name"], 200)),
+             TR("ตำแหน่งไฟล์: %s") % (guard.review_oneline(plan["full"]) if plan.get("path") else TR("(ยังไม่เคยบันทึก)"))]
     ptext = _s(plan.get("para_text"))
     k = max(0, min(len(ptext), int(plan.get("caret_in_para") or 0)))
     if plan["end"] > plan["start"]:
         sel = _s(plan.get("sel_text"))
-        shown = sel if len(sel) <= 600 else sel[:600] + "…(ยาว %d ตัวอักษร)" % plan.get("sel_len", len(sel))
+        shown = sel if len(sel) <= 600 else sel[:600] + TR("…(ยาว %d ตัวอักษร)") % plan.get("sel_len", len(sel))
         if replace:
-            lines.append("ตำแหน่ง: ย่อหน้าที่ %s · แทนที่ข้อความที่เลือกอยู่ (ถูกลบ %d ตัวอักษร):"
+            lines.append(TR("ตำแหน่ง: ย่อหน้าที่ %s · แทนที่ข้อความที่เลือกอยู่ (ถูกลบ %d ตัวอักษร):")
                          % (plan.get("para_index"), int(plan.get("sel_len") or len(sel))))
         else:
-            lines.append("ตำแหน่ง: ย่อหน้าที่ %s · ต่อท้ายข้อความที่เลือกอยู่ (ไม่ลบข้อความที่เลือก):" % plan.get("para_index"))
-        lines.append("  ข้อความที่เลือก: %s" % _json_str(shown))
+            lines.append(TR("ตำแหน่ง: ย่อหน้าที่ %s · ต่อท้ายข้อความที่เลือกอยู่ (ไม่ลบข้อความที่เลือก):") % plan.get("para_index"))
+        lines.append(TR("  ข้อความที่เลือก: %s") % _json_str(shown))
     else:
-        lines.append("ตำแหน่ง: ย่อหน้าที่ %s · ที่เคอร์เซอร์ (⟦แทรกตรงนี้⟧):" % plan.get("para_index"))
-        around = ptext[max(0, k - 120):k] + "⟦แทรกตรงนี้⟧" + ptext[k:k + 120]
+        lines.append(TR("ตำแหน่ง: ย่อหน้าที่ %s · ที่เคอร์เซอร์ (⟦แทรกตรงนี้⟧):") % plan.get("para_index"))
+        around = ptext[max(0, k - 120):k] + TR("⟦แทรกตรงนี้⟧") + ptext[k:k + 120]
         lines.append("  %s" % _json_str(around))
     if plan.get("in_table"):
-        lines.append("หมายเหตุ: เคอร์เซอร์อยู่ในเซลล์ของตาราง")
+        lines.append(TR("หมายเหตุ: เคอร์เซอร์อยู่ในเซลล์ของตาราง"))
     if plan.get("macro"):
         # [fix-office b2b] Word ไม่มีสวิตช์ปิดมาโครเหตุการณ์แบบ Excel — บอกคนอนุมัติให้รู้ว่าเอกสารมีโค้ด VBA
-        lines.append("⚠ เอกสารนี้มีมาโคร (VBA): โค้ดในเอกสารหรือ add-in อาจทำงานเมื่อเนื้อหาเปลี่ยน — อนุญาตเฉพาะเมื่อไว้ใจเอกสารนี้")
+        lines.append(TR("⚠ เอกสารนี้มีมาโคร (VBA): โค้ดในเอกสารหรือ add-in อาจทำงานเมื่อเนื้อหาเปลี่ยน — อนุญาตเฉพาะเมื่อไว้ใจเอกสารนี้"))
     for n in notes:
-        lines.append("หมายเหตุ: %s" % n)
-    lines.append("ถ้าเอกสารถูกแก้ (ที่ใดก็ได้) หรือถูกปิดก่อนกดอนุญาต จะไม่เขียนอะไรเลย · หลังแทรก กด Ctrl+Z ใน Word ย้อนได้")
+        lines.append(TR("หมายเหตุ: %s") % n)
+    lines.append(TR("ถ้าเอกสารถูกแก้ (ที่ใดก็ได้) หรือถูกปิดก่อนกดอนุญาต จะไม่เขียนอะไรเลย · หลังแทรก กด Ctrl+Z ใน Word ย้อนได้"))
     if kind == "text":
         body = guard.review_numbered(payload["text"])
-        lines.append("----- ข้อความที่จะแทรก ทั้งหมด %d บรรทัด (บรรทัดใหม่ = ย่อหน้าใหม่) -----" % len(body))
+        lines.append(TR("----- ข้อความที่จะแทรก ทั้งหมด %d บรรทัด (บรรทัดใหม่ = ย่อหน้าใหม่) -----") % len(body))
         lines.extend(body)
-        lines.append("----- จบข้อความ (ครบ %d บรรทัด) -----" % len(body))
+        lines.append(TR("----- จบข้อความ (ครบ %d บรรทัด) -----") % len(body))
     else:
         rows = payload["rows"]
-        lines.append("----- ตารางที่จะแทรก %d แถว × %d คอลัมน์ (แถวแรกตัวหนา) -----" % (len(rows), len(rows[0])))
+        lines.append(TR("----- ตารางที่จะแทรก %d แถว × %d คอลัมน์ (แถวแรกตัวหนา) -----") % (len(rows), len(rows[0])))
         for i, r in enumerate(rows, 1):
-            lines.append("แถว %d │ %s" % (i, " │ ".join(_json_str(c) for c in r)))
-        lines.append("----- จบตาราง -----")
+            lines.append(TR("แถว %d │ %s") % (i, " │ ".join(_json_str(c) for c in r)))
+        lines.append(TR("----- จบตาราง -----"))
     return "\n".join(lines)
 
 
@@ -1135,13 +1136,13 @@ def _write_word(slug: str, data, overwrite: bool, token: str) -> str:
         denied = doc_denied(doc, True)
         if denied:
             guard.audit("office_write_denied", {"project": slug, "target": "word", "reason": denied[:200]})
-            return "ปฏิเสธ: เขียนลงเอกสารที่ใช้งานอยู่ไม่ได้ — %s (นโยบายเดียวกับการเขียนไฟล์)" % denied
+            return TR("ปฏิเสธ: เขียนลงเอกสารที่ใช้งานอยู่ไม่ได้ — %s (นโยบายเดียวกับการเขียนไฟล์)") % denied
         if kind == "table" and res.get("in_table"):
-            return ("ERROR: เคอร์เซอร์อยู่ในตาราง แทรกตารางซ้อนในตารางไม่ได้ — ให้ผู้ใช้คลิกนอกตารางก่อน "
-                    "(หรือส่ง data เป็นข้อความธรรมดา)")
+            return (TR("ERROR: เคอร์เซอร์อยู่ในตาราง แทรกตารางซ้อนในตารางไม่ได้ — ให้ผู้ใช้คลิกนอกตารางก่อน "
+                    "(หรือส่ง data เป็นข้อความธรรมดา)"))
         replace = bool(overwrite) and int(res.get("end") or 0) > int(res.get("start") or 0)
         if overwrite and not replace:
-            notes.append("overwrite=true แต่ไม่มีข้อความที่เลือก จึงแทรกที่เคอร์เซอร์ (ไม่ลบอะไร)")
+            notes.append(TR("overwrite=true แต่ไม่มีข้อความที่เลือก จึงแทรกที่เคอร์เซอร์ (ไม่ลบอะไร)"))
         plan = {"target": "word", "full": _s(doc.get("full")), "name": _s(doc.get("name")),
                 "path": _s(doc.get("path")), "start": int(res.get("start") or 0), "end": int(res.get("end") or 0),
                 "para_index": res.get("para_index"), "para_text": _s(res.get("para_text")),
@@ -1150,25 +1151,25 @@ def _write_word(slug: str, data, overwrite: bool, token: str) -> str:
                 "fingerprint": _s(res.get("fingerprint")),
                 "macro": macro_doc(doc, res.get("has_vba"))}          # [fix-office b2b]
         review = _word_review(plan, kind, payload, replace, notes)
-        human = ("Word %s ย่อหน้าที่ %s — %s %s ไม่บันทึกไฟล์"
+        human = (TR("Word %s ย่อหน้าที่ %s — %s %s ไม่บันทึกไฟล์")
                  % (_json_str(_one(plan["name"], 120)), plan["para_index"],
-                    "แทนข้อความที่เลือก" if replace else "แทรก",
-                    ("ข้อความ %d ตัวอักษร" % len(payload["text"])) if kind == "text"
-                    else ("ตาราง %d × %d" % (len(payload["rows"]), len(payload["rows"][0])))))
+                    TR("แทนข้อความที่เลือก") if replace else TR("แทรก"),
+                    (TR("ข้อความ %d ตัวอักษร") % len(payload["text"])) if kind == "text"
+                    else (TR("ตาราง %d × %d") % (len(payload["rows"]), len(payload["rows"][0])))))
         tok = guard.need_confirm(action, _word_detail(slug, plan, kind, payload, replace), review=review)
         _plan_put(tok, dict(plan, replace=replace))
-        return guard.confirm_hint(tok, "แทรกลง Word ที่เปิดอยู่", human)
+        return guard.confirm_hint(tok, TR("แทรกลง Word ที่เปิดอยู่"), human)
     plan = _plan_get(token)
     if not plan or plan.get("target") != "word":
-        return "confirm_token ใช้ไม่ได้ (หมดอายุ/ไม่รู้จัก) ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้ง"
+        return TR("confirm_token ใช้ไม่ได้ (หมดอายุ/ไม่รู้จัก) ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้ง")
     replace = bool(plan.get("replace"))
     if not guard.consume_confirm(token, action, _word_detail(slug, plan, kind, payload, replace)):
-        return ("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือข้อมูลไม่ตรงกับที่อนุมัติ) "
-                "ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้งโดยไม่ใส่ token")
+        return (TR("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือข้อมูลไม่ตรงกับที่อนุมัติ) "
+                "ยังไม่ได้เขียนอะไร — ขอใหม่โดยเรียก office_write อีกครั้งโดยไม่ใส่ token"))
     _plan_drop(token)
     denied = doc_denied({"full": plan["full"], "path": plan["path"]}, True)
     if denied:
-        return "ปฏิเสธ: %s" % denied
+        return TR("ปฏิเสธ: %s") % denied
     req = {"op": "word_write", "full": plan["full"], "start": plan["start"], "end": plan["end"], "replace": replace,
            "expect": plan["fingerprint"], "kind": kind}
     req.update(payload)
@@ -1178,13 +1179,13 @@ def _write_word(slug: str, data, overwrite: bool, token: str) -> str:
                                  "code": res.get("code")})
     if not res.get("ok"):
         if res.get("code") == "changed":
-            return ("ยังไม่ได้เขียนอะไร: เอกสารเปลี่ยนไปหลังจากขออนุมัติ (%s) — ถ้ายังต้องการ ให้เรียก office_write ใหม่ "
-                    "เพื่อให้ผู้ใช้ดู REVIEW ของตำแหน่งปัจจุบัน" % _one(res.get("error"), 40))
-        return "ยังไม่ได้เขียน (หรือเขียนไม่สำเร็จ): " + explain(res, "word")
-    return ("แทรกแล้ว: Word %s ย่อหน้าที่ %s (%s) — ยังไม่ได้บันทึกไฟล์ ผู้ใช้กด Ctrl+Z ใน Word เพื่อย้อนได้ และบันทึกเองเมื่อพอใจ"
+            return (TR("ยังไม่ได้เขียนอะไร: เอกสารเปลี่ยนไปหลังจากขออนุมัติ (%s) — ถ้ายังต้องการ ให้เรียก office_write ใหม่ "
+                    "เพื่อให้ผู้ใช้ดู REVIEW ของตำแหน่งปัจจุบัน") % _one(res.get("error"), 40))
+        return TR("ยังไม่ได้เขียน (หรือเขียนไม่สำเร็จ): ") + explain(res, "word")
+    return (TR("แทรกแล้ว: Word %s ย่อหน้าที่ %s (%s) — ยังไม่ได้บันทึกไฟล์ ผู้ใช้กด Ctrl+Z ใน Word เพื่อย้อนได้ และบันทึกเองเมื่อพอใจ")
             % (_json_str(_one(plan["name"], 120)), res.get("para_index"),
-               ("ข้อความ %d ตัวอักษร" % len(payload["text"])) if kind == "text"
-               else ("ตาราง %d × %d" % (len(payload["rows"]), len(payload["rows"][0])))))
+               (TR("ข้อความ %d ตัวอักษร") % len(payload["text"])) if kind == "text"
+               else (TR("ตาราง %d × %d") % (len(payload["rows"]), len(payload["rows"][0])))))
 
 
 def office_write(target: str = "", cell: str = "", sheet: str = "", data=None, overwrite=False,
@@ -1193,9 +1194,9 @@ def office_write(target: str = "", cell: str = "", sheet: str = "", data=None, o
     try:
         kind = what_of(target)
         if kind not in ("excel", "word"):
-            return _usage("target=%r ใช้ไม่ได้ — เขียนได้เฉพาะ target=excel หรือ target=word" % _one(target, 30))
+            return _usage(TR("target=%r ใช้ไม่ได้ — เขียนได้เฉพาะ target=excel หรือ target=word") % _one(target, 30))
         if data is None or (isinstance(data, str) and not data.strip()):
-            return _usage("ต้องใส่ data (ค่าที่จะเขียน)")
+            return _usage(TR("ต้องใส่ data (ค่าที่จะเขียน)"))
         slug = _slug(project)
         token = _s(confirm_token).strip()
         if isinstance(overwrite, str):
@@ -1204,9 +1205,9 @@ def office_write(target: str = "", cell: str = "", sheet: str = "", data=None, o
             return _write_excel(slug, cell, sheet, data, token)
         return _write_word(slug, data, bool(overwrite), token)
     except guard.Denied as exc:
-        return "ปฏิเสธ: %s" % exc
+        return TR("ปฏิเสธ: %s") % exc
     except Exception as exc:  # noqa: BLE001
-        return "ERROR: office_write ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: office_write ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 # ================================================================== schema (ผิวเต็ม /mcp)

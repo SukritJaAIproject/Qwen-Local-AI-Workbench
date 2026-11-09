@@ -63,6 +63,7 @@ if _HERE not in sys.path:
 
 import guard  # noqa: E402
 import extract  # noqa: E402
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 FONT = "Leelawadee UI"          # มีทุกเครื่อง Windows 10/11 ส่งไฟล์ให้เพื่อนร่วมงานเปิดได้เหมือนกัน
 MONO = "Consolas"
@@ -103,7 +104,7 @@ def _s(value) -> str:
 
 def _err(exc: Exception) -> str:
     if isinstance(exc, guard.Denied):
-        return "ปฏิเสธ: %s" % exc
+        return TR("ปฏิเสธ: %s") % exc
     if isinstance(exc, extract.ExtractError):
         return "ERROR: %s" % exc
     return "ERROR: %s: %s" % (type(exc).__name__, exc)
@@ -168,13 +169,13 @@ def doc_extract(path: str = "", pages: str = "", sheet: str = "", max_chars=None
     """อ่านเอกสารเป็น Markdown (อ่านอย่างเดียว ไม่ต้องยืนยัน แต่ต้องผ่านด่านอ่านของ guard ทุกครั้ง)"""
     try:
         if not _s(path).strip():
-            return "ERROR: ต้องระบุ path ของไฟล์ (เช่น path=\"spec.pdf\" หรือ path เต็ม)"
+            return TR("ERROR: ต้องระบุ path ของไฟล์ (เช่น path=\"spec.pdf\" หรือ path เต็ม)")
         full = resolve_input(path, project)
         p = guard.check_read(full)                   # S05 + S04 + นามสกุลต้องห้าม
         shown = display_path(p, project)
         guard.audit("doc_extract", {"path": p, "pages": _s(pages)[:40], "sheet": _s(sheet)[:60]})
         if not os.path.exists(p):
-            return "ไม่พบไฟล์: %s (ดูรายชื่อไฟล์แนบด้วย local_read action=\"list\" path=\"attachments\")" % shown
+            return TR("ไม่พบไฟล์: %s (ดูรายชื่อไฟล์แนบด้วย local_read action=\"list\" path=\"attachments\")") % shown
         try:
             mc = int(float(_s(max_chars).strip())) if _s(max_chars).strip() else extract.DEFAULT_MAX_CHARS
         except ValueError:
@@ -224,7 +225,7 @@ def parse_inline(text: str, base: Span | None = None, depth: int = 0) -> list[Sp
             out.append(replace(base, text=g["ctext"].strip() if g["ctext"].strip() else g["ctext"],
                                code=True))
         elif g["isrc"] is not None:
-            out.append(replace(base, text="[รูป: %s]" % (g["ialt"] or g["isrc"]), i=True))
+            out.append(replace(base, text=TR("[รูป: %s]") % (g["ialt"] or g["isrc"]), i=True))
         elif g["lurl"] is not None:
             out += parse_inline(g["ltext"], replace(base, link=g["lurl"]), depth + 1)
         elif g["auto"] is not None:
@@ -465,7 +466,7 @@ def resolve_image(src: str, dirs: Dirs, notes: list) -> tuple[str, bytes, tuple]
     """
     s = _s(src).strip().strip("<>")
     if re.match(r"(?i)^(https?:|data:|file:|ftp:|//)", s):
-        notes.append("ไม่ฝังรูปจากเว็บ (%s) — ใส่เป็นข้อความแทน" % s[:80])
+        notes.append(TR("ไม่ฝังรูปจากเว็บ (%s) — ใส่เป็นข้อความแทน") % s[:80])
         return None
     name = unquote(s.split("?", 1)[0].split("#", 1)[0]).replace("\\", "/").rsplit("/", 1)[-1]
     if not name:
@@ -477,19 +478,19 @@ def resolve_image(src: str, dirs: Dirs, notes: list) -> tuple[str, bytes, tuple]
         try:
             p = guard.check_read(cand)
             if os.path.getsize(p) > MAX_IMAGE_BYTES:
-                notes.append("รูป %s ใหญ่เกิน %d MB ไม่ได้ฝัง" % (name, MAX_IMAGE_BYTES // 1048576))
+                notes.append(TR("รูป %s ใหญ่เกิน %d MB ไม่ได้ฝัง") % (name, MAX_IMAGE_BYTES // 1048576))
                 return None
             with open(p, "rb") as fh:
                 data = fh.read()
         except (guard.Denied, OSError) as exc:
-            notes.append("อ่านรูป %s ไม่ได้: %s" % (name, exc))
+            notes.append(TR("อ่านรูป %s ไม่ได้: %s") % (name, exc))
             return None
         info = image_info(data)
         if not info or info[1] <= 0 or info[2] <= 0:
-            notes.append("ไฟล์ %s ไม่ใช่รูป PNG/JPEG/GIF/BMP ที่อ่านได้ ไม่ได้ฝัง" % name)
+            notes.append(TR("ไฟล์ %s ไม่ใช่รูป PNG/JPEG/GIF/BMP ที่อ่านได้ ไม่ได้ฝัง") % name)
             return None
         return p, data, info
-    notes.append("ไม่พบรูป %s ใน outputs/ หรือ attachments/ ของโปรเจกต์ — ใส่เป็นข้อความแทน" % name)
+    notes.append(TR("ไม่พบรูป %s ใน outputs/ หรือ attachments/ ของโปรเจกต์ — ใส่เป็นข้อความแทน") % name)
     return None
 
 
@@ -772,7 +773,7 @@ class _Docx:
         qn = self.qn
         width = min(max([len(head)] + [len(r) for r in rows] + [1]), 30)
         if len(rows) > MAX_TABLE_ROWS_DOC:
-            self.notes.append("ตารางยาว %d แถว ใส่แค่ %d แถวแรก (ข้อมูลยาวควรทำเป็น xlsx)"
+            self.notes.append(TR("ตารางยาว %d แถว ใส่แค่ %d แถวแรก (ข้อมูลยาวควรทำเป็น xlsx)")
                               % (len(rows), MAX_TABLE_ROWS_DOC))
             rows = rows[:MAX_TABLE_ROWS_DOC]
         t = self.doc.add_table(rows=1 + len(rows), cols=width)
@@ -840,13 +841,13 @@ class _Docx:
         got = resolve_image(src, self.dirs, self.notes)
         if not got:
             par = self.doc.add_paragraph()
-            self._run(par, Span("[รูป: %s]" % (alt or src), i=True), color=C_MUTED)
+            self._run(par, Span(TR("[รูป: %s]") % (alt or src), i=True), color=C_MUTED)
             return
         _p, data, (kind, w, h) = got
         try:
             shape = self.doc.add_picture(io.BytesIO(data))
         except Exception as exc:              # noqa: BLE001 — รูปที่ python-docx ไม่รู้จัก
-            self.notes.append("ฝังรูป %s ไม่ได้: %s" % (os.path.basename(_p), type(exc).__name__))
+            self.notes.append(TR("ฝังรูป %s ไม่ได้: %s") % (os.path.basename(_p), type(exc).__name__))
             return
         max_w, max_h = self.Cm(16.6), self.Cm(20.0)
         scale = min(1.0, max_w / shape.width, max_h / shape.height)
@@ -915,7 +916,7 @@ def build_docx(blocks, title: str, dirs: Dirs, notes: list) -> tuple[bytes, str]
     w.blocks(blocks)
     data = w.save(title)
     s = w.stats
-    return data, "%d หัวข้อ, %d ตาราง, %d รูป" % (s["headings"], s["tables"], s["images"])
+    return data, TR("%d หัวข้อ, %d ตาราง, %d รูป") % (s["headings"], s["tables"], s["images"])
 
 
 # ================================================================ HTML (สำหรับ PDF)
@@ -1024,7 +1025,7 @@ def blocks_html(blocks, dirs: Dirs, notes: list, stats: dict) -> str:
         elif t == "table":
             rows = b["rows"][:MAX_TABLE_ROWS_DOC]
             if len(b["rows"]) > MAX_TABLE_ROWS_DOC:
-                notes.append("ตารางยาว %d แถว ใส่แค่ %d แถวแรก" % (len(b["rows"]), MAX_TABLE_ROWS_DOC))
+                notes.append(TR("ตารางยาว %d แถว ใส่แค่ %d แถวแรก") % (len(b["rows"]), MAX_TABLE_ROWS_DOC))
             width = min(max([len(b["head"])] + [len(r) for r in rows] + [1]), 30)
             cls = [{"center": ' class="c"', "right": ' class="r"'}.get(a, "") for a in b["align"]]
             cls += [""] * (width - len(cls))
@@ -1038,7 +1039,7 @@ def blocks_html(blocks, dirs: Dirs, notes: list, stats: dict) -> str:
         elif t == "img":
             got = resolve_image(b["src"], dirs, notes)
             if not got:
-                out.append("<p><em>[รูป: %s]</em></p>" % _h(b["alt"] or b["src"]))
+                out.append(TR("<p><em>[รูป: %s]</em></p>") % _h(b["alt"] or b["src"]))
                 continue
             _p, data, (kind, _w, _hh) = got
             uri = "data:image/%s;base64,%s" % (kind, base64.b64encode(data).decode("ascii"))
@@ -1055,7 +1056,7 @@ def html_document(blocks, title: str, dirs: Dirs, notes: list, stats: dict) -> s
             "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; "
             "style-src 'unsafe-inline'; img-src data:; font-src data:\">"
             "<title>%s</title><style>%s</style></head><body>%s</body></html>"
-            % (_h(title or "เอกสาร"), _PDF_CSS, body))
+            % (_h(title or TR("เอกสาร")), _PDF_CSS, body))
 
 
 # ================================================================ PDF
@@ -1095,7 +1096,7 @@ def _cross_process_lock(path: str, timeout: float):
                 break
             except OSError:
                 if time.monotonic() > end:
-                    raise TimeoutError("มีงานสร้าง PDF อื่นค้างอยู่ รอนานเกินไป")
+                    raise TimeoutError(TR("มีงานสร้าง PDF อื่นค้างอยู่ รอนานเกินไป"))
                 time.sleep(0.2)
         yield
     finally:
@@ -1140,7 +1141,7 @@ def edge_pdf(html_text: str, timeout: float = PDF_TIMEOUT) -> bytes:
     """
     exe = _edge_exe()
     if not exe:
-        raise FileNotFoundError("ไม่พบ Microsoft Edge")
+        raise FileNotFoundError(TR("ไม่พบ Microsoft Edge"))
     os.makedirs(PDF_WORK, exist_ok=True)
     html_path = os.path.join(PDF_WORK, "render.html")
     pdf_path = os.path.join(PDF_WORK, "render.pdf")
@@ -1188,7 +1189,7 @@ def edge_pdf(html_text: str, timeout: float = PDF_TIMEOUT) -> bytes:
                     pass
         if data is None:
             _kill_edge_profile(profile)
-            raise TimeoutError("Edge สร้าง PDF ไม่เสร็จใน %d วินาที" % int(timeout))
+            raise TimeoutError(TR("Edge สร้าง PDF ไม่เสร็จใน %d วินาที") % int(timeout))
         return data
 
 
@@ -1226,8 +1227,8 @@ def build_pdf(blocks, title: str, dirs: Dirs, notes: list) -> tuple[bytes, str]:
     try:
         data = edge_pdf(doc_html)
     except Exception as exc:                  # noqa: BLE001 — ไม่มี Edge/Edge ค้าง ยังต้องได้ PDF
-        notes.append("สร้างด้วย PyMuPDF แทน Edge (%s) — ข้อความไทยใน PDF อาจค้นหา/คัดลอกไม่ได้ "
-                     "และตัดบรรทัดเฉพาะที่ช่องว่าง" % exc)
+        notes.append(TR("สร้างด้วย PyMuPDF แทน Edge (%s) — ข้อความไทยใน PDF อาจค้นหา/คัดลอกไม่ได้ "
+                     "และตัดบรรทัดเฉพาะที่ช่องว่าง") % exc)
         data = story_pdf(doc_html)
         engine = "PyMuPDF"
     pages = 0
@@ -1237,7 +1238,7 @@ def build_pdf(blocks, title: str, dirs: Dirs, notes: list) -> tuple[bytes, str]:
             pages = d.page_count
     except Exception:                         # noqa: BLE001
         pass
-    return data, "%d หน้า, %d ตาราง, %d รูป (%s)" % (pages, stats.get("tables", 0),
+    return data, TR("%d หน้า, %d ตาราง, %d รูป (%s)") % (pages, stats.get("tables", 0),
                                                    stats.get("images", 0), engine)
 
 
@@ -1252,11 +1253,11 @@ def parse_spec(spec):
     if not text:
         return None
     if len(text) > MAX_SPEC:
-        raise ValueError("spec ยาวเกิน %d ตัวอักษร" % MAX_SPEC)
+        raise ValueError(TR("spec ยาวเกิน %d ตัวอักษร") % MAX_SPEC)
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
-        raise ValueError("spec ไม่ใช่ JSON ที่ถูกต้อง (บรรทัด %d คอลัมน์ %d: %s)"
+        raise ValueError(TR("spec ไม่ใช่ JSON ที่ถูกต้อง (บรรทัด %d คอลัมน์ %d: %s)")
                          % (exc.lineno, exc.colno, exc.msg)) from exc
 
 
@@ -1277,12 +1278,12 @@ def _sheet_from(obj, idx: int) -> dict:
         rows = [r if isinstance(r, list) else [r] for r in obj]
         return {"name": "Sheet%d" % idx, "columns": rows[0] if rows else [], "rows": rows[1:]}
     if not isinstance(obj, dict):
-        raise ValueError("แต่ละชีตต้องเป็น object {name, columns, rows}")
+        raise ValueError(TR("แต่ละชีตต้องเป็น object {name, columns, rows}"))
     name = _s(obj.get("name") or obj.get("title") or obj.get("sheet") or "Sheet%d" % idx)
     rows = obj.get("rows", obj.get("data", []))
     cols = obj.get("columns", obj.get("header", obj.get("headers")))
     if not isinstance(rows, list):
-        raise ValueError("rows ของชีต %s ต้องเป็นรายการ" % name)
+        raise ValueError(TR("rows ของชีต %s ต้องเป็นรายการ") % name)
     if rows and all(isinstance(r, dict) for r in rows):
         rc, rv = _records_to_table(rows)
         cols = cols or rc
@@ -1303,8 +1304,8 @@ def spec_sheets(spec) -> list[dict]:
         items = [spec] if (not spec or not all(isinstance(x, dict) and ("rows" in x or "data" in x)
                                                for x in spec)) else spec
     else:
-        raise ValueError("spec ของ xlsx/csv ต้องเป็น {\"sheets\":[{\"name\",\"columns\",\"rows\"}]} "
-                         "หรือ {\"columns\",\"rows\"} หรือรายการของแถว")
+        raise ValueError(TR("spec ของ xlsx/csv ต้องเป็น {\"sheets\":[{\"name\",\"columns\",\"rows\"}]} "
+                         "หรือ {\"columns\",\"rows\"} หรือรายการของแถว"))
     return [_sheet_from(x, i + 1) for i, x in enumerate(items)]
 
 
@@ -1362,13 +1363,13 @@ def text_sheet(content: str, blocks, notes: list) -> dict | None:
     got = delimited_rows(text) if text else None
     if got:
         rows, label = got
-        notes.append("content ไม่มีตาราง Markdown จึงอ่านเป็นข้อมูลคั่นด้วย%s: หัวตาราง %d คอลัมน์ + %d แถว"
+        notes.append(TR("content ไม่มีตาราง Markdown จึงอ่านเป็นข้อมูลคั่นด้วย%s: หัวตาราง %d คอลัมน์ + %d แถว")
                      % (label, len(rows[0]), len(rows) - 1))
         return {"name": heading or "Sheet1", "columns": rows[0], "rows": rows[1:]}
     if kinds and kinds <= {"h", "list"} and "list" in kinds:
         items = [plain(it["inl"]).strip() for b in blocks if b["t"] == "list" for it in b["items"]]
-        notes.append("content เป็นรายการ จึงใส่เป็นคอลัมน์เดียว %d แถว" % len(items))
-        return {"name": heading or "Sheet1", "columns": [heading or "รายการ"], "rows": [[x] for x in items]}
+        notes.append(TR("content เป็นรายการ จึงใส่เป็นคอลัมน์เดียว %d แถว") % len(items))
+        return {"name": heading or "Sheet1", "columns": [heading or TR("รายการ")], "rows": [[x] for x in items]}
     return None
 
 
@@ -1381,7 +1382,7 @@ def table_sheets(content: str, blocks, spec_data, fmt: str, notes: list) -> list
         if sheets:
             extra = sum(1 for b in blocks if b["t"] in ("p", "list", "code", "quote"))
             if extra:
-                notes.append("ข้อความนอกตาราง %d ส่วนไม่ได้ใส่ในไฟล์ (%s เก็บเฉพาะตาราง)" % (extra, fmt))
+                notes.append(TR("ข้อความนอกตาราง %d ส่วนไม่ได้ใส่ในไฟล์ (%s เก็บเฉพาะตาราง)") % (extra, fmt))
         else:
             one = text_sheet(content, blocks, notes)
             sheets = [one] if one else []
@@ -1470,7 +1471,7 @@ def build_xlsx(sheets: list[dict], notes: list) -> tuple[bytes, str]:
         cols = [_s(c) for c in (sh.get("columns") or [])][:MAX_SHEET_COLS]
         rows = sh.get("rows") or []
         if len(rows) > MAX_SHEET_ROWS:
-            notes.append("ชีต %s มี %d แถว ใส่แค่ %d แถวแรก" % (ws.title, len(rows), MAX_SHEET_ROWS))
+            notes.append(TR("ชีต %s มี %d แถว ใส่แค่ %d แถวแรก") % (ws.title, len(rows), MAX_SHEET_ROWS))
             rows = rows[:MAX_SHEET_ROWS]
         widths: dict[int, int] = {}
         if cols:
@@ -1512,11 +1513,11 @@ def build_xlsx(sheets: list[dict], notes: list) -> tuple[bytes, str]:
     if not wb.sheetnames:
         wb.create_sheet("Sheet1")
     if blocked:
-        notes.append("สูตร %d ช่องเก็บเป็นข้อความแทน: มีฟังก์ชันนอกรายการปลอดภัย อ้างไฟล์ภายนอก "
-                     "(กันสูตรที่ดึง/ส่งข้อมูลออกนอกเครื่อง) หรือเขียนไม่สมบูรณ์" % blocked)
+        notes.append(TR("สูตร %d ช่องเก็บเป็นข้อความแทน: มีฟังก์ชันนอกรายการปลอดภัย อ้างไฟล์ภายนอก "
+                     "(กันสูตรที่ดึง/ส่งข้อมูลออกนอกเครื่อง) หรือเขียนไม่สมบูรณ์") % blocked)
     buf = io.BytesIO()
     wb.save(buf)
-    return buf.getvalue(), "%d ชีต, %d แถวข้อมูล" % (len(wb.sheetnames), total_rows)
+    return buf.getvalue(), TR("%d ชีต, %d แถวข้อมูล") % (len(wb.sheetnames), total_rows)
 
 
 # ================================================================ CSV
@@ -1538,9 +1539,9 @@ def _csv_cell(v) -> str:
 
 def build_csv(sheets: list[dict], notes: list) -> tuple[bytes, str]:
     if not sheets:
-        raise ValueError("CSV ต้องมีตาราง: ใส่ตาราง Markdown ใน content หรือ spec {\"columns\",\"rows\"}")
+        raise ValueError(TR("CSV ต้องมีตาราง: ใส่ตาราง Markdown ใน content หรือ spec {\"columns\",\"rows\"}"))
     if len(sheets) > 1:
-        notes.append("CSV เก็บได้ตารางเดียว ใช้ตารางแรก (%s) — ถ้าต้องการทุกตารางให้ใช้ xlsx"
+        notes.append(TR("CSV เก็บได้ตารางเดียว ใช้ตารางแรก (%s) — ถ้าต้องการทุกตารางให้ใช้ xlsx")
                      % sheets[0].get("name"))
     sh = sheets[0]
     buf = io.StringIO()
@@ -1551,7 +1552,7 @@ def build_csv(sheets: list[dict], notes: list) -> tuple[bytes, str]:
     rows = (sh.get("rows") or [])[:MAX_SHEET_ROWS]
     for r in rows:
         w.writerow([_csv_cell(v) for v in (r if isinstance(r, list) else [r])])
-    return ("\ufeff" + buf.getvalue()).encode("utf-8"), "%d แถวข้อมูล" % len(rows)
+    return ("\ufeff" + buf.getvalue()).encode("utf-8"), TR("%d แถวข้อมูล") % len(rows)
 
 
 # ================================================================ PPTX
@@ -1807,15 +1808,15 @@ class _Pptx:
                         cur["image"] = (got, b["alt"])
                     else:
                         cur["paras"].append({"lvl": 0, "bullet": False,
-                                             "spans": [Span("[รูป: %s]" % (b["alt"] or b["src"]), i=True)]})
+                                             "spans": [Span(TR("[รูป: %s]") % (b["alt"] or b["src"]), i=True)]})
         push()
 
     def from_spec(self, spec) -> None:
         if isinstance(spec, list):
             spec = {"slides": spec}
         if not isinstance(spec, dict) or not isinstance(spec.get("slides", []), list):
-            raise ValueError("spec ของ pptx ต้องเป็น {\"title\",\"subtitle\",\"slides\":[{\"title\",\"bullets\","
-                             "\"text\",\"table\",\"image\"}]}")
+            raise ValueError(TR("spec ของ pptx ต้องเป็น {\"title\",\"subtitle\",\"slides\":[{\"title\",\"bullets\","
+                             "\"text\",\"table\",\"image\"}]}"))
         if spec.get("title"):
             self.slides.append({"kind": "title", "title": _s(spec["title"]),
                                 "subtitle": _s(spec.get("subtitle", ""))[:300]})
@@ -1823,7 +1824,7 @@ class _Pptx:
             if isinstance(s, str):
                 s = {"title": s}
             if not isinstance(s, dict):
-                raise ValueError("สไลด์ที่ %d ต้องเป็น object" % (i + 1))
+                raise ValueError(TR("สไลด์ที่ %d ต้องเป็น object") % (i + 1))
             cur = self._new(_s(s.get("title", "")))
             text = s.get("text") or s.get("body")
             if text:
@@ -1962,13 +1963,13 @@ class _Pptx:
             elif not pages:
                 out.append(s)
         if len(out) > MAX_SLIDES:
-            self.notes.append("มี %d สไลด์ เกินเพดาน ใส่แค่ %d สไลด์แรก" % (len(out), MAX_SLIDES))
+            self.notes.append(TR("มี %d สไลด์ เกินเพดาน ใส่แค่ %d สไลด์แรก") % (len(out), MAX_SLIDES))
             out = out[:MAX_SLIDES]
         # สไลด์ต่อเนื่องที่ชื่อซ้ำ: เติม "(ต่อ)" ให้ผู้ฟังรู้ว่าเป็นหัวข้อเดิม
         for i, s in enumerate(out):
             if s["kind"] == "content" and s.get("cont") and s["title"] and i and \
                     out[i - 1].get("title", "").replace(" (ต่อ)", "") == s["title"]:
-                s["title"] = s["title"] + " (ต่อ)"
+                s["title"] = s["title"] + TR(" (ต่อ)")
         return out
 
     # ---------- XML ของสไลด์
@@ -2104,7 +2105,7 @@ class _Pptx:
     def build(self, title: str) -> tuple[bytes, int]:
         slides = self.paginate()
         if not slides:
-            slides = [{"kind": "title", "title": title or "งานนำเสนอ", "subtitle": ""}]
+            slides = [{"kind": "title", "title": title or TR("งานนำเสนอ"), "subtitle": ""}]
         buf = io.BytesIO()
         z = zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED)
         overrides = [("/ppt/presentation.xml", _CT + "presentation.main+xml"),
@@ -2205,7 +2206,7 @@ def build_pptx(blocks, spec, title: str, dirs: Dirs, notes: list) -> tuple[bytes
     else:
         w.from_blocks(blocks)
     data, n = w.build(title)
-    return data, "%d สไลด์" % n
+    return data, TR("%d สไลด์") % n
 
 
 # ================================================================ make_file
@@ -2235,7 +2236,7 @@ def safe_name(name: str, fmt: str, fallback: str = "") -> str:
     stem = re.sub(r"\s+", " ", stem).strip().rstrip(". ")
     if not stem:
         fb = _BAD_NAME_RE.sub("_", extract.clean_text(_s(fallback))).strip().rstrip(". ")[:60]
-        stem = fb or "เอกสาร-%s" % time.strftime("%Y%m%d-%H%M")
+        stem = fb or TR("เอกสาร-%s") % time.strftime("%Y%m%d-%H%M")
     stem = stem[:100].rstrip(". ")
     if stem.split(".")[0].strip().lower() in _RESERVED:
         stem = "_" + stem
@@ -2306,7 +2307,7 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
     try:
         fmt = norm_format(format, name)
         if not fmt:
-            return ("ERROR: format ต้องเป็นหนึ่งใน docx, xlsx, pptx, pdf, csv, md (ได้รับ %r)"
+            return (TR("ERROR: format ต้องเป็นหนึ่งใน docx, xlsx, pptx, pdf, csv, md (ได้รับ %r)")
                     % _s(format)[:40])
         content = "" if content is None else _s(content)
         if len(content) > MAX_CONTENT:
@@ -2314,18 +2315,18 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
         # integrator (E2E 2026-09-30): โมเดล 4B ส่ง spec (JSON/XML) มาให้ docx ซ้ำสามรอบ เพราะข้อความเดิมบอกแค่ว่า
         # "ผิด" ไม่บอกว่าต้องส่งอะไร — ตอบก่อน parse_spec (XML ก็ได้คำแนะนำเดียวกัน) พร้อมตัวอย่าง Markdown ที่ลอกไปใช้ได้เลย
         if fmt in ("docx", "pdf", "md") and not content.strip() and spec not in (None, "", {}, []):
-            return ("ERROR: %s ไม่รับ spec — ให้เรียก make_file ใหม่โดยใส่เนื้อหาเป็น Markdown ในพารามิเตอร์ content "
+            return (TR("ERROR: %s ไม่รับ spec — ให้เรียก make_file ใหม่โดยใส่เนื้อหาเป็น Markdown ในพารามิเตอร์ content "
                     "(ไม่ต้องใส่ spec) ตารางเขียนแบบ Markdown เช่น content=\"# สถานะตู้ชาร์จ\\n\\n"
-                    "| ตู้ | สถานะ |\\n|---|---|\\n| 1 | ปกติ |\" (spec ใช้กับ xlsx/csv/pptx เท่านั้น)" % fmt)
+                    "| ตู้ | สถานะ |\\n|---|---|\\n| 1 | ปกติ |\" (spec ใช้กับ xlsx/csv/pptx เท่านั้น)") % fmt)
         try:
             spec_data = parse_spec(spec)
         except ValueError as exc:
             return "ERROR: %s" % exc
         if not content.strip() and spec_data is None:
-            return ("ERROR: ต้องมี content (Markdown) หรือ spec (JSON) อย่างใดอย่างหนึ่ง — "
-                    "ดูตัวอย่างที่ local_read action=\"help\"")
+            return (TR("ERROR: ต้องมี content (Markdown) หรือ spec (JSON) อย่างใดอย่างหนึ่ง — "
+                    "ดูตัวอย่างที่ local_read action=\"help\""))
         if spec_data is not None and fmt in ("docx", "pdf", "md") and not content.strip():
-            return "ERROR: %s ใช้ content แบบ Markdown (spec ใช้กับ xlsx/csv/pptx)" % fmt
+            return TR("ERROR: %s ใช้ content แบบ Markdown (spec ใช้กับ xlsx/csv/pptx)") % fmt
         blocks = parse_markdown(content) if content.strip() else []
         title = first_heading(blocks) or (spec_data.get("title") if isinstance(spec_data, dict)
                                           and isinstance(spec_data.get("title"), str) else "") or ""
@@ -2337,10 +2338,10 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
         expect = os.path.normcase(os.path.join(os.path.realpath(dirs.base), "outputs"))
         if os.path.normcase(os.path.realpath(dirs.outputs)) != expect \
                 or os.path.normcase(os.path.dirname(target)) != expect:
-            raise guard.Denied("ปลายทางต้องอยู่ในโฟลเดอร์ outputs ของโปรเจกต์นี้เท่านั้น "
-                               "(outputs ต้องเป็นโฟลเดอร์จริง ไม่ใช่ลิงก์/junction)")
+            raise guard.Denied(TR("ปลายทางต้องอยู่ในโฟลเดอร์ outputs ของโปรเจกต์นี้เท่านั้น "
+                               "(outputs ต้องเป็นโฟลเดอร์จริง ไม่ใช่ลิงก์/junction)"))
         if os.path.isdir(target):
-            return "ERROR: มีโฟลเดอร์ชื่อ %s อยู่แล้วใน outputs" % fname
+            return TR("ERROR: มีโฟลเดอร์ชื่อ %s อยู่แล้วใน outputs") % fname
         notes: list = []
         sheets: list = []
         if fmt in ("xlsx", "csv"):
@@ -2357,8 +2358,8 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
             detail = "%s\nformat=%s\nsha256=%s\nbefore=%s" % (target, fmt, digest, _sha_file(target))
             if not confirm_token:
                 stem, ext = os.path.splitext(fname)
-                human = ("%s\n  ไฟล์เดิม %s จะถูกแทนด้วยไฟล์ %s ใหม่\n"
-                         "  (ถ้าไม่ต้องการทับ ให้เรียกใหม่ด้วยชื่ออื่น เช่น name=\"%s (2)%s\")"
+                human = (TR("%s\n  ไฟล์เดิม %s จะถูกแทนด้วยไฟล์ %s ใหม่\n"
+                         "  (ถ้าไม่ต้องการทับ ให้เรียกใหม่ด้วยชื่ออื่น เช่น name=\"%s (2)%s\")")
                          % (display_path(target, project), _human(os.path.getsize(target)), fmt.upper(),
                             stem, ext))
                 # R1 (รอบ review): review = พารามิเตอร์ที่ normalize แล้วของการทับไฟล์นี้ ค่าเดียวกับที่ token ผูกอยู่
@@ -2366,18 +2367,18 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
                 # (โมเดลโชว์เนื้อหา A ในแชตแล้วยืนยัน token ของเนื้อหา B ได้) ตอนนี้แสดงเนื้อหา Markdown และ spec
                 # (JSON ที่ normalize แล้ว) พร้อมเลขบรรทัด ใหญ่เกินเพดานตัดแบบเดียวกับ write_file พร้อม hash ของส่วนนั้น
                 review_lines = [
-                    "[make_file] เขียนทับไฟล์งานใน outputs ของโปรเจกต์",
+                    TR("[make_file] เขียนทับไฟล์งานใน outputs ของโปรเจกต์"),
                     "path: %s" % guard.review_oneline(target),
                     "format: %s" % fmt,
-                    "ไฟล์เดิม: %s · sha256 %s… (จะถูกแทนที่ทั้งไฟล์ เก็บ checkpoint ไว้ undo ได้)"
+                    TR("ไฟล์เดิม: %s · sha256 %s… (จะถูกแทนที่ทั้งไฟล์ เก็บ checkpoint ไว้ undo ได้)")
                     % (_human(os.path.getsize(target)), _sha_file(target)[:16]),
-                    "เนื้อหาใหม่: content %d ตัวอักษร · spec %d ตัวอักษร · sha256(format+content+spec) %s…"
+                    TR("เนื้อหาใหม่: content %d ตัวอักษร · spec %d ตัวอักษร · sha256(format+content+spec) %s…")
                     % (len(content), len(spec_norm), digest[:16])]
                 parts = []
                 if content.strip():
                     parts.append(("content (Markdown)", content))
                 if spec_data is not None:
-                    parts.append(("spec (JSON ที่ normalize แล้ว)",
+                    parts.append((TR("spec (JSON ที่ normalize แล้ว)"),
                                   json.dumps(spec_data, ensure_ascii=False, sort_keys=True, indent=1)))
                 share = max(1, len(parts))
                 for title_p, text_p in parts:
@@ -2385,17 +2386,17 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
                     body, omitted = guard.review_capped(
                         numbered, hashlib.sha256(text_p.encode("utf-8", "replace")).hexdigest(),
                         guard.REVIEW_BLOCK_MAX_LINES // share, guard.REVIEW_BLOCK_MAX_CHARS // share)
-                    review_lines += ["----- %s %d บรรทัด%s -----"
-                                     % (title_p, len(numbered), " (แสดงช่วงต้น)" if omitted else ""),
-                                     body, "----- จบ %s -----" % title_p]
+                    review_lines += [TR("----- %s %d บรรทัด%s -----")
+                                     % (title_p, len(numbered), TR(" (แสดงช่วงต้น)") if omitted else ""),
+                                     body, TR("----- จบ %s -----") % title_p]
                 review = "\n".join(review_lines)
                 return guard.confirm_hint(guard.need_confirm(action, detail, review=review),
-                                          "เขียนทับไฟล์งานใน outputs", human)
+                                          TR("เขียนทับไฟล์งานใน outputs"), human)
             if not guard.consume_confirm(confirm_token, action, detail):
-                return ("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือไฟล์/เนื้อหาเปลี่ยนไป"
-                        "หลังขอ) ยังไม่ได้ทำอะไร — เรียก make_file ใหม่อีกครั้งโดยไม่ใส่ token")
+                return (TR("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือไฟล์/เนื้อหาเปลี่ยนไป"
+                        "หลังขอ) ยังไม่ได้ทำอะไร — เรียก make_file ใหม่อีกครั้งโดยไม่ใส่ token"))
         if fmt == "md":
-            data, info = content.replace("\r\n", "\n").encode("utf-8"), "%d บรรทัด" % (content.count("\n") + 1)
+            data, info = content.replace("\r\n", "\n").encode("utf-8"), TR("%d บรรทัด") % (content.count("\n") + 1)
         elif fmt == "docx":
             data, info = build_docx(blocks, title, dirs, notes)
         elif fmt == "pdf":
@@ -2409,7 +2410,7 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
         cpapi = _checkpoint_api()
         with _NAME_LOCK:
             if not exists and os.path.exists(target):
-                return ("ERROR: มีไฟล์ชื่อ %s เกิดขึ้นระหว่างสร้าง ยังไม่ได้เขียนทับ — เรียกใหม่อีกครั้ง"
+                return (TR("ERROR: มีไฟล์ชื่อ %s เกิดขึ้นระหว่างสร้าง ยังไม่ได้เขียนทับ — เรียกใหม่อีกครั้ง")
                         % fname)
             # จุดย้อนคืนก่อนลงมือเสมอ (ไฟล์ใหม่ก็เก็บ: undo ของการสร้าง = ย้ายไฟล์เข้า checkpoint)
             cp = cpapi.checkpoint_before(target, "make_file") if cpapi else None
@@ -2419,14 +2420,14 @@ def make_file(format: str = "", name: str = "", content: str = "", spec=None, pr
         guard.audit("make_file", {"path": target, "format": fmt, "bytes": len(data), "overwrote": exists,
                                   "sha256": _sha_bytes(data)[:16],
                                   "checkpoint": cp.get("id") if cp else None})
-        lines = ["%s: %s" % ("เขียนทับแล้ว" if exists else "สร้างไฟล์แล้ว", out_link(fname)),
+        lines = ["%s: %s" % (TR("เขียนทับแล้ว") if exists else TR("สร้างไฟล์แล้ว"), out_link(fname)),
                  "  %s · %s · %s" % (fmt.upper(), _human(len(data)), info),
-                 "  เก็บที่ %s" % display_path(target, project)]
+                 TR("  เก็บที่ %s") % display_path(target, project)]
         if cp is not None:
             lines.append("  %s" % cpapi.checkpoint_note(cp))
         for n in notes[:12]:
-            lines.append("  [หมายเหตุ] %s" % n)
-        lines.append("ส่งลิงก์ข้างบนให้ผู้ใช้ตามที่เขียนไว้ทุกตัวอักษร (ผู้ใช้กดดาวน์โหลด/เปิดได้ทันที)")
+            lines.append(TR("  [หมายเหตุ] %s") % n)
+        lines.append(TR("ส่งลิงก์ข้างบนให้ผู้ใช้ตามที่เขียนไว้ทุกตัวอักษร (ผู้ใช้กดดาวน์โหลด/เปิดได้ทันที)"))
         return "\n".join(lines)
     except Exception as exc:                  # noqa: BLE001
         return _err(exc)

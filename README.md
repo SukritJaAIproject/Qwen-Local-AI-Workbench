@@ -20,7 +20,8 @@ in the chat.
 > สร้างบน llama.cpp และโมเดล Qwen มีหน้าแชตภาษาไทย อังกฤษ ญี่ปุ่น และจีนตัวย่อ แยกพื้นที่ทำงานเป็นโปรเจกต์
 > เครื่องมืออ่านและสร้างเอกสาร ค้นข้อมูลในไฟล์ พิมพ์ด้วยเสียง เบราว์เซอร์ในตัว และการจัดวางโมเดลลง GPU อัตโนมัติ
 > ข้อมูลไม่ออกจากเครื่อง ยกเว้นตอนใช้เครื่องมือค้นเว็บ วิธีติดตั้งอยู่ที่ [Quick start](#quick-start) (ภาษาอังกฤษ)
-> ส่วนหน้าจอสลับภาษาได้จากปุ่ม ไทย | EN | 日本語 | 中文 หรือกด `Alt+Shift+L`
+> ส่วนหน้าจอสลับภาษาได้จากปุ่ม ไทย | EN | 日本語 | 中文 หรือกด `Alt+Shift+L` แล้วข้อความจากเครื่องมือ
+> (คำอธิบายเครื่องมือ ผลลัพธ์ ข้อผิดพลาด หน้ายืนยัน) จะตามภาษาที่เลือกด้วย ส่วนรายงานวิจัยเชิงลึกเขียนตามภาษาของคำถาม
 
 ![Chat in a project: a summary table and action list built from a project file](docs/screenshots/01-chat-en-dark.png)
 
@@ -65,7 +66,10 @@ in the chat.
   or cycle with `Alt+Shift+L`. The llama.cpp WebUI's own menus, dialogs and toasts are translated on the fly too
   (about 750 strings per language, plus the message queue, connection recovery, shared-chat and browser-panel
   scripts), while chat content is never touched. The model is told to answer in the language you write in, and
-  the hub detects Thai, Japanese and Chinese text to keep its own notes in that language.
+  the hub detects Thai, Japanese and Chinese text to keep its own notes in that language. The local tools speak
+  the same language: tool descriptions, server instructions, results, errors and confirmation reviews from
+  `mcp-local` and `mcp-websearch` follow the UI setting (a catalogue of about 1,700 messages, English when a
+  translation is missing), and a deep-research report is written in the language of the question.
 - **Tools you can trust.** The local MCP server's tools (files, shell, Python, Office, media and its isolated
   browser) go through a policy guard, and anything that changes the machine needs a two-step confirmation that
   shows you exactly what will run. Two newer paths have lighter gates: llama.cpp's built-in agent tools (on by
@@ -137,6 +141,11 @@ the author's machine. Taken with v1.1.0.
   built-in mode (Wikipedia + DuckDuckGo instant answers). Searches can be narrowed to domains, recent days or news;
   fetch reads long pages in parts or jumps to a phrase.
 - Every call is checked by `guard.py` and written to an audit log; see [Security notes](#security-notes).
+- Both servers answer in the UI language (`"lang"` in `settings.json`, picked up within two seconds of a switch,
+  no restart): the tool list and its descriptions, the server instructions, tool results, error messages, the
+  `local_read`/`local_do` help text and the REVIEW shown before a confirmed action. The messages are written in
+  Thai in the code and looked up in `mcp-local/i18n_catalog.py` (Thai text → English, Japanese, Simplified
+  Chinese); a message without a translation falls back to English, then to the Thai source, so nothing is lost.
 
 ### Built-in browser
 - A browser panel on the right of each project chat, backed by an isolated Edge profile per project
@@ -207,6 +216,9 @@ the author's machine. Taken with v1.1.0.
 ### Deep research
 - `research` runs in the background: plan, search, pick and read sources, take notes, write a report with
   citations to `outputs` as Markdown and DOCX. Progress, ETA and a Stop button appear in the project panel.
+- The report, its headings, the source list and the progress notes are written in the language of the question
+  (Thai, English, Japanese or Simplified Chinese, detected from the script); a draft that comes back in the wrong
+  language is rewritten.
 
 ### Skills
 - Prompt templates in `skills/<name>/SKILL.md`, served as MCP prompts: type `/` in the composer, pick a skill, fill
@@ -493,6 +505,7 @@ C:\LLM
 │                             Office helper, Jupyter kernel runner, document extractor, skills loader,
 │                             Docker sandbox backend (python_sandbox.py, image in python-sandbox\),
 │                             Creative Studio video tool (tools_creative.py),
+│                             i18n_tools.py + i18n_catalog.py (tool messages in th/en/ja/zh),
 │                             config.example.json (tool permission overrides)
 ├── mcp-websearch\            MCP web search and fetch (general_search.py: DDGS provider)
 ├── stt\                      speech-to-text service and benchmark

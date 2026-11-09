@@ -77,6 +77,7 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.append(_ROOT)
 import secrets_util  # noqa: E402
+from i18n_tools import TR, localize_tools  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # ===== [skills] B4: MCP prompts จาก C:\LLM\skills (เจ้าของบล็อก: skills — โค้ดหลักอยู่ที่ prompts_skills.py) =====
 # ตัวเลือกพรอมต์ของ WebUI ("/" -> prompt) แสดงเฉพาะเซิร์ฟเวอร์ที่ประกาศ capabilities.prompts และเรียกเติมคำ
@@ -103,7 +104,7 @@ def _skills_rpc(mid, method: str, params, project: str, fast: bool) -> dict | No
         return None                     # เป็น notification — JSON-RPC ห้ามตอบ
     if prompts_skills is None:
         return {"jsonrpc": "2.0", "id": mid,
-                "error": {"code": -32601, "message": "ไม่มี skills (โหลดโมดูลไม่ได้: %s)" % _SKILLS_ERR}}
+                "error": {"code": -32601, "message": TR("ไม่มี skills (โหลดโมดูลไม่ได้: %s)") % _SKILLS_ERR}}
     params = params if isinstance(params, dict) else {}
     try:
         if method == "prompts/list":
@@ -128,7 +129,7 @@ def _skills_rpc(mid, method: str, params, project: str, fast: bool) -> dict | No
     except Exception as exc:            # noqa: BLE001 — ตอบเป็น error เสมอ ไม่ให้ MCP client หลุด
         guard.audit("error", {"prompt_method": method, "trace": traceback.format_exc()[-1500:]})
         return {"jsonrpc": "2.0", "id": mid,
-                "error": {"code": -32603, "message": "skills ล้มเหลว: %s" % type(exc).__name__}}
+                "error": {"code": -32603, "message": TR("skills ล้มเหลว: %s") % type(exc).__name__}}
     return {"jsonrpc": "2.0", "id": mid, "result": result}
 
 
@@ -308,11 +309,11 @@ def redact_args(args: dict) -> dict:
             out[k] = "***" if v else v
         elif kl in _BULK_KEYS and isinstance(v, (list, dict)):
             # รอบ review-fetch: review ไม่บังคับแล้วแต่ถ้าส่งมาเป็นลิสต์/อ็อบเจกต์ขนาดใหญ่ ห้ามลง audit ทั้งก้อน
-            out[k] = "<%s %d รายการ>" % (type(v).__name__, len(v))
+            out[k] = TR("<%s %d รายการ>") % (type(v).__name__, len(v))
         elif not isinstance(v, str):
             out[k] = v
         elif kl in _BULK_KEYS:
-            out[k] = "<%d ตัวอักษร>" % len(v)
+            out[k] = TR("<%d ตัวอักษร>") % len(v)
         else:
             out[k] = _scrub(v)[:200]
     return out
@@ -323,14 +324,14 @@ def _wrong_channel_text(name: str, token: str, project: str) -> str:
     แนบบล็อก REVIEW ของ token นั้นมาด้วย (ถ้ายังใช้ได้ในโปรเจกต์นี้) เพราะ local_confirm ต้องใช้"""
     with guard.project_scope(project):
         review = guard.pending_review(token)
-    text = ("ยังไม่ได้ทำอะไร: ส่ง confirm_token ให้ %s ตรงๆ ใช้ไม่ได้แล้ว ขั้นยืนยันทำผ่านเครื่องมือ %s เท่านั้น "
-            "(token เดิมยังใช้ได้จนหมดอายุ) ถ้ายังไม่ได้ถาม ให้ถามผู้ใช้ก่อน"
+    text = (TR("ยังไม่ได้ทำอะไร: ส่ง confirm_token ให้ %s ตรงๆ ใช้ไม่ได้แล้ว ขั้นยืนยันทำผ่านเครื่องมือ %s เท่านั้น "
+            "(token เดิมยังใช้ได้จนหมดอายุ) ถ้ายังไม่ได้ถาม ให้ถามผู้ใช้ก่อน")
             % (name, guard.CONFIRM_TOOL))
     if review:
-        text += ("\n\nREVIEW ของ token นี้ (แสดงบล็อกนี้ให้ผู้ใช้ดู):\n%s\n\nขั้นตอน:\n%s"
+        text += (TR("\n\nREVIEW ของ token นี้ (แสดงบล็อกนี้ให้ผู้ใช้ดู):\n%s\n\nขั้นตอน:\n%s")
                  % (guard.review_fence(review), guard.review_steps(token)))
     else:
-        text += ("\nผู้ใช้อนุมัติแล้วให้เรียก %s — ไม่ต้องส่ง review (หน้าแชตแสดง REVIEW จากเซิร์ฟเวอร์ให้ผู้ใช้กดอนุญาต)"
+        text += (TR("\nผู้ใช้อนุมัติแล้วให้เรียก %s — ไม่ต้องส่ง review (หน้าแชตแสดง REVIEW จากเซิร์ฟเวอร์ให้ผู้ใช้กดอนุญาต)")
                  % guard.confirm_call_text(token))
     return text
 
@@ -342,14 +343,14 @@ def _review_refusal(tok: str, stored: str, given, remaining: int = 0) -> str:
     ผู้ใช้ใหม่แล้วจบเทิร์น ตอนนี้ review ไม่บังคับ ทางที่ถูกคือเรียกใหม่ด้วย token อย่างเดียว — ไม่แนบ REVIEW ซ้ำแล้ว
     (ประหยัดบริบทด้วย) การเรียกใหม่ต้องผ่านกล่องอนุญาตที่แสดง REVIEW ของเซิร์ฟเวอร์อีกครั้ง จึงไม่ข้ามคน
     หัวข้อความ "ยังไม่ได้ทำอะไร: review " ต้องคงไว้: ป้าย "ไม่ได้รัน — review ไม่ตรง" ของหน้าแชตจัดชนิดจากตรงนี้"""
-    left = ("อีกประมาณ %d นาที" % max(1, round(remaining / 60))) if remaining else ""
+    left = (TR("อีกประมาณ %d นาที") % max(1, round(remaining / 60))) if remaining else ""
     if isinstance(given, str):
         diff = guard.review_difference(stored, given)
     else:
-        diff = "review ต้องเป็นข้อความ (ส่งมาเป็น %s)" % type(given).__name__
-    head = ("ยังไม่ได้ทำอะไร: review ที่ส่งมาไม่ตรงกับข้อความตรวจทานของ token นี้ (token ยังใช้ได้%s)\n"
-            "จุดที่ไม่ตรง: %s" % (left, diff))
-    return "%s\n\nขั้นตอน:\n%s" % (head, guard.review_steps(tok, retry=True))
+        diff = TR("review ต้องเป็นข้อความ (ส่งมาเป็น %s)") % type(given).__name__
+    head = (TR("ยังไม่ได้ทำอะไร: review ที่ส่งมาไม่ตรงกับข้อความตรวจทานของ token นี้ (token ยังใช้ได้%s)\n"
+            "จุดที่ไม่ตรง: %s") % (left, diff))
+    return TR("%s\n\nขั้นตอน:\n%s") % (head, guard.review_steps(tok, retry=True))
 
 
 def _unviewed_refusal(tok: str, remaining: int, count: int) -> str:
@@ -359,19 +360,19 @@ def _unviewed_refusal(tok: str, remaining: int, count: int) -> str:
     อัปเดต enhance (การ์ดรุ่นเก่าไม่ดึง review) — ครั้งแรกให้ลองใหม่ทันที (การ์ดใหม่จะโหลด review) ครั้งต่อไปให้หยุดและบอก
     ผู้ใช้รีโหลดหน้าแชต กันโมเดลเล็กวนเรียกไม่รู้จบ (ทุกการเรียกผ่านกล่องอนุญาตของคนอยู่แล้ว ไม่มีขั้นไหนข้ามคน)
     หัวข้อความ "ยังไม่ได้ทำอะไร: " (ไม่ใช่ "...: review ") = ป้าย "ไม่ได้รัน — ถูกปฏิเสธ" ของหน้าแชต"""
-    left = (" อีกประมาณ %d นาที" % max(1, round(remaining / 60))) if remaining else ""
+    left = (TR(" อีกประมาณ %d นาที") % max(1, round(remaining / 60))) if remaining else ""
     call = guard.confirm_call_text(tok)
-    head = ("ยังไม่ได้ทำอะไร: กล่อง \"อนุญาต\" ของหน้าแชตยังไม่ได้แสดงรายละเอียด (REVIEW) ของ token นี้จากเซิร์ฟเวอร์ "
-            "จึงยังไม่รัน (token ยังใช้ได้%s)" % left)
+    head = (TR("ยังไม่ได้ทำอะไร: กล่อง \"อนุญาต\" ของหน้าแชตยังไม่ได้แสดงรายละเอียด (REVIEW) ของ token นี้จากเซิร์ฟเวอร์ "
+            "จึงยังไม่รัน (token ยังใช้ได้%s)") % left)
     if count <= 1:
-        steps = ("1. ให้เรียก %s ใหม่ทันที โดยไม่ต้องส่ง review และไม่ต้องถามผู้ใช้ใหม่ — กล่องอนุญาตจะโหลด REVIEW "
+        steps = (TR("1. ให้เรียก %s ใหม่ทันที โดยไม่ต้องส่ง review และไม่ต้องถามผู้ใช้ใหม่ — กล่องอนุญาตจะโหลด REVIEW "
                  "จากเซิร์ฟเวอร์ให้ผู้ใช้ตรวจก่อนกด\n"
-                 "2. ถ้าได้ข้อความนี้อีก ให้หยุดเรียก แล้วบอกผู้ใช้ให้รีโหลดหน้าแชต (F5) แล้วสั่งใหม่" % call)
+                 "2. ถ้าได้ข้อความนี้อีก ให้หยุดเรียก แล้วบอกผู้ใช้ให้รีโหลดหน้าแชต (F5) แล้วสั่งใหม่") % call)
     else:
-        steps = ("1. หยุดเรียก %s ตอนนี้ — กล่องอนุญาตของหน้านี้โหลดรายละเอียดจากเซิร์ฟเวอร์ไม่ได้\n"
+        steps = (TR("1. หยุดเรียก %s ตอนนี้ — กล่องอนุญาตของหน้านี้โหลดรายละเอียดจากเซิร์ฟเวอร์ไม่ได้\n"
                  "2. บอกผู้ใช้ว่า: กล่องอนุญาตโหลดรายละเอียดจากเซิร์ฟเวอร์ไม่ได้ กรุณารีโหลดหน้าแชต (F5) "
-                 "แล้วบอกให้ลองใหม่ (token เดิมยังใช้ได้จนหมดอายุ)" % guard.CONFIRM_TOOL)
-    return "%s\n\nขั้นตอน:\n%s" % (head, steps)
+                 "แล้วบอกให้ลองใหม่ (token เดิมยังใช้ได้จนหมดอายุ)") % guard.CONFIRM_TOOL)
+    return TR("%s\n\nขั้นตอน:\n%s") % (head, steps)
 
 
 def _confirm_call(args: dict, project: str, fast: bool) -> tuple[str, bool]:
@@ -392,23 +393,23 @@ def _confirm_call(args: dict, project: str, fast: bool) -> tuple[str, bool]:
     has_review = guard.review_provided(given)
     surface = "fast" if fast else "full"
     if not tok:
-        return ("ต้องใส่ confirm_token ที่ได้จากเครื่องมือที่ขอให้ยืนยัน (review ไม่บังคับ)"), False
+        return (TR("ต้องใส่ confirm_token ที่ได้จากเครื่องมือที่ขอให้ยืนยัน (review ไม่บังคับ)")), False
     with guard.project_scope(project):
         rep = guard.pending_replay(tok)
         if not rep:
-            return ("confirm_token นี้ใช้ไม่ได้ (ไม่มีอยู่ หมดอายุ ใช้ไปแล้ว ถูกแทนด้วย token ใหม่ "
+            return (TR("confirm_token นี้ใช้ไม่ได้ (ไม่มีอยู่ หมดอายุ ใช้ไปแล้ว ถูกแทนด้วย token ใหม่ "
                     "หรือเป็นของโปรเจกต์อื่น) ยังไม่ได้ทำอะไร — ถ้าผู้ใช้ยังต้องการ "
-                    "ให้เรียกเครื่องมือเดิมอีกครั้งเพื่อขอ token ใหม่"), False
+                    "ให้เรียกเครื่องมือเดิมอีกครั้งเพื่อขอ token ใหม่")), False
         if rep.get("surface") != surface:
-            return ("confirm_token นี้ขอมาจากเครื่องมืออีกชุดหนึ่ง (ผิว /fast กับ /mcp แยกกัน) "
-                    "ให้เรียก %s ในชุดเดียวกับเครื่องมือที่ขอ token" % guard.CONFIRM_TOOL), False
+            return (TR("confirm_token นี้ขอมาจากเครื่องมืออีกชุดหนึ่ง (ผิว /fast กับ /mcp แยกกัน) "
+                    "ให้เรียก %s ในชุดเดียวกับเครื่องมือที่ขอ token") % guard.CONFIRM_TOOL), False
         stored = guard.pending_review(tok)
         if not stored:
             # ทุก token มี review ตั้งแต่ need_confirm (ว่าง = ReviewTooLarge ไม่ออก token) ถึงตรงนี้คือสถานะผิดปกติ
             guard.audit("confirm_review_mismatch", {
                 "project": project, "ref": guard.token_ref(tok),
                 "given_chars": len(given) if isinstance(given, str) else None})
-            return "token นี้ไม่มีข้อความตรวจทาน ยังไม่ได้ทำอะไร — ขอ token ใหม่", False
+            return TR("token นี้ไม่มีข้อความตรวจทาน ยังไม่ได้ทำอะไร — ขอ token ใหม่"), False
         if has_review and not guard.review_matches(stored, given):
             # token ยังไม่ถูกใช้: ต่อเวลาให้ลองใหม่ทัน (มีเพดานรวมนับจากตอนออก — guard.extend_confirm)
             remaining = guard.extend_confirm(tok)
@@ -428,7 +429,7 @@ def _confirm_call(args: dict, project: str, fast: bool) -> tuple[str, bool]:
         fn = (FAST_IMPL if fast else IMPL).get(name)
         if not callable(fn):
             guard.discard_confirm(tok)
-            return "เครื่องมือ %s ที่ขอ token นี้ไม่มีแล้ว ยังไม่ได้ทำอะไร" % name, False
+            return TR("เครื่องมือ %s ที่ขอ token นี้ไม่มีแล้ว ยังไม่ได้ทำอะไร") % name, False
         # บันทึกว่ายืนยันแบบไหน (ตรวจย้อนหลังได้ว่าโมเดลส่ง review ที่ตรงมาหรือพึ่งกล่องอนุญาตอย่างเดียว)
         guard.audit("confirm_replay", {"tool": name, "project": project,
                                        "ref": guard.token_ref(tok),
@@ -441,7 +442,7 @@ def _confirm_call(args: dict, project: str, fast: bool) -> tuple[str, bool]:
             return text, True
         except Exception as exc:     # noqa: BLE001 — ตอบเป็นข้อความเสมอ ไม่ให้ MCP client หลุด
             guard.audit("error", {"tool": name, "trace": traceback.format_exc()[-1500:]})
-            return "เครื่องมือ %s ล้มเหลว: %s: %s" % (name, type(exc).__name__, exc), False
+            return TR("เครื่องมือ %s ล้มเหลว: %s: %s") % (name, type(exc).__name__, exc), False
         finally:
             guard.discard_confirm(tok)
 
@@ -460,14 +461,15 @@ def handle_rpc(msg: dict, project: str, fast: bool = False) -> dict | None:
             "capabilities": dict({"tools": {"listChanged": False}}, **_skills_caps()),   # [skills]
             "serverInfo": {"name": "qwen38-local-fast" if fast else "qwen38-local",
                            "version": "1.3.0"},
-            "instructions": INSTRUCTIONS}}
+            "instructions": TR(INSTRUCTIONS)}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":
         return {"jsonrpc": "2.0", "id": mid, "result": {}}
     if method == "tools/list":
+        # 2026-11: description ของเครื่องมือ (และของพารามิเตอร์) แปลตอนเสิร์ฟตามภาษาของหน้าจอ — ค่าใน TOOLS คงเป็นไทย
         return {"jsonrpc": "2.0", "id": mid,
-                "result": {"tools": FAST_TOOLS if fast else TOOLS}}
+                "result": {"tools": localize_tools(FAST_TOOLS if fast else TOOLS)}}
     if method == "tools/call":
         name = params.get("name")
         args = dict(params.get("arguments") or {})
@@ -484,7 +486,7 @@ def handle_rpc(msg: dict, project: str, fast: bool = False) -> dict | None:
         fn = (FAST_IMPL if fast else IMPL).get(name)
         if not fn:
             return {"jsonrpc": "2.0", "id": mid,
-                    "error": {"code": -32601, "message": "ไม่รู้จักเครื่องมือ: %s" % name}}
+                    "error": {"code": -32601, "message": TR("ไม่รู้จักเครื่องมือ: %s") % name}}
         if name in NEEDS_PROJECT:
             args["project"] = project     # จาก URL เสมอ ไม่ใช่จากโมเดล
         # ทางเก่า "เรียกซ้ำพร้อม confirm_token" ปิดแล้ว (local_do รับชื่อสำรอง token ด้วย)
@@ -504,10 +506,10 @@ def handle_rpc(msg: dict, project: str, fast: bool = False) -> dict | None:
                     text = str(fn(**args))
                 ok = True
             except TypeError as exc:
-                text = "พารามิเตอร์ไม่ถูกต้องสำหรับ %s: %s" % (name, exc)
+                text = TR("พารามิเตอร์ไม่ถูกต้องสำหรับ %s: %s") % (name, exc)
                 ok = False
             except Exception as exc:
-                text = "เครื่องมือ %s ล้มเหลว: %s: %s" % (name, type(exc).__name__, exc)
+                text = TR("เครื่องมือ %s ล้มเหลว: %s: %s") % (name, type(exc).__name__, exc)
                 ok = False
                 guard.audit("error", {"tool": name, "trace": traceback.format_exc()[-1500:]})
         # ด่านสุดท้าย: ค่า token ของบริการในเครื่องต้องไม่ไปถึงโมเดลไม่ว่าจากช่องทางไหน
@@ -521,7 +523,7 @@ def handle_rpc(msg: dict, project: str, fast: bool = False) -> dict | None:
     if mid is None:
         return None
     return {"jsonrpc": "2.0", "id": mid,
-            "error": {"code": -32601, "message": "ไม่รองรับเมธอด: %s" % method}}
+            "error": {"code": -32601, "message": TR("ไม่รองรับเมธอด: %s") % method}}
 
 
 def route_of(path: str) -> tuple[str, bool]:

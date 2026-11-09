@@ -27,6 +27,22 @@ import uuid
 from datetime import datetime, timezone
 
 from guard import Denied, audit, check_read, check_write, project_dir
+try:
+    from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
+except ImportError:  # โหลดจากนอก mcp-local (hub, mcp-websearch, python -I) — เอา i18n_tools.py ข้างไฟล์นี้มาเอง
+    import importlib.util as _ilu
+    import os as _os
+    import sys as _sys
+    try:
+        _spec = _ilu.spec_from_file_location(
+            "i18n_tools", _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "i18n_tools.py"))
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        _sys.modules.setdefault("i18n_tools", _mod)
+        TR = _mod.TR
+    except Exception:  # noqa: BLE001 — ไม่มีแคตตาล็อก = ข้อความไทยตามเดิม
+        def TR(text):
+            return text
 
 # ---------------------------------------------------------------- ค่าคงที่
 
@@ -82,7 +98,7 @@ def _base(project: str) -> str:
     """โฟลเดอร์ของโปรเจกต์ — จุดเดียวที่ path ทั้งโมดูลนี้งอกออกมา"""
     name = _s(project).strip()
     if not name:
-        raise ValueError("ต้องระบุชื่อโปรเจกต์")
+        raise ValueError(TR("ต้องระบุชื่อโปรเจกต์"))
     return project_dir(name)
 
 
@@ -116,9 +132,9 @@ def _append_md(path: str, block: str) -> None:
     new = not os.path.exists(path)
     with open(path, "a", encoding="utf-8", newline="\n") as fh:
         if new:
-            fh.write("# MEMORY\n\n"
+            fh.write(TR("# MEMORY\n\n"
                      "ไฟล์นี้เขียนต่อท้ายอย่างเดียว ของเก่าไม่ถูกแก้หรือถูกลบ\n"
-                     "ถ้ารายการถูกลบออกจาก memory.json จะมีบรรทัดบอกไว้ด้านล่างแทน\n\n")
+                     "ถ้ารายการถูกลบออกจาก memory.json จะมีบรรทัดบอกไว้ด้านล่างแทน\n\n"))
         fh.write(block)
 
 
@@ -257,20 +273,20 @@ def scan_secret(text: str):
     ที่ถูกอ่านซ้ำทุกครั้งที่คุยกับโมเดล ฟังก์ชันนี้ไม่คืนค่าที่ตรวจเจอออกมา
     """
     if _RE_PEM.search(text):
-        return "private key แบบ PEM (BEGIN ... PRIVATE KEY)"
+        return TR("private key แบบ PEM (BEGIN ... PRIVATE KEY)")
     if _RE_KNOWN.search(text):
-        return "คีย์ที่มีรูปแบบชัดเจน (เช่น sk-, ghp_, AKIA, AIza, JWT)"
+        return TR("คีย์ที่มีรูปแบบชัดเจน (เช่น sk-, ghp_, AKIA, AIza, JWT)")
     m = _RE_BEARER.search(text)
     if m and _looks_like_value(m.group(1)):
         return "bearer token"
     for m in _RE_KV.finditer(text):
         if _looks_like_value(m.group(2)):
-            return "คำว่า %s ตามด้วยค่า" % m.group(1).lower()
+            return TR("คำว่า %s ตามด้วยค่า") % m.group(1).lower()
     for m in _RE_HEX.finditer(text):
-        return "ก้อน hex ยาว %d ตัวอักษร" % len(m.group(0))
+        return TR("ก้อน hex ยาว %d ตัวอักษร") % len(m.group(0))
     for m in _RE_B64.finditer(text):
         if _mixed(m.group(0)):
-            return "ก้อน base64 ยาว %d ตัวอักษร" % len(m.group(0))
+            return TR("ก้อน base64 ยาว %d ตัวอักษร") % len(m.group(0))
     return None
 
 
@@ -294,13 +310,13 @@ def memory_remember(project: str, kind: str, text: str, tags: str = "") -> str:
         tags_v = [t.strip() for t in _s(tags).replace("，", ",").split(",") if t.strip()]
 
         if kind_v not in KINDS:
-            return ("ERROR: kind ต้องเป็นอย่างใดอย่างหนึ่งใน %s (ได้รับ %r)"
+            return (TR("ERROR: kind ต้องเป็นอย่างใดอย่างหนึ่งใน %s (ได้รับ %r)")
                     % (", ".join(KINDS), _s(kind)))
         if not text_v:
-            return "ERROR: text ว่าง ไม่มีอะไรให้จำ"
+            return TR("ERROR: text ว่าง ไม่มีอะไรให้จำ")
         if len(text_v) > MAX_TEXT:
-            return ("ERROR: ข้อความยาว %d ตัวอักษร เกินเพดาน %d "
-                    "ช่วยสรุปให้สั้นลงหรือแบ่งเป็นหลายรายการ" % (len(text_v), MAX_TEXT))
+            return (TR("ERROR: ข้อความยาว %d ตัวอักษร เกินเพดาน %d "
+                    "ช่วยสรุปให้สั้นลงหรือแบ่งเป็นหลายรายการ") % (len(text_v), MAX_TEXT))
 
         found = scan_secret(text_v + " " + " ".join(tags_v))
         if found:
@@ -312,8 +328,8 @@ def memory_remember(project: str, kind: str, text: str, tags: str = "") -> str:
         base = _base(project)
         entries = _load_entries(project)
         if len(entries) >= MAX_ENTRIES:
-            return ("ERROR: โปรเจกต์นี้มี %d รายการแล้ว ถึงเพดาน %d "
-                    "ลบของเก่าด้วย memory_forget ก่อน" % (len(entries), MAX_ENTRIES))
+            return (TR("ERROR: โปรเจกต์นี้มี %d รายการแล้ว ถึงเพดาน %d "
+                    "ลบของเก่าด้วย memory_forget ก่อน") % (len(entries), MAX_ENTRIES))
 
         entry = {
             "id": _new_id({e["id"] for e in entries}),
@@ -328,19 +344,19 @@ def memory_remember(project: str, kind: str, text: str, tags: str = "") -> str:
         block = "## %s · %s · %s\n\n%s\n" % (
             entry["created"], KIND_TH.get(kind_v, kind_v), entry["id"], text_v)
         if tags_v:
-            block += "\nแท็ก: %s\n" % ", ".join(tags_v)
+            block += TR("\nแท็ก: %s\n") % ", ".join(tags_v)
         block += "\n"
         _append_md(os.path.join(base, MEMORY_MD), block)
 
         audit("memory_remember", {"project": _s(project), "kind": kind_v,
                                   "id": entry["id"], "chars": len(text_v),
                                   "tags": tags_v})
-        return "จำแล้ว [%s] %s · id %s\n%s" % (
+        return TR("จำแล้ว [%s] %s · id %s\n%s") % (
             KIND_TH.get(kind_v, kind_v), entry["created"], entry["id"], text_v)
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: บันทึกความจำไม่สำเร็จ — %s" % exc
+        return TR("ERROR: บันทึกความจำไม่สำเร็จ — %s") % exc
 
 
 def memory_recall(project: str, query: str = "", kind: str = "", limit: int = 20) -> str:
@@ -353,7 +369,7 @@ def memory_recall(project: str, query: str = "", kind: str = "", limit: int = 20
             n = 20
         n = min(n, 200)
         if kind_v and kind_v not in KINDS:
-            return ("ERROR: kind ต้องเป็นอย่างใดอย่างหนึ่งใน %s หรือเว้นว่างเพื่อเอาทุกชนิด"
+            return (TR("ERROR: kind ต้องเป็นอย่างใดอย่างหนึ่งใน %s หรือเว้นว่างเพื่อเอาทุกชนิด")
                     % ", ".join(KINDS))
 
         entries = _load_entries(project)
@@ -377,15 +393,15 @@ def memory_recall(project: str, query: str = "", kind: str = "", limit: int = 20
         if not entries:
             # ผิวแบบย่อ (/fast ค่าเริ่มต้นของหน้าแชต) ไม่มีเครื่องมือชื่อ memory_remember
             # เรียกจริงคือ local_do action="remember" — บอกทั้งสองผิวไม่ให้โมเดลเล็กเรียกผิดตัว
-            return ('ยังไม่มีความจำในโปรเจกต์ %s เลย บันทึกด้วย local_do action="remember" '
-                    "(ผิวเต็ม: เครื่องมือ memory_remember)" % _s(project))
+            return (TR('ยังไม่มีความจำในโปรเจกต์ %s เลย บันทึกด้วย local_do action="remember" '
+                    "(ผิวเต็ม: เครื่องมือ memory_remember)") % _s(project))
         if not picked:
-            return "ไม่พบรายการที่ตรงกับเงื่อนไข (มีทั้งหมด %d รายการในโปรเจกต์นี้)" % len(entries)
+            return TR("ไม่พบรายการที่ตรงกับเงื่อนไข (มีทั้งหมด %d รายการในโปรเจกต์นี้)") % len(entries)
 
-        head = "พบ %d รายการ แสดง %d รายการ (ใหม่สุดก่อน)" % (total, len(picked))
+        head = TR("พบ %d รายการ แสดง %d รายการ (ใหม่สุดก่อน)") % (total, len(picked))
         lines = [head, ""]
         for e in picked:
-            tag = (" · แท็ก: " + ", ".join(e["tags"])) if e["tags"] else ""
+            tag = (TR(" · แท็ก: ") + ", ".join(e["tags"])) if e["tags"] else ""
             lines.append("[%s] %s · %s%s" % (
                 e["id"], KIND_TH.get(e["kind"], e["kind"]), e["created"], tag))
             for ln in e["text"].splitlines() or [""]:
@@ -393,9 +409,9 @@ def memory_recall(project: str, query: str = "", kind: str = "", limit: int = 20
             lines.append("")
         return "\n".join(lines).rstrip()
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: ค้นความจำไม่สำเร็จ — %s" % exc
+        return TR("ERROR: ค้นความจำไม่สำเร็จ — %s") % exc
 
 
 def memory_forget(project: str, id: str = "") -> str:
@@ -403,7 +419,7 @@ def memory_forget(project: str, id: str = "") -> str:
     try:
         target = _s(id).strip().lower()
         if not target:
-            return "ERROR: ต้องระบุ id ของรายการที่จะลบ ดู id ได้จาก memory_recall"
+            return TR("ERROR: ต้องระบุ id ของรายการที่จะลบ ดู id ได้จาก memory_recall")
 
         base = _base(project)
         entries = _load_entries(project)
@@ -413,18 +429,18 @@ def memory_forget(project: str, id: str = "") -> str:
             if len(partial) == 1:
                 hit = partial
             elif len(partial) > 1:
-                return ("ERROR: id %r ตรงกับหลายรายการ (%s) ใส่ให้ครบ 8 ตัว"
+                return (TR("ERROR: id %r ตรงกับหลายรายการ (%s) ใส่ให้ครบ 8 ตัว")
                         % (_s(id), ", ".join(e["id"] for e in partial)))
             else:
-                return ("ERROR: ไม่พบรายการ id %r ในโปรเจกต์ %s"
+                return (TR("ERROR: ไม่พบรายการ id %r ในโปรเจกต์ %s")
                         % (_s(id), _s(project)))
 
         gone = hit[0]
         entries = [e for e in entries if e is not gone]
         _save_entries(project, entries)
         _append_md(os.path.join(base, MEMORY_MD),
-                   "## %s · ลบรายการ · %s\n\nรายการนี้ถูกลบออกจาก memory.json แล้ว "
-                   "ข้อความเดิมยังอยู่ด้านบนของไฟล์นี้ตามหลักเขียนต่อท้ายอย่างเดียว\n\n"
+                   TR("## %s · ลบรายการ · %s\n\nรายการนี้ถูกลบออกจาก memory.json แล้ว "
+                   "ข้อความเดิมยังอยู่ด้านบนของไฟล์นี้ตามหลักเขียนต่อท้ายอย่างเดียว\n\n")
                    % (_now(), gone["id"]))
 
         audit("memory_forget", {"project": _s(project), "id": gone["id"],
@@ -432,12 +448,12 @@ def memory_forget(project: str, id: str = "") -> str:
         preview = gone["text"].splitlines()[0] if gone["text"] else ""
         if len(preview) > 120:
             preview = preview[:120] + "…"
-        return "ลบแล้ว id %s [%s] %s\nเหลือ %d รายการในโปรเจกต์นี้" % (
+        return TR("ลบแล้ว id %s [%s] %s\nเหลือ %d รายการในโปรเจกต์นี้") % (
             gone["id"], KIND_TH.get(gone["kind"], gone["kind"]), preview, len(entries))
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: ลบความจำไม่สำเร็จ — %s" % exc
+        return TR("ERROR: ลบความจำไม่สำเร็จ — %s") % exc
 
 
 def memory_export(project: str) -> str:
@@ -449,22 +465,22 @@ def memory_export(project: str) -> str:
                 content = fh.read()
         except FileNotFoundError:
             audit("memory_export", {"project": _s(project), "chars": 0, "exists": False})
-            return ("ยังไม่มีไฟล์ MEMORY.md ในโปรเจกต์ %s (ยังไม่เคยบันทึกอะไรเลย)\n"
+            return (TR("ยังไม่มีไฟล์ MEMORY.md ในโปรเจกต์ %s (ยังไม่เคยบันทึกอะไรเลย)\n"
                     'ไฟล์จะอยู่ที่ %s เมื่อเริ่มบันทึกด้วย local_do action="remember" '
-                    "(ผิวเต็ม: เครื่องมือ memory_remember)" % (_s(project), path))
+                    "(ผิวเต็ม: เครื่องมือ memory_remember)") % (_s(project), path))
 
         audit("memory_export", {"project": _s(project), "chars": len(content),
                                 "exists": True})
-        note = "ไฟล์: %s (%d ตัวอักษร)\n\n" % (path, len(content))
+        note = TR("ไฟล์: %s (%d ตัวอักษร)\n\n") % (path, len(content))
         if len(content) > MAX_EXPORT:
             keep = content[-MAX_EXPORT:]
-            return (note + "…ตัดส่วนต้นออกเพราะยาวเกิน %d ตัวอักษร แสดงเฉพาะส่วนท้าย…\n\n"
+            return (note + TR("…ตัดส่วนต้นออกเพราะยาวเกิน %d ตัวอักษร แสดงเฉพาะส่วนท้าย…\n\n")
                     % MAX_EXPORT) + keep
         return note + content
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: อ่าน MEMORY.md ไม่สำเร็จ — %s" % exc
+        return TR("ERROR: อ่าน MEMORY.md ไม่สำเร็จ — %s") % exc
 
 
 # ------------------------------------------------------------- เครื่องมือ path
@@ -485,13 +501,13 @@ def path_add(project: str, alias: str, path: str, mode: str = "read_only") -> st
         raw = _norm(path)
 
         if not alias_v:
-            return "ERROR: ต้องตั้งชื่อย่อ (alias) ที่ไม่ว่าง"
+            return TR("ERROR: ต้องตั้งชื่อย่อ (alias) ที่ไม่ว่าง")
         if len(alias_v) > 64:
-            return "ERROR: ชื่อย่อยาวเกิน 64 ตัวอักษร"
+            return TR("ERROR: ชื่อย่อยาวเกิน 64 ตัวอักษร")
         if not raw:
-            return "ERROR: ต้องระบุ path ที่จะผูกกับชื่อย่อนี้"
+            return TR("ERROR: ต้องระบุ path ที่จะผูกกับชื่อย่อนี้")
         if mode_v not in MODES:
-            return "ERROR: mode ต้องเป็น read_only หรือ read_write (ได้รับ %r)" % _s(mode)
+            return TR("ERROR: mode ต้องเป็น read_only หรือ read_write (ได้รับ %r)") % _s(mode)
 
         # ให้ guard เป็นคนตัดสินว่าเข้าถึงได้ไหม และคืน path ที่ normalise แล้ว
         try:
@@ -499,13 +515,13 @@ def path_add(project: str, alias: str, path: str, mode: str = "read_only") -> st
         except Denied as exc:
             audit("path_add_denied", {"project": _s(project), "alias": alias_v,
                                       "path": raw, "mode": mode_v, "reason": str(exc)})
-            return ("ERROR: guard ไม่อนุญาตให้เข้าถึง %s ด้วยสิทธิ์ %s — %s\n"
-                    "ถ้าจำเป็นต้องใช้จริง ต้องไปเพิ่ม root ที่อนุญาตในการตั้งค่าของ guard ก่อน"
+            return (TR("ERROR: guard ไม่อนุญาตให้เข้าถึง %s ด้วยสิทธิ์ %s — %s\n"
+                    "ถ้าจำเป็นต้องใช้จริง ต้องไปเพิ่ม root ที่อนุญาตในการตั้งค่าของ guard ก่อน")
                     % (raw, mode_v, exc))
 
         if not os.path.exists(resolved):
-            return ("ERROR: ไม่พบ %s บนดิสก์ ตรวจตัวสะกดอีกครั้ง "
-                    "(ยังไม่ผูกชื่อย่อให้ เพราะ alias ที่ชี้ไปที่ว่างจะทำให้สับสนภายหลัง)"
+            return (TR("ERROR: ไม่พบ %s บนดิสก์ ตรวจตัวสะกดอีกครั้ง "
+                    "(ยังไม่ผูกชื่อย่อให้ เพราะ alias ที่ชี้ไปที่ว่างจะทำให้สับสนภายหลัง)")
                     % resolved)
 
         aliases = _load_paths(project)
@@ -516,17 +532,17 @@ def path_add(project: str, alias: str, path: str, mode: str = "read_only") -> st
         audit("path_add", {"project": _s(project), "alias": alias_v,
                            "path": resolved, "mode": mode_v,
                            "replaced": bool(old)})
-        kindword = "โฟลเดอร์" if os.path.isdir(resolved) else "ไฟล์"
-        msg = "ผูกชื่อย่อ %r -> %s (%s, สิทธิ์ %s) ในโปรเจกต์ %s" % (
+        kindword = TR("โฟลเดอร์") if os.path.isdir(resolved) else TR("ไฟล์")
+        msg = TR("ผูกชื่อย่อ %r -> %s (%s, สิทธิ์ %s) ในโปรเจกต์ %s") % (
             alias_v, resolved, kindword, mode_v, _s(project))
         if old:
-            msg += "\n(ชื่อย่อนี้เคยชี้ไป %s สิทธิ์ %s ตอนนี้ถูกเขียนทับแล้ว)" % (
+            msg += TR("\n(ชื่อย่อนี้เคยชี้ไป %s สิทธิ์ %s ตอนนี้ถูกเขียนทับแล้ว)") % (
                 old["path"], old["mode"])
         return msg
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: เพิ่มชื่อย่อไม่สำเร็จ — %s" % exc
+        return TR("ERROR: เพิ่มชื่อย่อไม่สำเร็จ — %s") % exc
 
 
 def path_list(project: str) -> str:
@@ -535,18 +551,18 @@ def path_list(project: str) -> str:
         aliases = _load_paths(project)
         audit("path_list", {"project": _s(project), "count": len(aliases)})
         if not aliases:
-            return ("โปรเจกต์ %s ยังไม่มีชื่อย่อ path เลย ใช้ path_add เพื่อเพิ่ม"
+            return (TR("โปรเจกต์ %s ยังไม่มีชื่อย่อ path เลย ใช้ path_add เพื่อเพิ่ม")
                     % _s(project))
-        lines = ["ชื่อย่อ path ของโปรเจกต์ %s (%d รายการ)" % (_s(project), len(aliases)), ""]
+        lines = [TR("ชื่อย่อ path ของโปรเจกต์ %s (%d รายการ)") % (_s(project), len(aliases)), ""]
         for alias in sorted(aliases, key=str.lower):
             rec = aliases[alias]
-            status = "" if os.path.exists(rec["path"]) else "  [หาไม่เจอแล้ว]"
+            status = "" if os.path.exists(rec["path"]) else TR("  [หาไม่เจอแล้ว]")
             lines.append("%-20s %s  (%s)%s" % (alias, rec["path"], rec["mode"], status))
         return "\n".join(lines)
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: อ่านรายการชื่อย่อไม่สำเร็จ — %s" % exc
+        return TR("ERROR: อ่านรายการชื่อย่อไม่สำเร็จ — %s") % exc
 
 
 def path_remove(project: str, alias: str) -> str:
@@ -554,7 +570,7 @@ def path_remove(project: str, alias: str) -> str:
     try:
         alias_v = _clean_alias(alias)
         if not alias_v:
-            return "ERROR: ต้องระบุชื่อย่อที่จะลบ"
+            return TR("ERROR: ต้องระบุชื่อย่อที่จะลบ")
 
         aliases = _load_paths(project)
         if alias_v not in aliases:
@@ -562,22 +578,22 @@ def path_remove(project: str, alias: str) -> str:
             if len(match) == 1:
                 alias_v = match[0]
             else:
-                return ("ERROR: ไม่พบชื่อย่อ %r ในโปรเจกต์ %s (มีอยู่: %s)"
+                return (TR("ERROR: ไม่พบชื่อย่อ %r ในโปรเจกต์ %s (มีอยู่: %s)")
                         % (_s(alias), _s(project),
-                           ", ".join(sorted(aliases)) if aliases else "ไม่มีเลย"))
+                           ", ".join(sorted(aliases)) if aliases else TR("ไม่มีเลย")))
 
         rec = aliases.pop(alias_v)
         _save_paths(project, aliases)
         audit("path_remove", {"project": _s(project), "alias": alias_v,
                               "path": rec["path"]})
-        return ("ลบชื่อย่อ %r ออกจากทะเบียนของโปรเจกต์ %s แล้ว\n"
+        return (TR("ลบชื่อย่อ %r ออกจากทะเบียนของโปรเจกต์ %s แล้ว\n"
                 "ไฟล์และโฟลเดอร์ที่ %s ยังอยู่ครบ ไม่ถูกลบหรือแก้ไขใดๆ "
-                "เครื่องมือนี้ลบแค่ชื่อย่อเท่านั้น"
+                "เครื่องมือนี้ลบแค่ชื่อย่อเท่านั้น")
                 % (alias_v, _s(project), rec["path"]))
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: ลบชื่อย่อไม่สำเร็จ — %s" % exc
+        return TR("ERROR: ลบชื่อย่อไม่สำเร็จ — %s") % exc
 
 
 def path_resolve(project: str, alias: str, subpath: str = "") -> str:
@@ -586,7 +602,7 @@ def path_resolve(project: str, alias: str, subpath: str = "") -> str:
         alias_v = _clean_alias(alias)
         sub = _s(subpath).strip().strip('"').strip()
         if not alias_v:
-            return "ERROR: ต้องระบุชื่อย่อ"
+            return TR("ERROR: ต้องระบุชื่อย่อ")
 
         aliases = _load_paths(project)
         rec = aliases.get(alias_v)
@@ -596,42 +612,42 @@ def path_resolve(project: str, alias: str, subpath: str = "") -> str:
                 alias_v = match[0]
                 rec = aliases[alias_v]
             else:
-                return ("ERROR: ไม่พบชื่อย่อ %r ในโปรเจกต์ %s (มีอยู่: %s)"
+                return (TR("ERROR: ไม่พบชื่อย่อ %r ในโปรเจกต์ %s (มีอยู่: %s)")
                         % (_s(alias), _s(project),
-                           ", ".join(sorted(aliases)) if aliases else "ไม่มีเลย"))
+                           ", ".join(sorted(aliases)) if aliases else TR("ไม่มีเลย")))
 
         root = os.path.normpath(rec["path"])
         target = root
         if sub:
             sub_n = sub.replace("/", "\\").lstrip("\\")
             if os.path.isabs(sub) or os.path.splitdrive(sub)[0]:
-                return ("ERROR: subpath ต้องเป็น path ย่อยแบบสัมพัทธ์ ไม่ใช่ path เต็ม "
-                        "(ได้รับ %r) ถ้าจะใช้ path เต็ม ให้เพิ่มเป็นชื่อย่อใหม่ด้วย path_add" % sub)
+                return (TR("ERROR: subpath ต้องเป็น path ย่อยแบบสัมพัทธ์ ไม่ใช่ path เต็ม "
+                        "(ได้รับ %r) ถ้าจะใช้ path เต็ม ให้เพิ่มเป็นชื่อย่อใหม่ด้วย path_add") % sub)
             target = os.path.normpath(os.path.join(root, sub_n))
             base_cmp = root.rstrip("\\").lower() + "\\"
             if target.lower() != root.rstrip("\\").lower() and not target.lower().startswith(base_cmp):
                 audit("path_resolve_escape", {"project": _s(project), "alias": alias_v,
                                               "subpath": sub, "target": target})
-                return ("ERROR: subpath %r พาออกไปนอกขอบเขตของชื่อย่อ %r "
-                        "(เช่นการใช้ ..) ไม่อนุญาต" % (sub, alias_v))
+                return (TR("ERROR: subpath %r พาออกไปนอกขอบเขตของชื่อย่อ %r "
+                        "(เช่นการใช้ ..) ไม่อนุญาต") % (sub, alias_v))
 
         try:
             final = check_write(target) if rec["mode"] == "read_write" else check_read(target)
         except Denied as exc:
             audit("path_resolve_denied", {"project": _s(project), "alias": alias_v,
                                           "target": target, "reason": str(exc)})
-            return ("ERROR: guard ไม่อนุญาตให้เข้าถึง %s แล้ว — %s\n"
-                    "ชื่อย่อนี้อาจถูกเพิ่มไว้ตอนที่กติกาของ guard ยังต่างจากตอนนี้"
+            return (TR("ERROR: guard ไม่อนุญาตให้เข้าถึง %s แล้ว — %s\n"
+                    "ชื่อย่อนี้อาจถูกเพิ่มไว้ตอนที่กติกาของ guard ยังต่างจากตอนนี้")
                     % (target, exc))
 
         audit("path_resolve", {"project": _s(project), "alias": alias_v,
                                "subpath": sub, "path": final, "mode": rec["mode"]})
-        exists = "มีอยู่จริง" if os.path.exists(final) else "ยังไม่มีไฟล์นี้บนดิสก์"
-        return "%s\n(ชื่อย่อ %s สิทธิ์ %s · %s)" % (final, alias_v, rec["mode"], exists)
+        exists = TR("มีอยู่จริง") if os.path.exists(final) else TR("ยังไม่มีไฟล์นี้บนดิสก์")
+        return TR("%s\n(ชื่อย่อ %s สิทธิ์ %s · %s)") % (final, alias_v, rec["mode"], exists)
     except Denied as exc:
-        return "ERROR: guard ปฏิเสธ — %s" % exc
+        return TR("ERROR: guard ปฏิเสธ — %s") % exc
     except (OSError, ValueError) as exc:
-        return "ERROR: แปลงชื่อย่อไม่สำเร็จ — %s" % exc
+        return TR("ERROR: แปลงชื่อย่อไม่สำเร็จ — %s") % exc
 
 
 # ------------------------------------------------------------------ schema MCP
