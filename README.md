@@ -54,6 +54,7 @@ in the chat.
 ## Contents
 
 - [Highlights](#highlights)
+- [Is it for you?](#is-it-for-you)
 - [Screenshots](#screenshots)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -100,6 +101,24 @@ in the chat.
 - **GPU auto-placement.** Detects the internal GPU and a Thunderbolt eGPU, plans which model goes where, and lets
   you override it per model from the UI. The 27B model went from about 1-2 to **42.8 tok/s** after attaching an
   RTX 4090.
+
+## Is it for you?
+
+**A good fit if you**
+- have a Windows 11 PC with an NVIDIA GPU and want an assistant whose chats, files and models stay on that machine;
+- work with documents, scans and recordings in Thai, English, Japanese or Chinese and want to search, read and
+  summarize them locally;
+- want the model to act on your computer (files, commands, Python, Office), but only after you have seen exactly
+  what will run;
+- are comfortable with PowerShell, a JSON settings file and a health page.
+
+**Not a good fit yet if you**
+- use macOS or Linux, or an AMD or Intel GPU: the launcher, the GPU planner and the llama.cpp build are made for
+  Windows and NVIDIA CUDA;
+- want a one-click installer or an install folder other than `C:\LLM` ([#2](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/issues/2));
+- want to serve several people or reach it from other devices: every service listens on `127.0.0.1` only;
+- have much less than 20 GB of VRAM and want the 27B model at chat speed: on a 6 GB laptop GPU it runs at 1-2
+  tokens per second (the 4B model is fast there, but the launcher still needs the 27B file).
 
 ## Screenshots
 
@@ -431,10 +450,23 @@ Other measurements from the same machine:
    C:\Python313\python.exe -m pip install -r C:\LLM\requirements.txt
    ```
 
-3. Add the parts that are not in the repository (both folders are git-ignored): unpack the llama.cpp build into
-   `C:\LLM\llama.cpp-b10984` and put your GGUF files in `C:\LLM\models`. File names are the model ids, e.g.
-   `Qwen3.8-27B-UD-Q4_K_M.gguf` (required), `mmproj-Qwen3.8-27B-F16.gguf` (vision, optional),
-   `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (Fast chip and summaries, optional).
+3. Add the parts that are not in the repository (both folders are git-ignored). From the llama.cpp
+   [b10984 release](https://github.com/ggml-org/llama.cpp/releases/tag/b10984), unzip `llama-b10984-bin-win-cuda-12.4-x64.zip` and
+   `cudart-llama-bin-win-cuda-12.4-x64.zip` (the CUDA runtime) into the same folder, `C:\LLM\llama.cpp-b10984`.
+   Then download the models into `C:\LLM\models`. The file name is the model id, so keep the names as they are,
+   except for the vision projector, which has to be renamed:
+
+   | File | From | Size | Used for |
+   |---|---|---|---|
+   | `Qwen3.8-27B-UD-Q4_K_M.gguf` | [unsloth/Qwen3.8-27B-GGUF](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF) | 16.5 GB | **required**: the main model |
+   | `mmproj-F16.gguf`, renamed to `mmproj-Qwen3.8-27B-F16.gguf` | the same repository | 0.9 GB | optional: image input for the 27B |
+   | `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` | [unsloth/Qwen3-4B-Instruct-2507-GGUF](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF) | 2.5 GB | optional: the Fast chip, chat summaries, research |
+   | `Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf` | [unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF](https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF) | 17.7 GB | optional |
+   | `gpt-oss-20b-MXFP4.gguf` | [ggml-org/gpt-oss-20b-GGUF](https://huggingface.co/ggml-org/gpt-oss-20b-GGUF) | 12.1 GB | optional |
+
+   Semantic search uses `Qwen3-Embedding-0.6B-Q8_0.gguf` (0.6 GB, from
+   [Qwen/Qwen3-Embedding-0.6B-GGUF](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF)) in `D:\LLM\models-embed`. Each model has
+   its own license; check its card first (see [THIRD_PARTY.md](THIRD_PARTY.md)).
 4. Create your local config from the examples. `ui-config.json` is required; the launcher exits without it.
 
    ```powershell
@@ -508,6 +540,9 @@ set these as user environment variables.
 
 The repository mirrors the install folder `C:\LLM`.
 
+<details>
+<summary>Folder tree with a line on each file</summary>
+
 ```text
 C:\LLM
 ├── start-qwen38.ps1          launcher: token, MCP, embedding, STT, GPU plan, router, hub, scheduler, gateway
@@ -554,6 +589,8 @@ C:\LLM
 │   └── screenshots\
 └── secrets\                  README only; the real files are git-ignored
 ```
+
+</details>
 
 Runtime folders that are created locally and git-ignored: `models\`, `logs\`, `projects\data\` (chats are in the
 browser's IndexedDB, with backups here; attachments, outputs, memory, research, usage log and caches are here too),
