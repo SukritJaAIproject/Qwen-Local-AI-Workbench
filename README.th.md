@@ -66,6 +66,22 @@ Qwen Local AI Workbench ครอบเซิร์ฟเวอร์ llama.cpp 
 - **จัดวาง GPU อัตโนมัติ:** ตรวจ GPU ในเครื่องกับ eGPU แล้ววางแผนว่าโมเดลไหนอยู่ที่ใด ปรับเองจากหน้าจอได้
   หลังต่อ RTX 4090 โมเดล 27B เร็วขึ้นจากราว 1-2 เป็น **42.8 tok/s**
 
+## เหมาะกับคุณไหม
+
+**เหมาะ ถ้าคุณ**
+- มีคอมพิวเตอร์ Windows 11 ที่มี GPU NVIDIA และอยากใช้ AI โดยให้แชต ไฟล์ และโมเดลอยู่ในเครื่องตัวเอง
+- ทำงานกับเอกสาร ไฟล์สแกน และไฟล์เสียงภาษาไทย อังกฤษ ญี่ปุ่น หรือจีน และอยากค้น อ่าน และสรุปในเครื่อง
+- อยากให้โมเดลลงมือทำงานบนเครื่อง (ไฟล์ คำสั่ง Python, Office) แต่ต้องได้เห็นก่อนว่าจะรันอะไรจริง
+- ใช้ PowerShell แก้ไฟล์ตั้งค่า JSON และอ่านหน้าตรวจสุขภาพระบบได้
+
+**ยังไม่เหมาะ ถ้าคุณ**
+- ใช้ macOS หรือ Linux หรือ GPU ของ AMD หรือ Intel: ตัวเปิดระบบ การวางแผน GPU และ llama.cpp ที่ใช้ ทำมาสำหรับ
+  Windows กับ NVIDIA CUDA
+- ต้องการตัวติดตั้งแบบคลิกเดียว หรือติดตั้งที่อื่นที่ไม่ใช่ `C:\LLM` ([#2](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/issues/2))
+- อยากให้หลายคนใช้ร่วมกันหรือเข้าจากอุปกรณ์อื่น: ทุกบริการฟังเฉพาะ `127.0.0.1`
+- มี VRAM น้อยกว่า 20 GB มาก แต่อยากใช้โมเดล 27B ที่ความเร็วพอคุยโต้ตอบ: บน GPU โน้ตบุ๊ก 6 GB ได้ราว 1-2 token
+  ต่อวินาที (โมเดล 4B เร็วพอบนเครื่องแบบนั้น แต่ตัวเปิดระบบยังต้องมีไฟล์ 27B)
+
 ## ใช้งานเป็นภาษาไทย
 
 - **ภาษาเริ่มต้น:** หน้าจอเริ่มเป็นภาษาไทย สลับภาษาได้ด้วยปุ่ม ไทย | EN | 日本語 | 中文 หรือกด `Alt+Shift+L`
@@ -111,9 +127,21 @@ Qwen Local AI Workbench ครอบเซิร์ฟเวอร์ llama.cpp 
    C:\Python313\python.exe -m pip install -r C:\LLM\requirements.txt
    ```
 
-3. ใส่ส่วนที่ไม่มีใน repo: แตก llama.cpp ไว้ที่ `C:\LLM\llama.cpp-b10984` และวางไฟล์ GGUF ใน `C:\LLM\models`
-   ชื่อไฟล์คือ id ของโมเดล เช่น `Qwen3.8-27B-UD-Q4_K_M.gguf` (จำเป็น), `mmproj-Qwen3.8-27B-F16.gguf` (สำหรับอ่านรูป
-   ไม่บังคับ), `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (สำหรับปุ่ม Fast และการสรุป ไม่บังคับ)
+3. ใส่ส่วนที่ไม่มีใน repo: จาก [llama.cpp รุ่น b10984](https://github.com/ggml-org/llama.cpp/releases/tag/b10984) ให้แตกไฟล์ `llama-b10984-bin-win-cuda-12.4-x64.zip` และ
+   `cudart-llama-bin-win-cuda-12.4-x64.zip` (ไลบรารี CUDA) ลงโฟลเดอร์เดียวกันคือ `C:\LLM\llama.cpp-b10984` จากนั้น
+   ดาวน์โหลดโมเดลลง `C:\LLM\models` ชื่อไฟล์คือ id ของโมเดล จึงต้องใช้ชื่อเดิม ยกเว้นไฟล์ projector สำหรับอ่านรูป
+   ที่ต้องเปลี่ยนชื่อ
+
+   | ไฟล์ | ดาวน์โหลดจาก | ขนาด | ใช้ทำอะไร |
+   |---|---|---|---|
+   | `Qwen3.8-27B-UD-Q4_K_M.gguf` | [unsloth/Qwen3.8-27B-GGUF](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF) | 16.5 GB | **จำเป็น**: โมเดลหลัก |
+   | `mmproj-F16.gguf` เปลี่ยนชื่อเป็น `mmproj-Qwen3.8-27B-F16.gguf` | repo เดียวกัน | 0.9 GB | ไม่บังคับ: ให้ 27B อ่านรูป |
+   | `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` | [unsloth/Qwen3-4B-Instruct-2507-GGUF](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF) | 2.5 GB | ไม่บังคับ: ปุ่ม Fast, สรุปแชต, งานวิจัย |
+   | `Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf` | [unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF](https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF) | 17.7 GB | ไม่บังคับ |
+   | `gpt-oss-20b-MXFP4.gguf` | [ggml-org/gpt-oss-20b-GGUF](https://huggingface.co/ggml-org/gpt-oss-20b-GGUF) | 12.1 GB | ไม่บังคับ |
+
+   การค้นหาตามความหมายใช้ `Qwen3-Embedding-0.6B-Q8_0.gguf` (0.6 GB จาก [Qwen/Qwen3-Embedding-0.6B-GGUF](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF)) วางไว้ที่
+   `D:\LLM\models-embed` แต่ละโมเดลมีสัญญาอนุญาตของตัวเอง ตรวจที่หน้าโมเดลก่อนใช้
 4. สร้างไฟล์ตั้งค่าจากตัวอย่าง ต้องมี `ui-config.json` เสมอ
 
    ```powershell

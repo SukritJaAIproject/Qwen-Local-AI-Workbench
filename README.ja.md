@@ -67,6 +67,22 @@ Qwen Local AI Workbench は、llama.cpp のサーバーと内蔵 WebUI を、チ
 - **GPU の自動配置:** 内蔵 GPU と Thunderbolt の eGPU を検出してモデルごとの配置を決め、画面から変更もできます。
   RTX 4090 をつなぐと、27B モデルが約 1〜2 tok/s から **42.8 tok/s** になりました。
 
+## 向いている人・まだ向いていない人
+
+**向いている人**
+- NVIDIA GPU を積んだ Windows 11 PC で、チャット、ファイル、モデルを手元に置いたまま AI を使いたい
+- 日本語・英語・タイ語・中国語の文書、スキャン、録音をローカルで検索し、読み取り、要約したい
+- PC 上の操作（ファイル、コマンド、Python、Office）をモデルに任せたいが、実行される内容を必ず確認してからにしたい
+- PowerShell、JSON の設定ファイル、ヘルスチェックのページを扱うのに抵抗がない
+
+**まだ向いていない人**
+- macOS や Linux、AMD や Intel の GPU を使っている（ランチャー、GPU の配置計画、llama.cpp のビルドは Windows と
+  NVIDIA CUDA 向けです）
+- ワンクリックのインストーラーや、`C:\LLM` 以外の場所へのインストールが必要（[#2](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/issues/2)）
+- 複数の人で使いたい、ほかの端末から使いたい（すべてのサービスは `127.0.0.1` だけで待ち受けます）
+- VRAM が 20 GB を大きく下回るのに 27B モデルを会話の速さで使いたい（6 GB のノート PC の GPU では毎秒 1〜2 トークン。
+  4B モデルなら速く動きますが、ランチャーには 27B のファイルが必要です）
+
 ## 日本語で使う
 
 - **切り替え:** ไทย | EN | 日本語 | 中文 のボタン、または `Alt+Shift+L`。設定は `projects\settings.json` の `"lang"`
@@ -116,9 +132,21 @@ Qwen Local AI Workbench は、llama.cpp のサーバーと内蔵 WebUI を、チ
    C:\Python313\python.exe -m pip install -r C:\LLM\requirements.txt
    ```
 
-3. リポジトリに含まれないものを置きます。llama.cpp のビルドを `C:\LLM\llama.cpp-b10984` に展開し、GGUF ファイルを
-   `C:\LLM\models` に置きます。ファイル名がそのままモデル ID になります（例: `Qwen3.8-27B-UD-Q4_K_M.gguf` は必須、
-   画像入力用の `mmproj-Qwen3.8-27B-F16.gguf` と、Fast ボタンや要約に使う `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` は任意）。
+3. リポジトリに含まれないものを置きます。llama.cpp の [b10984 リリース](https://github.com/ggml-org/llama.cpp/releases/tag/b10984) から
+   `llama-b10984-bin-win-cuda-12.4-x64.zip` と `cudart-llama-bin-win-cuda-12.4-x64.zip`（CUDA ランタイム）を
+   同じフォルダー `C:\LLM\llama.cpp-b10984` に展開します。次にモデルを `C:\LLM\models` にダウンロードします。
+   ファイル名がそのままモデル ID になるので名前は変えないでください（画像入力用のプロジェクターだけは名前の変更が必要です）。
+
+   | ファイル | 入手先 | サイズ | 用途 |
+   |---|---|---|---|
+   | `Qwen3.8-27B-UD-Q4_K_M.gguf` | [unsloth/Qwen3.8-27B-GGUF](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF) | 16.5 GB | **必須**: メインのモデル |
+   | `mmproj-F16.gguf` を `mmproj-Qwen3.8-27B-F16.gguf` に名前変更 | 同じリポジトリ | 0.9 GB | 任意: 27B の画像入力 |
+   | `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` | [unsloth/Qwen3-4B-Instruct-2507-GGUF](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF) | 2.5 GB | 任意: Fast ボタン、会話の要約、リサーチ |
+   | `Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf` | [unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF](https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF) | 17.7 GB | 任意 |
+   | `gpt-oss-20b-MXFP4.gguf` | [ggml-org/gpt-oss-20b-GGUF](https://huggingface.co/ggml-org/gpt-oss-20b-GGUF) | 12.1 GB | 任意 |
+
+   意味検索には `Qwen3-Embedding-0.6B-Q8_0.gguf`（0.6 GB、[Qwen/Qwen3-Embedding-0.6B-GGUF](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF)）を `D:\LLM\models-embed` に置きます。
+   モデルごとにライセンスが異なるので、先にモデルカードを確認してください。
 4. サンプルから設定ファイルを作ります。`ui-config.json` は必須です。
 
    ```powershell

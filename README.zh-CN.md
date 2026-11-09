@@ -63,6 +63,21 @@ Qwen Local AI Workbench 用一个简洁、以聊天为中心的界面包装了 l
 - **GPU 自动分配：** 检测内置 GPU 和雷电 eGPU，规划每个模型放在哪里，也可以在界面中手动调整。接上 RTX 4090 后，
   27B 模型从约 1–2 tok/s 提升到 **42.8 tok/s**。
 
+## 适合你吗？
+
+**适合你，如果你**
+- 有一台装 NVIDIA GPU 的 Windows 11 电脑，希望聊天、文件和模型都留在这台电脑上；
+- 需要在本地检索、读取和总结中文、英文、日文或泰文的文档、扫描件和录音；
+- 想让模型操作你的电脑（文件、命令、Python、Office），但一定要先看到将要执行的具体内容；
+- 不排斥 PowerShell、JSON 配置文件和健康状态页面。
+
+**暂时不适合，如果你**
+- 使用 macOS 或 Linux，或者 AMD、Intel 显卡：启动脚本、GPU 规划和 llama.cpp 版本都是为 Windows 和 NVIDIA CUDA 准备的；
+- 需要一键安装程序，或要装到 `C:\LLM` 以外的位置（[#2](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/issues/2)）；
+- 要给多人使用或从其他设备访问：所有服务只监听 `127.0.0.1`；
+- 显存远低于 20 GB 却想让 27B 模型以对话速度运行：在 6 GB 的笔记本 GPU 上每秒只有 1–2 个 token（4B 模型在那里很快，
+  但启动脚本仍需要 27B 的文件）。
+
 ## 使用中文
 
 - **切换：** 点 ไทย | EN | 日本語 | 中文 按钮，或按 `Alt+Shift+L`。设置保存在 `projects\settings.json` 的 `"lang"`
@@ -109,9 +124,20 @@ Qwen Local AI Workbench 用一个简洁、以聊天为中心的界面包装了 l
    C:\Python313\python.exe -m pip install -r C:\LLM\requirements.txt
    ```
 
-3. 放入仓库中没有的部分：把 llama.cpp 解压到 `C:\LLM\llama.cpp-b10984`，把 GGUF 文件放到 `C:\LLM\models`。文件名就是
-   模型 ID（例如 `Qwen3.8-27B-UD-Q4_K_M.gguf` 必需；用于图像输入的 `mmproj-Qwen3.8-27B-F16.gguf`，以及用于 Fast 按钮
-   和摘要的 `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` 可选）。
+3. 放入仓库中没有的部分：从 llama.cpp 的 [b10984 版本](https://github.com/ggml-org/llama.cpp/releases/tag/b10984) 下载 `llama-b10984-bin-win-cuda-12.4-x64.zip` 和
+   `cudart-llama-bin-win-cuda-12.4-x64.zip`（CUDA 运行库），解压到同一个文件夹 `C:\LLM\llama.cpp-b10984`。
+   然后把模型下载到 `C:\LLM\models`。文件名就是模型 ID，请保持原名；只有图像输入用的投影文件需要改名：
+
+   | 文件 | 来源 | 大小 | 用途 |
+   |---|---|---|---|
+   | `Qwen3.8-27B-UD-Q4_K_M.gguf` | [unsloth/Qwen3.8-27B-GGUF](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF) | 16.5 GB | **必需**：主模型 |
+   | `mmproj-F16.gguf`，改名为 `mmproj-Qwen3.8-27B-F16.gguf` | 同一个仓库 | 0.9 GB | 可选：27B 的图像输入 |
+   | `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` | [unsloth/Qwen3-4B-Instruct-2507-GGUF](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF) | 2.5 GB | 可选：Fast 按钮、对话摘要、研究 |
+   | `Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf` | [unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF](https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF) | 17.7 GB | 可选 |
+   | `gpt-oss-20b-MXFP4.gguf` | [ggml-org/gpt-oss-20b-GGUF](https://huggingface.co/ggml-org/gpt-oss-20b-GGUF) | 12.1 GB | 可选 |
+
+   语义检索使用 `Qwen3-Embedding-0.6B-Q8_0.gguf`（0.6 GB，来自 [Qwen/Qwen3-Embedding-0.6B-GGUF](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF)），放在 `D:\LLM\models-embed`。
+   每个模型都有自己的许可证，请先查看模型卡。
 4. 从示例创建配置文件，`ui-config.json` 是必需的。
 
    ```powershell
