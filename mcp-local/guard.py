@@ -83,6 +83,7 @@ import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 HERE = Path(__file__).parent
 CONFIG_PATH = HERE / "config.json"
@@ -607,10 +608,10 @@ def _check(path: str, need_write: bool) -> str:
     if _device_path_violation(path):
         audit("denied", {"path": scrub_text(str(path))[:200], "reason": "device_namespace",
                          "write": need_write})
-        raise Denied("path รูปแบบอุปกรณ์ของ Windows (\\\\?\\ หรือ \\\\.\\ ที่ไม่ใช่ไดรฟ์) ไม่อนุญาต")
+        raise Denied(TR("path รูปแบบอุปกรณ์ของ Windows (\\\\?\\ หรือ \\\\.\\ ที่ไม่ใช่ไดรฟ์) ไม่อนุญาต"))
     p = _norm(path)
     if not p or len(p) < 3:
-        raise Denied("path ไม่ถูกต้อง")
+        raise Denied(TR("path ไม่ถูกต้อง"))
 
     raw = _abs(path)
     # NTFS alternate data stream (x.pem::$DATA, Cookies:$DATA) เปิดอ่านเนื้อไฟล์เดิมได้จริง
@@ -618,20 +619,20 @@ def _check(path: str, need_write: bool) -> str:
     for form in (p, raw):
         if form and ":" in os.path.splitdrive(form)[1]:
             audit("denied", {"path": p, "reason": "alternate_data_stream", "write": need_write})
-            raise Denied("path ที่มี ':' (alternate data stream ของ NTFS) ไม่อนุญาต")
+            raise Denied(TR("path ที่มี ':' (alternate data stream ของ NTFS) ไม่อนุญาต"))
     stack = not _is_internal()
     hit = _blocked(p, cfg, stack) or (_blocked(raw, cfg, stack) if raw else None)
     if hit:
         audit("denied", {"path": p, "reason": "blocked", "pattern": hit,
                          "write": need_write})
-        raise Denied("path นี้อยู่ในรายการต้องห้าม (credential/ฐานข้อมูลแอป/ไฟล์ระบบ) "
-                     "จึงเข้าถึงไม่ได้")
+        raise Denied(TR("path นี้อยู่ในรายการต้องห้าม (credential/ฐานข้อมูลแอป/ไฟล์ระบบ) "
+                     "จึงเข้าถึงไม่ได้"))
 
     scope = _scope_violation(p) or (_scope_violation(raw) if raw else None)
     if scope:
         audit("denied", {"path": p, "reason": scope, "project": current_project(),
                          "write": need_write})
-        raise Denied("path นี้เป็นข้อมูลของโปรเจกต์อื่น (กฎ S04) โปรเจกต์นี้เข้าถึงไม่ได้")
+        raise Denied(TR("path นี้เป็นข้อมูลของโปรเจกต์อื่น (กฎ S04) โปรเจกต์นี้เข้าถึงไม่ได้"))
 
     best = None
     for root in cfg["allowed_roots"]:
@@ -642,20 +643,20 @@ def _check(path: str, need_write: bool) -> str:
                 best = root
     if best is None:
         audit("denied", {"path": p, "reason": "outside_roots", "write": need_write})
-        raise Denied("path อยู่นอกพื้นที่ที่อนุญาต")
+        raise Denied(TR("path อยู่นอกพื้นที่ที่อนุญาต"))
 
     if need_write and best.get("mode") != "read_write":
         audit("denied", {"path": p, "reason": "read_only_root",
                          "root": best["path"]})
-        raise Denied("พื้นที่นี้เปิดให้อ่านอย่างเดียว (%s) เขียนไม่ได้" % best["path"])
+        raise Denied(TR("พื้นที่นี้เปิดให้อ่านอย่างเดียว (%s) เขียนไม่ได้") % best["path"])
 
     if need_write and not _is_internal():
         wp = write_protected_hit(path, cfg)
         if wp:
             audit("denied", {"path": p, "reason": "write_protected", "pattern": wp})
-            raise Denied("path นี้อยู่ในเขตห้ามเขียน (โค้ด/ค่าตั้งของระบบ หรือจุดที่ทำให้โปรแกรม"
+            raise Denied(TR("path นี้อยู่ในเขตห้ามเขียน (โค้ด/ค่าตั้งของระบบ หรือจุดที่ทำให้โปรแกรม"
                          "รันเองอัตโนมัติ) เครื่องมือแก้ไม่ได้แม้ผู้ใช้อนุมัติ "
-                         "ถ้าจำเป็นจริงให้ผู้ใช้แก้เอง")
+                         "ถ้าจำเป็นจริงให้ผู้ใช้แก้เอง"))
     return p
 
 
@@ -778,7 +779,7 @@ def check_glob(pattern: str, need_write: bool = False, limit: int = 2000) -> lis
             uniq.append(h)
     hits = uniq
     if len(hits) > limit:
-        raise Denied("wildcard %s ตรงกับไฟล์มากเกิน %d รายการ ระบุให้แคบลง" % (pattern, limit))
+        raise Denied(TR("wildcard %s ตรงกับไฟล์มากเกิน %d รายการ ระบุให้แคบลง") % (pattern, limit))
     out = []
     for h in hits:
         out.append(_check(h, need_write))
@@ -1030,8 +1031,8 @@ def check_workdir_for_exec(workdir: str, readonly: bool) -> None:
     # แต่ไฟล์ตรงใต้สองโฟลเดอร์นี้คือ launcher/hub ถ้าเป็น cwd แล้ว `del hub.py` ในโค้ด -c จะมองไม่เห็น
     parents = {os.path.normcase(r"C:\LLM"), os.path.normcase(r"C:\LLM\projects")}
     if os.path.normcase(_norm(workdir)).rstrip("\\") in parents or is_write_protected(workdir):
-        raise Denied("โฟลเดอร์ทำงานนี้อยู่ในเขตห้ามเขียน จึงรันคำสั่งที่เปลี่ยนแปลงเครื่องในนี้ไม่ได้ "
-                     "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal")
+        raise Denied(TR("โฟลเดอร์ทำงานนี้อยู่ในเขตห้ามเขียน จึงรันคำสั่งที่เปลี่ยนแปลงเครื่องในนี้ไม่ได้ "
+                     "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal"))
 
 
 # ------------------------------------------------- two-step confirmation
@@ -1368,15 +1369,15 @@ def render_review(text) -> tuple[str, dict]:
     stats["lines"], stats["chars"] = len(lines), sum(len(x) + 1 for x in lines)
     warn = []
     if stats["hidden"]:
-        warn.append("⚠ คำเตือน (WARNING): พบอักขระซ่อน/กำกวม %d ตัว แสดงเป็น «U+XXXX» "
-                    "(อาจเป็นการซ่อนโค้ดแบบ Trojan Source) — ตรวจให้ดีก่อนอนุญาต" % stats["hidden"])
+        warn.append(TR("⚠ คำเตือน (WARNING): พบอักขระซ่อน/กำกวม %d ตัว แสดงเป็น «U+XXXX» "
+                    "(อาจเป็นการซ่อนโค้ดแบบ Trojan Source) — ตรวจให้ดีก่อนอนุญาต") % stats["hidden"])
     if stats["confusable"]:
-        warn.append("⚠ คำเตือน (WARNING): พบอักษรหน้าตาเหมือนอักษรละติน/ASCII %d ตัว แสดงเป็น «U+XXXX» "
-                    "(เช่น Cyrillic/Greek ปนในคำภาษาอังกฤษ หรืออักษรเต็มความกว้าง) — ชื่อ/โดเมนนี้อาจไม่ใช่ตัวที่ตาเห็น"
+        warn.append(TR("⚠ คำเตือน (WARNING): พบอักษรหน้าตาเหมือนอักษรละติน/ASCII %d ตัว แสดงเป็น «U+XXXX» "
+                    "(เช่น Cyrillic/Greek ปนในคำภาษาอังกฤษ หรืออักษรเต็มความกว้าง) — ชื่อ/โดเมนนี้อาจไม่ใช่ตัวที่ตาเห็น")
                     % stats["confusable"])
     if stats["runs"]:
-        warn.append("⚠ คำเตือน (WARNING): ช่องว่างยาวผิดปกติ %d จุด ย่อแสดงเป็น «N spaces» "
-                    "(อาจใช้ดันโค้ดออกไปนอกจอ)" % stats["runs"])
+        warn.append(TR("⚠ คำเตือน (WARNING): ช่องว่างยาวผิดปกติ %d จุด ย่อแสดงเป็น «N spaces» "
+                    "(อาจใช้ดันโค้ดออกไปนอกจอ)") % stats["runs"])
     return "\n".join(warn + lines), stats
 
 
@@ -1418,7 +1419,7 @@ def review_capped(lines, sha_hex: str, max_lines: int = REVIEW_BLOCK_MAX_LINES,
     shown = lines[:k]
     omitted = len(lines) - k
     if omitted:
-        shown.append("(ไม่แสดงอีก %d บรรทัด — %d more lines not shown — content hash sha256:%s…)"
+        shown.append(TR("(ไม่แสดงอีก %d บรรทัด — %d more lines not shown — content hash sha256:%s…)")
                      % (omitted, omitted, str(sha_hex or "")[:16]))
     return "\n".join(shown), omitted
 
@@ -1510,29 +1511,29 @@ def review_difference(stored, given) -> str:
     (2 นาทีครึ่ง) จน token หมดอายุโดยไม่ได้ลองใหม่เลย บอกจุดที่ผิดตรงๆ ให้แก้ได้ในการเรียกครั้งถัดไป
     ข้อความ stored โมเดลได้เห็นอยู่แล้วตอนขอ token จึงไม่มีอะไรรั่วเพิ่ม"""
     if not isinstance(given, str) or not given.strip():
-        return "ไม่ได้ส่ง review มา (ต้องใส่ข้อความในบล็อก REVIEW ทั้งก้อน)"
+        return TR("ไม่ได้ส่ง review มา (ต้องใส่ข้อความในบล็อก REVIEW ทั้งก้อน)")
     want = normalize_review(stored).split("\n")
     got_text, padded_ok = _review_norm(given, unfence=True)       # เทียบแบบเดียวกับ review_matches
     got = got_text.split("\n")
     if got == want and not padded_ok:
-        return ("ข้อความตรงกันแต่มีช่องว่าง/บรรทัดว่างเกินมามากผิดปกติ (หัวข้อความ ท้ายบรรทัด หรือหัว/ท้ายทั้งก้อน) "
-                "— ส่งตามบล็อกโดยไม่เติมช่องว่าง")
+        return (TR("ข้อความตรงกันแต่มีช่องว่าง/บรรทัดว่างเกินมามากผิดปกติ (หัวข้อความ ท้ายบรรทัด หรือหัว/ท้ายทั้งก้อน) "
+                "— ส่งตามบล็อกโดยไม่เติมช่องว่าง"))
     for i, (w, g) in enumerate(zip(want, got)):
         if w == g:
             continue
         if g.lstrip(" \t") == w:
-            return ("บรรทัด %d ของที่ส่งมาขึ้นต้นด้วยช่องว่างเกินมา %d ตัว — บรรทัดนี้ต้องขึ้นต้นด้วย %s"
+            return (TR("บรรทัด %d ของที่ส่งมาขึ้นต้นด้วยช่องว่างเกินมา %d ตัว — บรรทัดนี้ต้องขึ้นต้นด้วย %s")
                     % (i + 1, len(g) - len(w), _snip(w, 0)))
         if w.lstrip(" \t") == g:
-            return ("บรรทัด %d ของที่ส่งมาขาดช่องว่างหน้าบรรทัด %d ตัว — บรรทัดนี้ต้องเป็น %s"
+            return (TR("บรรทัด %d ของที่ส่งมาขาดช่องว่างหน้าบรรทัด %d ตัว — บรรทัดนี้ต้องเป็น %s")
                     % (i + 1, len(w) - len(g), _snip(w, 0)))
         col = next((k for k, (a, b) in enumerate(zip(w, g)) if a != b), min(len(w), len(g)))
-        return ("บรรทัด %d ตัวอักษรที่ %d ไม่ตรง: ต้องเป็น %s แต่ส่งมาเป็น %s"
+        return (TR("บรรทัด %d ตัวอักษรที่ %d ไม่ตรง: ต้องเป็น %s แต่ส่งมาเป็น %s")
                 % (i + 1, col + 1, _snip(w, col), _snip(g, col)))
     if len(got) < len(want):
-        return ("ส่งมาไม่ครบ: มี %d บรรทัด ต้องมี %d บรรทัด — บรรทัดแรกที่ขาดคือบรรทัด %d %s"
+        return (TR("ส่งมาไม่ครบ: มี %d บรรทัด ต้องมี %d บรรทัด — บรรทัดแรกที่ขาดคือบรรทัด %d %s")
                 % (len(got), len(want), len(got) + 1, _snip(want[len(got)], 0)))
-    return ("มีบรรทัดเกินมา: ส่งมา %d บรรทัด ต้องมี %d บรรทัด — บรรทัดที่เกินเริ่มที่บรรทัด %d %s"
+    return (TR("มีบรรทัดเกินมา: ส่งมา %d บรรทัด ต้องมี %d บรรทัด — บรรทัดที่เกินเริ่มที่บรรทัด %d %s")
             % (len(got), len(want), len(want) + 1, _snip(got[len(want)], 0)))
 
 
@@ -1560,14 +1561,14 @@ def review_url_lines(url) -> list[str]:
         host = ""
     if not host:
         return []
-    out = ["โฮสต์ (host): %s" % host]
+    out = [TR("โฮสต์ (host): %s") % host]
     if not host.isascii():
         try:
             puny = host.encode("idna").decode("ascii")
         except UnicodeError:
-            puny = "(แปลงเป็น punycode ไม่ได้ — ชื่อโดเมนผิดรูปแบบ)"
-        out.append("โฮสต์แบบ punycode (IDNA): %s" % puny)
-        out.append("⚠ ชื่อโดเมนมีอักษรที่ไม่ใช่ ASCII — ตรวจว่าไม่ใช่โดเมนปลอมที่หน้าตาเหมือนของจริง")
+            puny = TR("(แปลงเป็น punycode ไม่ได้ — ชื่อโดเมนผิดรูปแบบ)")
+        out.append(TR("โฮสต์แบบ punycode (IDNA): %s") % puny)
+        out.append(TR("⚠ ชื่อโดเมนมีอักษรที่ไม่ใช่ ASCII — ตรวจว่าไม่ใช่โดเมนปลอมที่หน้าตาเหมือนของจริง"))
     return out
 
 
@@ -1646,8 +1647,8 @@ def need_confirm(action: str, detail: str, review: str | None = None,
                                            "lines": stats["lines"], "chars": stats["chars"],
                                            "project": current_project()})
         raise ReviewTooLarge(
-            "การกระทำนี้ยาวเกินกว่าที่คนจะตรวจทานได้ในกล่องอนุญาต (%d บรรทัด / %d ตัวอักษร เพดาน %d / %d) "
-            "จึงไม่ออก confirm_token — แบ่งเป็นหลายครั้งให้เล็กลง"
+            TR("การกระทำนี้ยาวเกินกว่าที่คนจะตรวจทานได้ในกล่องอนุญาต (%d บรรทัด / %d ตัวอักษร เพดาน %d / %d) "
+            "จึงไม่ออก confirm_token — แบ่งเป็นหลายครั้งให้เล็กลง")
             % (stats["lines"], stats["chars"], REVIEW_MAX_LINES, REVIEW_MAX_CHARS))
     token = secrets.token_hex(4)
     scope = current_project()
@@ -1843,20 +1844,20 @@ def review_steps(token: str, retry: bool = False) -> str:
     (คนกดอนุญาตแล้ว) และการเรียกใหม่ก็ต้องผ่านกล่องอนุญาตอีกครั้งเสมอ — ไม่มีขั้นไหนข้ามคน"""
     call = confirm_call_text(token)
     if retry:
-        return ("1. ให้เรียก %s ใหม่ทันที โดยไม่ต้องส่ง review — ไม่ต้องคัดลอก REVIEW ไม่ต้องแสดงซ้ำ "
+        return (TR("1. ให้เรียก %s ใหม่ทันที โดยไม่ต้องส่ง review — ไม่ต้องคัดลอก REVIEW ไม่ต้องแสดงซ้ำ "
                 "และไม่ต้องถามผู้ใช้ใหม่ (ไม่ต้องเรียกเครื่องมือเดิมซ้ำ)\n"
                 "2. กล่อง \"อนุญาต\" ของหน้าแชตจะแสดง REVIEW จากเซิร์ฟเวอร์ให้ผู้ใช้ตรวจแล้วกดเองอีกครั้ง "
-                "— นั่นคือสิ่งที่จะรันจริง"
+                "— นั่นคือสิ่งที่จะรันจริง")
                 % call)
     # รอบ FIXER (e2e จริง 2026-10-01): Qwen3-4B ไม่เคยแสดงบล็อก REVIEW ตอบแค่คำถามบรรทัดเดียว — คำสั่งนามธรรม
     # "แสดงให้ผู้ใช้ดู" ไม่พอสำหรับโมเดลเล็ก จึงบอกเป็นการกระทำที่จับต้องได้: คัดลอกทั้งบล็อก (พร้อมรั้ว) ลงในคำตอบ
     # (ถ้าโมเดลเผลอส่งบล็อกพร้อมรั้วกลับมาใน local_confirm ก็ยังตรง — review_matches ถอดรั้วหนึ่งชั้น)
     # กล่องอนุญาตยังเป็นด่านจริง (เซิร์ฟเวอร์บังคับว่าต้องถูกแสดงในกล่องก่อน) ส่วนนี้คือให้คนเห็นในแชตด้วย
-    return ("1. ตอบผู้ใช้โดยแสดงบล็อก REVIEW ข้างบนครบทุกบรรทัด — คัดลอกทั้งบล็อกพร้อมรั้วบนล่างลงในคำตอบตรงตัว "
+    return (TR("1. ตอบผู้ใช้โดยแสดงบล็อก REVIEW ข้างบนครบทุกบรรทัด — คัดลอกทั้งบล็อกพร้อมรั้วบนล่างลงในคำตอบตรงตัว "
             "(ห้ามย่อ ห้ามสรุปแทน ห้ามแก้) แล้วถามว่าอนุมัติไหม\n"
             "2. ถ้าผู้ใช้อนุมัติ ให้เรียก %s — ส่ง token อย่างเดียวพอ ไม่ต้องคัดลอก REVIEW กลับมา "
             "(review ไม่บังคับ ถ้าส่งต้องตรงทุกตัวอักษร) และไม่ต้องเรียกเครื่องมือเดิมซ้ำ\n"
-            "3. หน้าแชตจะแสดง REVIEW จากเซิร์ฟเวอร์ในกล่อง \"อนุญาต\" ให้ผู้ใช้ตรวจอีกครั้ง — นั่นคือสิ่งที่จะรันจริง"
+            "3. หน้าแชตจะแสดง REVIEW จากเซิร์ฟเวอร์ในกล่อง \"อนุญาต\" ให้ผู้ใช้ตรวจอีกครั้ง — นั่นคือสิ่งที่จะรันจริง")
             % call)
 
 
@@ -1869,16 +1870,16 @@ def confirm_hint(token: str, action: str, detail: str) -> str:
     """
     with _lock:
         review = (_pending.get(str(token or "").strip()) or {}).get("review")
-    block = review_fence(review) if review else "(ไม่พบข้อความตรวจทานของ token นี้ — ขอ token ใหม่)"
+    block = review_fence(review) if review else TR("(ไม่พบข้อความตรวจทานของ token นี้ — ขอ token ใหม่)")
     return (
-        "ต้องยืนยันก่อนทำจริง (กฎ S03 สองขั้นตอน)\n"
+        TR("ต้องยืนยันก่อนทำจริง (กฎ S03 สองขั้นตอน)\n"
         "  การกระทำ : %s\n"
         "  รายละเอียด: %s\n\n"
         "REVIEW — ข้อความตรวจทานที่เซิร์ฟเวอร์สร้างจากอาร์กิวเมนต์จริง คือสิ่งที่จะเกิดขึ้นทุกตัวอักษร "
         "(แสดงบล็อกนี้ให้ผู้ใช้ดู):\n%s\n\n"
         "ขั้นตอน:\n%s\n"
         "token นี้ใช้ได้ครั้งเดียว ผูกกับการกระทำนี้เท่านั้น และหมดอายุใน %d นาที\n"
-        "ห้ามเดาว่าผู้ใช้อนุมัติแล้ว ต้องถามก่อนเสมอ"
+        "ห้ามเดาว่าผู้ใช้อนุมัติแล้ว ต้องถามก่อนเสมอ")
         % (visible(action), visible(detail), block, review_steps(token), int(CONFIRM_TTL // 60))
     )
 
@@ -1894,30 +1895,30 @@ def project_dir(project: str) -> str:
     try:
         d.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        raise Denied("สร้างโฟลเดอร์โปรเจกต์ไม่ได้: %s" % exc) from exc
+        raise Denied(TR("สร้างโฟลเดอร์โปรเจกต์ไม่ได้: %s") % exc) from exc
     return str(d)
 
 
 # --------------------------------------------------------------- self-test
 def policy_summary() -> str:
     cfg = _load_config()
-    lines = ["นโยบายความปลอดภัยที่ใช้อยู่", "", "พื้นที่ที่อนุญาต:"]
+    lines = [TR("นโยบายความปลอดภัยที่ใช้อยู่"), "", TR("พื้นที่ที่อนุญาต:")]
     for r in cfg["allowed_roots"]:
         lines.append("  %-28s %s" % (r["path"], r.get("mode", "read_only")))
     lines.append("")
-    lines.append("รูปแบบ path ที่ถูกบล็อก: %d รายการ (credential, ฐานข้อมูลแอป, ไฟล์ระบบ, คีย์)"
+    lines.append(TR("รูปแบบ path ที่ถูกบล็อก: %d รายการ (credential, ฐานข้อมูลแอป, ไฟล์ระบบ, คีย์)")
                  % len(cfg["blocked_globs"]))
-    lines.append("นามสกุลที่ห้ามอ่าน: %s" % ", ".join(cfg["blocked_suffixes"]))
-    lines.append("เขตห้ามเขียน: %d รูปแบบ (โค้ด/ค่าตั้งของสแตก, Startup, PowerShell profile, "
-                 ".git, rc ของ shell) — ปฏิเสธแม้มี confirm_token" % len(cfg["write_protected"]))
-    lines.append("อ่านไฟล์ได้สูงสุด %s ไบต์ต่อครั้ง" % format(cfg.get("max_read_bytes", 0), ","))
+    lines.append(TR("นามสกุลที่ห้ามอ่าน: %s") % ", ".join(cfg["blocked_suffixes"]))
+    lines.append(TR("เขตห้ามเขียน: %d รูปแบบ (โค้ด/ค่าตั้งของสแตก, Startup, PowerShell profile, "
+                 ".git, rc ของ shell) — ปฏิเสธแม้มี confirm_token") % len(cfg["write_protected"]))
+    lines.append(TR("อ่านไฟล์ได้สูงสุด %s ไบต์ต่อครั้ง") % format(cfg.get("max_read_bytes", 0), ","))
     lines.append("")
-    lines.append("การกระทำที่เปลี่ยนเครื่อง (รันคำสั่ง แก้ไฟล์ ทับไฟล์ สร้างไฟล์สคริปต์ เปิด/หยุดงาน) "
-                 "ต้องยืนยันสองขั้นเสมอ ขั้นที่สองทำได้ทาง %s เท่านั้น" % CONFIRM_TOOL)
-    lines.append("กล่องอนุญาตของหน้าแชตดึงข้อความตรวจทาน (review) ที่เซิร์ฟเวอร์สร้างมาแสดงเอง = โค้ด/คำสั่งจริง "
+    lines.append(TR("การกระทำที่เปลี่ยนเครื่อง (รันคำสั่ง แก้ไฟล์ ทับไฟล์ สร้างไฟล์สคริปต์ เปิด/หยุดงาน) "
+                 "ต้องยืนยันสองขั้นเสมอ ขั้นที่สองทำได้ทาง %s เท่านั้น") % CONFIRM_TOOL)
+    lines.append(TR("กล่องอนุญาตของหน้าแชตดึงข้อความตรวจทาน (review) ที่เซิร์ฟเวอร์สร้างมาแสดงเอง = โค้ด/คำสั่งจริง "
                  "(อักขระซ่อนแสดงเป็น «U+XXXX») ขั้นที่สองส่ง token อย่างเดียวได้ ถ้าส่ง review มาต้องตรงตัว "
-                 "token ค้างได้ไม่เกิน %d ตัวต่อโปรเจกต์" % MAX_PENDING_PER_PROJECT)
-    lines.append("บันทึก/สถานะรวมของสแตก (audit.log, C:\\LLM\\logs, tasks) อ่านจากเครื่องมือไม่ได้")
-    lines.append("ข้อมูลของโปรเจกต์อื่นเข้าถึงไม่ได้ (กฎ S04)")
-    lines.append("ทุกการเรียกเครื่องมือถูกบันทึกที่ %s" % AUDIT_PATH)
+                 "token ค้างได้ไม่เกิน %d ตัวต่อโปรเจกต์") % MAX_PENDING_PER_PROJECT)
+    lines.append(TR("บันทึก/สถานะรวมของสแตก (audit.log, C:\\LLM\\logs, tasks) อ่านจากเครื่องมือไม่ได้"))
+    lines.append(TR("ข้อมูลของโปรเจกต์อื่นเข้าถึงไม่ได้ (กฎ S04)"))
+    lines.append(TR("ทุกการเรียกเครื่องมือถูกบันทึกที่ %s") % AUDIT_PATH)
     return "\n".join(lines)

@@ -21,6 +21,7 @@ import urllib.parse
 from pathlib import Path
 
 import guard
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # secrets_util อยู่ที่ C:\LLM (โฟลเดอร์แม่) — ต่อท้าย sys.path ไม่แทรกหน้า กันชื่อไปทับ stdlib
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,8 +39,8 @@ EXEC_TIMEOUT = 120
 
 def _err(exc: Exception) -> str:
     if isinstance(exc, guard.Denied):
-        return "ปฏิเสธ: %s" % exc
-    return "ผิดพลาด: %s: %s" % (type(exc).__name__, exc)
+        return TR("ปฏิเสธ: %s") % exc
+    return TR("ผิดพลาด: %s: %s") % (type(exc).__name__, exc)
 
 
 def _human(n: float) -> str:
@@ -61,7 +62,7 @@ def read_file(path: str, offset: int = 0, limit: int = 2000, **_) -> str:
         guard.audit("read_file", {"path": p, "offset": offset, "limit": limit})
         f = Path(p)
         if not f.exists():
-            return "ไม่พบไฟล์: %s" % p
+            return TR("ไม่พบไฟล์: %s") % p
         if f.is_dir():
             return list_dir(p)
         size = f.stat().st_size
@@ -69,9 +70,9 @@ def read_file(path: str, offset: int = 0, limit: int = 2000, **_) -> str:
         with f.open("rb") as fh:
             head = fh.read(4096)
         if _is_binary(head):
-            return "ไฟล์นี้เป็นไบนารี (%s) อ่านเป็นข้อความไม่ได้\n%s" % (_human(size), p)
+            return TR("ไฟล์นี้เป็นไบนารี (%s) อ่านเป็นข้อความไม่ได้\n%s") % (_human(size), p)
         if size > cap:
-            return ("ไฟล์ใหญ่เกินกำหนด %s (สูงสุด %s) ใช้ grep_search หรือระบุ offset/limit แทน"
+            return (TR("ไฟล์ใหญ่เกินกำหนด %s (สูงสุด %s) ใช้ grep_search หรือระบุ offset/limit แทน")
                     % (_human(size), _human(cap)))
         text = f.read_text(encoding="utf-8", errors="replace")
         lines = text.splitlines()
@@ -80,8 +81,8 @@ def read_file(path: str, offset: int = 0, limit: int = 2000, **_) -> str:
         window = lines[off:off + lim]
         out = ["%6d\t%s" % (off + i + 1, ln[:MAX_LINE]) for i, ln in enumerate(window)]
         if off + lim < len(lines):
-            out.append("... (อีก %d บรรทัด จากทั้งหมด %d)" % (len(lines) - off - lim, len(lines)))
-        return "\n".join(out) if out else "(ไฟล์ว่าง)"
+            out.append(TR("... (อีก %d บรรทัด จากทั้งหมด %d)") % (len(lines) - off - lim, len(lines)))
+        return "\n".join(out) if out else TR("(ไฟล์ว่าง)")
     except Exception as exc:
         return _err(exc)
 
@@ -92,7 +93,7 @@ def list_dir(path: str, **_) -> str:
         guard.audit("list_dir", {"path": p})
         d = Path(p)
         if not d.is_dir():
-            return "ไม่ใช่โฟลเดอร์: %s" % p
+            return TR("ไม่ใช่โฟลเดอร์: %s") % p
         rows, hidden = [], 0
         for item in sorted(d.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
             try:
@@ -109,11 +110,11 @@ def list_dir(path: str, **_) -> str:
             except OSError:
                 rows.append("%-19s %10s  %s" % ("?", "?", item.name))
             if len(rows) >= 500:
-                rows.append("... (แสดง 500 รายการแรก)")
+                rows.append(TR("... (แสดง 500 รายการแรก)"))
                 break
-        head = "%s  (%d รายการ)" % (p, len(rows))
+        head = TR("%s  (%d รายการ)") % (p, len(rows))
         if hidden:
-            head += "  [ซ่อน %d รายการตามนโยบายความปลอดภัย]" % hidden
+            head += TR("  [ซ่อน %d รายการตามนโยบายความปลอดภัย]") % hidden
         return head + "\n" + "\n".join(rows)
     except Exception as exc:
         return _err(exc)
@@ -128,27 +129,27 @@ def get_info(path: str = "", **_) -> str:
         guard.audit("get_info", {"path": p})
         f = Path(p)
         if not f.exists():
-            return "ไม่พบ: %s" % p
+            return TR("ไม่พบ: %s") % p
         st = f.stat()
-        kind = "โฟลเดอร์" if f.is_dir() else "ไฟล์"
+        kind = TR("โฟลเดอร์") if f.is_dir() else TR("ไฟล์")
         lines = [
             "path      %s" % p,
-            "ชนิด      %s" % kind,
-            "ขนาด      %s (%s ไบต์)" % (_human(st.st_size), format(st.st_size, ",")),
-            "แก้ล่าสุด %s" % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime)),
-            "สร้างเมื่อ %s" % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_ctime)),
+            TR("ชนิด      %s") % kind,
+            TR("ขนาด      %s (%s ไบต์)") % (_human(st.st_size), format(st.st_size, ",")),
+            TR("แก้ล่าสุด %s") % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime)),
+            TR("สร้างเมื่อ %s") % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_ctime)),
         ]
         if f.is_dir():
             try:
-                lines.append("ภายใน     %d รายการ" % sum(1 for _ in f.iterdir()))
+                lines.append(TR("ภายใน     %d รายการ") % sum(1 for _ in f.iterdir()))
             except OSError:
                 pass
         else:
             try:
                 guard.check_write(p)
-                lines.append("สิทธิ์     เขียนได้")
+                lines.append(TR("สิทธิ์     เขียนได้"))
             except guard.Denied:
-                lines.append("สิทธิ์     อ่านอย่างเดียว")
+                lines.append(TR("สิทธิ์     อ่านอย่างเดียว"))
         return "\n".join(lines)
     except Exception as exc:
         return _err(exc)
@@ -162,12 +163,12 @@ def _sha(text: str) -> str:
 def _snippet(text: str, limit: int = 300) -> str:
     """ตัวอย่างข้อความสั้นๆ ให้ผู้ใช้เห็นก่อนอนุมัติ (บรรทัดใหม่แสดงเป็น ⏎)"""
     flat = str(text).replace("\r\n", "\n").replace("\n", " ⏎ ")
-    return flat if len(flat) <= limit else flat[:limit] + " …(ตัดที่ %d ตัวอักษร)" % limit
+    return flat if len(flat) <= limit else flat[:limit] + TR(" …(ตัดที่ %d ตัวอักษร)") % limit
 
 
 def _bad_token_msg() -> str:
-    return ("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือไฟล์/สถานะเปลี่ยนไปหลังขอ) "
-            "ยังไม่ได้ทำอะไร — ขอใหม่โดยเรียกเครื่องมือนี้อีกครั้งโดยไม่ใส่ token")
+    return (TR("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือไฟล์/สถานะเปลี่ยนไปหลังขอ) "
+            "ยังไม่ได้ทำอะไร — ขอใหม่โดยเรียกเครื่องมือนี้อีกครั้งโดยไม่ใส่ token"))
 
 
 # ============================================================ checkpoints / diff / undo
@@ -339,15 +340,15 @@ def checkpoint_after(entry: dict, path: str) -> None:
 def checkpoint_note(entry: dict) -> str:
     """บรรทัดสั้นๆ ต่อท้ายผลของเครื่องมือ: เก็บ checkpoint ได้ไหม ย้อนยังไง"""
     if entry.get("_error"):
-        return "คำเตือน: เก็บ checkpoint ไม่สำเร็จ (%s) — ย้อนการเปลี่ยนแปลงนี้ด้วย undo ไม่ได้" % entry.get("note")
+        return TR("คำเตือน: เก็บ checkpoint ไม่สำเร็จ (%s) — ย้อนการเปลี่ยนแปลงนี้ด้วย undo ไม่ได้") % entry.get("note")
     note = entry.get("note")
     if note == "too_large":
-        return ("หมายเหตุ: ไฟล์เดิมใหญ่เกิน %d MB จึงไม่ได้เก็บสำเนาไว้ — undo ไฟล์นี้ไม่ได้"
+        return (TR("หมายเหตุ: ไฟล์เดิมใหญ่เกิน %d MB จึงไม่ได้เก็บสำเนาไว้ — undo ไฟล์นี้ไม่ได้")
                 % (CHECKPOINT_FILE_CAP >> 20))
     if note == "budget":
-        return ("หมายเหตุ: พื้นที่ checkpoint ของโปรเจกต์เต็ม (%d MB) จึงไม่ได้เก็บสำเนาไว้ — undo ไม่ได้ "
-                "(ผู้ใช้ลบ checkpoint เก่าเองได้ที่ %s)" % (CHECKPOINT_BUDGET >> 20, _cp_root()))
-    return "checkpoint %s (ย้อนกลับได้ด้วย undo)" % entry.get("id")
+        return (TR("หมายเหตุ: พื้นที่ checkpoint ของโปรเจกต์เต็ม (%d MB) จึงไม่ได้เก็บสำเนาไว้ — undo ไม่ได้ "
+                "(ผู้ใช้ลบ checkpoint เก่าเองได้ที่ %s)") % (CHECKPOINT_BUDGET >> 20, _cp_root()))
+    return TR("checkpoint %s (ย้อนกลับได้ด้วย undo)") % entry.get("id")
 
 
 def _diff_text(data) -> str | None:
@@ -362,7 +363,7 @@ def _diff_text(data) -> str | None:
 def unified_diff(before, after, path: str, max_lines: int = DIFF_MAX_LINES) -> str:
     """unified diff (difflib) ในรั้ว ```diff ตัดที่ max_lines — before/after เป็นข้อความ, None = ทำ diff ไม่ได้"""
     if before is None or after is None:
-        return "(ไม่แสดง diff: ไฟล์ใหญ่เกิน %d MB หรือเป็นไฟล์ไบนารี)" % (DIFF_MAX_BYTES // 1_000_000)
+        return TR("(ไม่แสดง diff: ไฟล์ใหญ่เกิน %d MB หรือเป็นไฟล์ไบนารี)") % (DIFF_MAX_BYTES // 1_000_000)
     # ปรับ CRLF เป็น LF ทั้งสองฝั่ง: write_text บน Windows เขียน CRLF แต่ content ที่โมเดลส่งมาเป็น LF
     # ไม่งั้นทุกบรรทัดจะดูเหมือนถูกแก้ทั้งไฟล์
     a = str(before).replace("\r\n", "\n").splitlines()
@@ -370,11 +371,11 @@ def unified_diff(before, after, path: str, max_lines: int = DIFF_MAX_LINES) -> s
     name = os.path.basename(str(path)) or str(path)
     lines = list(_difflib.unified_diff(a, b, "a/" + name, "b/" + name, n=3, lineterm=""))
     if not lines:
-        return "(เนื้อหาไม่เปลี่ยน)"
+        return TR("(เนื้อหาไม่เปลี่ยน)")
     shown = [ln if len(ln) <= MAX_LINE else ln[:MAX_LINE] + " …" for ln in lines[:max_lines]]
     body = "\n".join(shown)
     if len(lines) > max_lines:
-        body += "\n... (ตัด diff ที่ %d บรรทัด จากทั้งหมด %d บรรทัด)" % (max_lines, len(lines))
+        body += TR("\n... (ตัด diff ที่ %d บรรทัด จากทั้งหมด %d บรรทัด)") % (max_lines, len(lines))
     fence = "```"
     while fence in body:
         fence += "`"
@@ -415,7 +416,7 @@ def _review_fits_whole(numbered: list[str], raw: str) -> bool:
 def _diff_block(title: str, lines: list[str], sha: str) -> tuple[list[str], int]:
     """(บรรทัดของบล็อก diff, จำนวนบรรทัด diff ที่ไม่ได้แสดงเพราะเกินเพดาน)"""
     body, omitted = guard.review_capped(lines, sha)
-    return ["===== %s =====" % title, body or "(เนื้อหาไม่เปลี่ยน)", "===== จบ diff ====="], omitted
+    return ["===== %s =====" % title, body or TR("(เนื้อหาไม่เปลี่ยน)"), TR("===== จบ diff =====")], omitted
 
 
 # รอบ FIXER (R3 ขยายไปถึงไฟล์สคริปต์): เดิมไฟล์ .py/.bat/.ps1 ใหม่ที่ยาวเกิน 400 บรรทัดยังได้ token โดย review
@@ -426,9 +427,9 @@ def _diff_block(title: str, lines: list[str], sha: str) -> tuple[list[str], int]
 # undo ไม่อยู่ในกฎนี้: เนื้อที่คืนคือไบต์เดิมที่เคยอยู่บนดิสก์ (ไม่ใช่โค้ดที่โมเดลเพิ่งแต่ง) และการย้อนไฟล์ใหญ่ต้องทำได้
 def _script_too_large(p: str, what: str) -> guard.ReviewTooLarge:
     return guard.ReviewTooLarge(
-        "%s ของไฟล์สคริปต์/โปรแกรม %s ยาวเกินกว่าที่คนจะตรวจได้ครบในกล่องอนุญาต (เพดาน %d บรรทัด / %d ตัวอักษร "
+        TR("%s ของไฟล์สคริปต์/โปรแกรม %s ยาวเกินกว่าที่คนจะตรวจได้ครบในกล่องอนุญาต (เพดาน %d บรรทัด / %d ตัวอักษร "
         "หลังแสดงอักขระซ่อนและตัดบรรทัด) จึงไม่ออก confirm_token — โค้ดที่จะลงไฟล์ที่รันได้ต้องแสดงครบทุกบรรทัด "
-        "ให้แบ่งเป็นหลายไฟล์/โมดูลที่เล็กลง หรือเขียนส่วนแรกก่อนแล้วเพิ่มทีละส่วนด้วย edit"
+        "ให้แบ่งเป็นหลายไฟล์/โมดูลที่เล็กลง หรือเขียนส่วนแรกก่อนแล้วเพิ่มทีละส่วนด้วย edit")
         % (what, p, guard.REVIEW_BLOCK_MAX_LINES, guard.REVIEW_BLOCK_MAX_CHARS))
 
 
@@ -439,67 +440,67 @@ def _write_review(p: str, content: str, exists: bool, old_size: int, old_text,
     script=True: ห้ามตัด — แสดงครบไม่ได้ = ReviewTooLarge (ไม่ออก token)"""
     size = len(content.encode("utf-8"))
     sha = _sha(content)
-    head = ["[write] %s" % ("เขียนทับไฟล์เดิมทั้งไฟล์" if exists else "สร้างไฟล์สคริปต์/โปรแกรมใหม่ (รันได้)"),
+    head = ["[write] %s" % (TR("เขียนทับไฟล์เดิมทั้งไฟล์") if exists else TR("สร้างไฟล์สคริปต์/โปรแกรมใหม่ (รันได้)")),
             "path: %s" % guard.review_oneline(p),
-            "ขนาดใหม่: %s (%d ไบต์) · sha256 %s…" % (_human(size), size, sha[:16])]
+            TR("ขนาดใหม่: %s (%d ไบต์) · sha256 %s…") % (_human(size), size, sha[:16])]
     if exists:
-        head.append("ไฟล์เดิม: %s · sha256 %s… — ถูกแทนที่ทั้งไฟล์ (เก็บ checkpoint ไว้ undo ได้)"
+        head.append(TR("ไฟล์เดิม: %s · sha256 %s… — ถูกแทนที่ทั้งไฟล์ (เก็บ checkpoint ไว้ undo ได้)")
                     % (_human(old_size), (old_sha or "?")[:16]))
     numbered = guard.review_numbered(content)
     if _review_fits_whole(numbered, content):
-        return "\n".join(head + ["----- เนื้อหาใหม่ทั้งไฟล์ %d บรรทัด = สิ่งที่จะเขียนจริง -----" % len(numbered)]
-                         + numbered + ["----- จบเนื้อหา (ครบ %d บรรทัด) -----" % len(numbered)])
+        return "\n".join(head + [TR("----- เนื้อหาใหม่ทั้งไฟล์ %d บรรทัด = สิ่งที่จะเขียนจริง -----") % len(numbered)]
+                         + numbered + [TR("----- จบเนื้อหา (ครบ %d บรรทัด) -----") % len(numbered)])
     if exists and old_text is not None and size <= DIFF_MAX_BYTES:
         block, omitted = _diff_block(
-            "เนื้อหาใหญ่เกินจะแสดงทั้งไฟล์: unified diff เทียบไฟล์เดิม (ไม่เกิน %d บรรทัด)"
+            TR("เนื้อหาใหญ่เกินจะแสดงทั้งไฟล์: unified diff เทียบไฟล์เดิม (ไม่เกิน %d บรรทัด)")
             % guard.REVIEW_BLOCK_MAX_LINES, _review_diff(old_text, content, p), sha)
         if script and omitted:
-            raise _script_too_large(p, "diff ของการเขียนทับ")
+            raise _script_too_large(p, TR("diff ของการเขียนทับ"))
         return "\n".join(head + block)
     if script:
-        raise _script_too_large(p, "เนื้อหา" if not exists else "เนื้อหา (ทำ diff กับไฟล์เดิมไม่ได้)")
+        raise _script_too_large(p, TR("เนื้อหา") if not exists else TR("เนื้อหา (ทำ diff กับไฟล์เดิมไม่ได้)"))
     body, _omitted = guard.review_capped(numbered, sha)
-    why = ("ทำ diff กับไฟล์เดิมไม่ได้ (ใหญ่/ไบนารี) " if exists else "") + "เนื้อหาใหญ่เกินจะแสดงทั้งไฟล์"
-    return "\n".join(head + ["----- %s: เนื้อหาใหม่ช่วงต้น (ไม่เกิน %d บรรทัด) -----"
-                             % (why, guard.REVIEW_BLOCK_MAX_LINES), body, "----- จบส่วนที่แสดง -----"])
+    why = (TR("ทำ diff กับไฟล์เดิมไม่ได้ (ใหญ่/ไบนารี) ") if exists else "") + TR("เนื้อหาใหญ่เกินจะแสดงทั้งไฟล์")
+    return "\n".join(head + [TR("----- %s: เนื้อหาใหม่ช่วงต้น (ไม่เกิน %d บรรทัด) -----")
+                             % (why, guard.REVIEW_BLOCK_MAX_LINES), body, TR("----- จบส่วนที่แสดง -----")])
 
 
 def _edit_review(p: str, count: int, replace_all: bool, old_string: str, new_string: str,
                  text: str, new_text: str, small: bool, script: bool = False) -> str:
     """review ของ edit_file: path + unified diff ของสิ่งที่จะเปลี่ยนจริง (ไฟล์ใหญ่เกินทำ diff = ข้อความเดิม/ใหม่เต็ม)
     script=True: diff/ข้อความที่ต้องตัดทิ้ง = ReviewTooLarge (ไม่ออก token)"""
-    head = ["[edit] แก้ไขไฟล์: แทนที่ข้อความ %d ตำแหน่ง%s" % (count, " (replace_all)" if replace_all else ""),
+    head = [TR("[edit] แก้ไขไฟล์: แทนที่ข้อความ %d ตำแหน่ง%s") % (count, " (replace_all)" if replace_all else ""),
             "path: %s" % guard.review_oneline(p),
-            "sha256 ทั้งไฟล์: ก่อนแก้ %s… -> หลังแก้ %s…" % (_sha(text)[:16], _sha(new_text)[:16])]
+            TR("sha256 ทั้งไฟล์: ก่อนแก้ %s… -> หลังแก้ %s…") % (_sha(text)[:16], _sha(new_text)[:16])]
     if small:
-        block, omitted = _diff_block("unified diff = สิ่งที่จะเปลี่ยนจริง",
+        block, omitted = _diff_block(TR("unified diff = สิ่งที่จะเปลี่ยนจริง"),
                                      _review_diff(text, new_text, p), _sha(new_text))
         if script and omitted:
-            raise _script_too_large(p, "diff ของการแก้ไข")
+            raise _script_too_large(p, TR("diff ของการแก้ไข"))
         return "\n".join(head + block)
     half_l, half_c = guard.REVIEW_BLOCK_MAX_LINES // 2, guard.REVIEW_BLOCK_MAX_CHARS // 2
     old_b, o_omit = guard.review_capped(guard.review_numbered(old_string), _sha(old_string), half_l, half_c)
     new_b, n_omit = guard.review_capped(guard.review_numbered(new_string), _sha(new_string), half_l, half_c)
     if script and (o_omit or n_omit):
-        raise _script_too_large(p, "ข้อความเดิม/ใหม่ของการแก้ไข")
-    return "\n".join(head + ["(ไฟล์ใหญ่เกิน %d MB ทำ diff ไม่ได้ — แสดงข้อความที่ถูกแทนที่และข้อความใหม่)"
+        raise _script_too_large(p, TR("ข้อความเดิม/ใหม่ของการแก้ไข"))
+    return "\n".join(head + [TR("(ไฟล์ใหญ่เกิน %d MB ทำ diff ไม่ได้ — แสดงข้อความที่ถูกแทนที่และข้อความใหม่)")
                              % (DIFF_MAX_BYTES // 1_000_000),
-                             "----- ข้อความเดิม (old) -----", old_b,
-                             "----- ข้อความใหม่ (new) -----", new_b, "----- จบ -----"])
+                             TR("----- ข้อความเดิม (old) -----"), old_b,
+                             TR("----- ข้อความใหม่ (new) -----"), new_b, TR("----- จบ -----")])
 
 
 def _exec_review(cmd: str, workdir: str, timeout) -> str:
     """review ของ run: คำสั่งเต็มทุกตัวอักษร + cwd + timeout ที่จะใช้จริง (ค่าเดียวกับตอนรัน)"""
     try:
-        t = "%d วินาที" % max(5, min(int(timeout), 600))
+        t = TR("%d วินาที") % max(5, min(int(timeout), 600))
     except (TypeError, ValueError):
         # ค่าจากโมเดล: ถ้ามี \n ต้องไม่แตกเป็นบรรทัดใหม่ที่ปลอมเป็นบรรทัดคำสั่งได้ (review_oneline)
-        t = "ค่าไม่ถูกต้อง (%s) — คำสั่งจะล้มก่อนรัน" % guard.review_oneline(str(timeout)[:40])
+        t = TR("ค่าไม่ถูกต้อง (%s) — คำสั่งจะล้มก่อนรัน") % guard.review_oneline(str(timeout)[:40])
     body = guard.review_numbered(cmd)
-    return "\n".join(["[run] รันคำสั่งระบบผ่าน cmd.exe (shell)", "cwd: %s" % guard.review_oneline(workdir),
+    return "\n".join([TR("[run] รันคำสั่งระบบผ่าน cmd.exe (shell)"), "cwd: %s" % guard.review_oneline(workdir),
                       "timeout: %s" % t,
-                      "----- คำสั่งเต็ม %d บรรทัด = สิ่งที่จะรันจริง -----" % len(body)]
-                     + body + ["----- จบคำสั่ง -----"])
+                      TR("----- คำสั่งเต็ม %d บรรทัด = สิ่งที่จะรันจริง -----") % len(body)]
+                     + body + [TR("----- จบคำสั่ง -----")])
 
 
 def _read_small(p: str):
@@ -514,8 +515,8 @@ def _read_small(p: str):
 
 
 def _checkpoints_denied() -> str:
-    return ("ปฏิเสธ: โฟลเดอร์ checkpoints เป็นประวัติสำหรับ undo แก้ผ่านเครื่องมือไม่ได้ "
-            "(ดูได้ด้วย checkpoints / ย้อนด้วย undo)")
+    return (TR("ปฏิเสธ: โฟลเดอร์ checkpoints เป็นประวัติสำหรับ undo แก้ผ่านเครื่องมือไม่ได้ "
+            "(ดูได้ด้วย checkpoints / ย้อนด้วย undo)"))
 
 
 def list_checkpoints(path: str = "", limit: int = 30, **_) -> str:
@@ -537,27 +538,27 @@ def list_checkpoints(path: str = "", limit: int = 30, **_) -> str:
             total += 1
             if len(rows) >= lim:
                 continue
-            before = ("(ไม่มีไฟล์)" if not e.get("existed")
+            before = (TR("(ไม่มีไฟล์)") if not e.get("existed")
                       else _human(e.get("size_before") or 0))
-            after = "(ไม่มีไฟล์)" if e.get("size_after") is None else _human(e["size_after"])
+            after = TR("(ไม่มีไฟล์)") if e.get("size_after") is None else _human(e["size_after"])
             flags = []
             if e.get("existed") and not e.get("blob"):
-                flags.append("ไม่มีสำเนา:%s" % (e.get("note") or "?"))
+                flags.append(TR("ไม่มีสำเนา:%s") % (e.get("note") or "?"))
             if e.get("undone_by"):
-                flags.append("ย้อนแล้ว")
+                flags.append(TR("ย้อนแล้ว"))
             if e.get("restores"):
-                flags.append("ย้อนจาก %s" % e["restores"])
+                flags.append(TR("ย้อนจาก %s") % e["restores"])
             rows.append("%s  %s  %-10s %s  %s -> %s%s" % (
                 e.get("id"), e.get("ts"), e.get("tool"), e.get("path"), before, after,
                 ("  [%s]" % ", ".join(flags)) if flags else ""))
         if not rows:
-            return ("ยังไม่มี checkpoint%s ของโปรเจกต์นี้"
-                    % ((" ของ %s" % path) if want else ""))
-        head = "checkpoint ของโปรเจกต์ %s (%d รายการ%s ใหม่สุดก่อน)" % (
+            return (TR("ยังไม่มี checkpoint%s ของโปรเจกต์นี้")
+                    % ((TR(" ของ %s") % path) if want else ""))
+        head = TR("checkpoint ของโปรเจกต์ %s (%d รายการ%s ใหม่สุดก่อน)") % (
             guard.current_project() or "default", total,
-            (", แสดง %d" % len(rows)) if total > len(rows) else "")
-        tail = ("ย้อนไฟล์: undo path=<ไฟล์> (ย้อน checkpoint ล่าสุดที่ยังไม่ถูกย้อน) "
-                "หรือ undo path=<ไฟล์> id=<id> เพื่อเลือกจุดเอง — ต้องยืนยันก่อนเสมอ")
+            (TR(", แสดง %d") % len(rows)) if total > len(rows) else "")
+        tail = (TR("ย้อนไฟล์: undo path=<ไฟล์> (ย้อน checkpoint ล่าสุดที่ยังไม่ถูกย้อน) "
+                "หรือ undo path=<ไฟล์> id=<id> เพื่อเลือกจุดเอง — ต้องยืนยันก่อนเสมอ"))
         return "\n".join([head] + rows + ["", tail])
     except Exception as exc:
         return _err(exc)
@@ -575,7 +576,7 @@ def undo_file(path: str = "", id: str = "", confirm_token: str = "", **_) -> str
             return _checkpoints_denied()
         f = Path(p)
         if f.is_dir():
-            return "ผิดพลาด: %s เป็นโฟลเดอร์ undo ได้เฉพาะไฟล์" % p
+            return TR("ผิดพลาด: %s เป็นโฟลเดอร์ undo ได้เฉพาะไฟล์") % p
         root = _cp_root()
         want, cid = os.path.normcase(p), str(id or "").strip()
         target = None
@@ -592,64 +593,64 @@ def undo_file(path: str = "", id: str = "", confirm_token: str = "", **_) -> str
             target = e
             break
         if target is None:
-            return ("ไม่พบ checkpoint%s ของ %s ในโปรเจกต์นี้ — ดูรายการด้วย checkpoints path=<ไฟล์>"
-                    % ((" id=%s" % cid) if cid else " ที่ยังย้อนได้", p))
+            return (TR("ไม่พบ checkpoint%s ของ %s ในโปรเจกต์นี้ — ดูรายการด้วย checkpoints path=<ไฟล์>")
+                    % ((" id=%s" % cid) if cid else TR(" ที่ยังย้อนได้"), p))
         if target.get("existed") and not target.get("blob"):
-            return ("checkpoint %s ไม่มีสำเนาไฟล์เดิม (%s) จึงย้อนไม่ได้"
-                    % (target.get("id"), target.get("note") or "ไม่ได้เก็บ"))
+            return (TR("checkpoint %s ไม่มีสำเนาไฟล์เดิม (%s) จึงย้อนไม่ได้")
+                    % (target.get("id"), target.get("note") or TR("ไม่ได้เก็บ")))
         data = None
         if target.get("existed"):
             data = (root / target["id"] / "before.bin").read_bytes()
             if _sha_bytes(data) != target.get("sha256_before"):
-                return "checkpoint %s เสียหาย (sha256 ไม่ตรงกับ journal) จึงไม่ย้อน" % target.get("id")
+                return TR("checkpoint %s เสียหาย (sha256 ไม่ตรงกับ journal) จึงไม่ย้อน") % target.get("id")
         cur = None
         if f.is_file():
             if f.stat().st_size > CHECKPOINT_FILE_CAP:
-                return ("ไฟล์ปัจจุบันใหญ่เกิน %d MB เก็บสำเนาก่อนย้อนไม่ได้ จึงไม่ย้อน (กันข้อมูลหาย)"
+                return (TR("ไฟล์ปัจจุบันใหญ่เกิน %d MB เก็บสำเนาก่อนย้อนไม่ได้ จึงไม่ย้อน (กันข้อมูลหาย)")
                         % (CHECKPOINT_FILE_CAP >> 20))
             cur = f.read_bytes()
         if data is None and cur is None:
-            return "ไม่มีอะไรให้ย้อน: ตอนนี้ไม่มีไฟล์ %s อยู่แล้ว ตรงกับสถานะก่อน checkpoint" % p
+            return TR("ไม่มีอะไรให้ย้อน: ตอนนี้ไม่มีไฟล์ %s อยู่แล้ว ตรงกับสถานะก่อน checkpoint") % p
         cur_sha = _sha_bytes(cur) if cur is not None else "missing"
         new_sha = _sha_bytes(data) if data is not None else "absent"
         if cur_sha == new_sha:
-            return "ไม่มีอะไรให้ย้อน: เนื้อไฟล์ตอนนี้ตรงกับ checkpoint %s อยู่แล้ว" % target.get("id")
+            return TR("ไม่มีอะไรให้ย้อน: เนื้อไฟล์ตอนนี้ตรงกับ checkpoint %s อยู่แล้ว") % target.get("id")
         action = "undo_file:%s" % p.lower()
         detail = "%s\ncheckpoint=%s\ncurrent=%s\nrestore=%s" % (p, target.get("id"), cur_sha, new_sha)
         if not confirm_token:
             if data is None:
-                what = "ไฟล์นี้ถูกสร้างใหม่ใน checkpoint นั้น — ย้อน = ย้ายไฟล์ออกไปเก็บใน checkpoint (ไม่ลบทิ้ง)"
+                what = TR("ไฟล์นี้ถูกสร้างใหม่ใน checkpoint นั้น — ย้อน = ย้ายไฟล์ออกไปเก็บใน checkpoint (ไม่ลบทิ้ง)")
             elif cur is None:
-                what = "ตอนนี้ไม่มีไฟล์ — ย้อน = สร้างไฟล์กลับมาด้วยเนื้อเดิม"
+                what = TR("ตอนนี้ไม่มีไฟล์ — ย้อน = สร้างไฟล์กลับมาด้วยเนื้อเดิม")
             else:
-                what = "คืนเนื้อไฟล์เป็นสถานะก่อน %s" % target.get("tool")
+                what = TR("คืนเนื้อไฟล์เป็นสถานะก่อน %s") % target.get("tool")
             drift = ""
             if target.get("sha256_after") and cur_sha != target.get("sha256_after") \
                     and target.get("tool") != "undo":
-                drift = "\n  คำเตือน: ไฟล์ถูกแก้อีกหลัง checkpoint นี้ การย้อนจะทับการแก้นั้นด้วย (แต่เก็บสำเนาไว้ก่อน)"
-            human = "%s\n  checkpoint: %s (%s เมื่อ %s)\n  %s%s\n%s" % (
+                drift = TR("\n  คำเตือน: ไฟล์ถูกแก้อีกหลัง checkpoint นี้ การย้อนจะทับการแก้นั้นด้วย (แต่เก็บสำเนาไว้ก่อน)")
+            human = TR("%s\n  checkpoint: %s (%s เมื่อ %s)\n  %s%s\n%s") % (
                 p, target.get("id"), target.get("tool"), target.get("ts"), what, drift,
                 unified_diff(_diff_text(cur), _diff_text(data), p, DIFF_PREVIEW_LINES))
             # R1: review = path + checkpoint + diff "ปัจจุบัน -> สิ่งที่จะคืน" (ตัดที่เพดานพร้อม hash)
-            rv = ["[undo] ย้อนไฟล์ตาม checkpoint %s (%s เมื่อ %s)"
+            rv = [TR("[undo] ย้อนไฟล์ตาม checkpoint %s (%s เมื่อ %s)")
                   % (target.get("id"), target.get("tool"), target.get("ts")),
                   "path: %s" % guard.review_oneline(p), what.replace("\n", " ") + drift.replace("\n", " "),
-                  "sha256: ปัจจุบัน %s -> หลังย้อน %s" % (cur_sha[:16], new_sha[:16])]
+                  TR("sha256: ปัจจุบัน %s -> หลังย้อน %s") % (cur_sha[:16], new_sha[:16])]
             cur_t, new_t = _diff_text(cur), _diff_text(data)
             if cur_t is None or new_t is None:
-                rv.append("(ไม่แสดง diff: ไฟล์ใหญ่เกิน %d MB หรือเป็นไฟล์ไบนารี)" % (DIFF_MAX_BYTES // 1_000_000))
+                rv.append(TR("(ไม่แสดง diff: ไฟล์ใหญ่เกิน %d MB หรือเป็นไฟล์ไบนารี)") % (DIFF_MAX_BYTES // 1_000_000))
             else:
-                rv += _diff_block("unified diff: ปัจจุบัน -> หลังย้อน", _review_diff(cur_t, new_t, p),
+                rv += _diff_block(TR("unified diff: ปัจจุบัน -> หลังย้อน"), _review_diff(cur_t, new_t, p),
                                   new_sha if data is not None else "absent")[0]
             tok = guard.need_confirm(action, detail, review="\n".join(rv))
-            return guard.confirm_hint(tok, "ย้อนไฟล์กลับตาม checkpoint (undo)", human)
+            return guard.confirm_hint(tok, TR("ย้อนไฟล์กลับตาม checkpoint (undo)"), human)
         if not guard.consume_confirm(confirm_token, action, detail):
             return _bad_token_msg()
         # เก็บสถานะปัจจุบันก่อนเสมอ ถ้าเก็บไม่ได้ = ไม่ย้อน (การย้อนต้องไม่ทำให้ข้อมูลหาย)
         new_cp = checkpoint_before(p, "undo", move=(data is None))
         if cur is not None and not new_cp.get("blob"):
-            return ("ยังไม่ได้ย้อน: เก็บสำเนาสถานะปัจจุบันไม่สำเร็จ (%s) จึงไม่แตะไฟล์"
-                    % (new_cp.get("note") or "ไม่ทราบสาเหตุ"))
+            return (TR("ยังไม่ได้ย้อน: เก็บสำเนาสถานะปัจจุบันไม่สำเร็จ (%s) จึงไม่แตะไฟล์")
+                    % (new_cp.get("note") or TR("ไม่ทราบสาเหตุ")))
         new_cp["restores"] = target.get("id")
         if data is not None:
             f.parent.mkdir(parents=True, exist_ok=True)
@@ -663,13 +664,13 @@ def undo_file(path: str = "", id: str = "", confirm_token: str = "", **_) -> str
         guard.audit("undo_file", {"path": p, "checkpoint": target.get("id"),
                                   "saved_as": new_cp.get("id"), "removed": data is None})
         if data is None:
-            done = "ย้อนแล้ว: ย้าย %s ออกไปเก็บใน checkpoint %s (ไฟล์ถูกสร้างใหม่ในจุดที่ย้อน)" % (
+            done = TR("ย้อนแล้ว: ย้าย %s ออกไปเก็บใน checkpoint %s (ไฟล์ถูกสร้างใหม่ในจุดที่ย้อน)") % (
                 p, new_cp.get("id"))
         else:
-            done = "ย้อนแล้ว %s กลับเป็นสถานะก่อน %s เมื่อ %s (%s)" % (
+            done = TR("ย้อนแล้ว %s กลับเป็นสถานะก่อน %s เมื่อ %s (%s)") % (
                 p, target.get("tool"), target.get("ts"), _human(len(data)))
-        return (done + "\nสถานะก่อนย้อนเก็บไว้ที่ checkpoint %s — ถ้าต้องการกลับไปแบบนั้น: "
-                "undo path=<ไฟล์เดิม> id=%s" % (new_cp.get("id"), new_cp.get("id")))
+        return (done + TR("\nสถานะก่อนย้อนเก็บไว้ที่ checkpoint %s — ถ้าต้องการกลับไปแบบนั้น: "
+                "undo path=<ไฟล์เดิม> id=%s") % (new_cp.get("id"), new_cp.get("id")))
     except Exception as exc:
         return _err(exc)
 # ======================================================== จบส่วน checkpoints / diff / undo
@@ -689,7 +690,7 @@ def write_file(path: str, content: str = "", confirm_token: str = "", **_) -> st
             return _checkpoints_denied()
         f = Path(p)
         if f.is_dir():
-            return "ผิดพลาด: %s เป็นโฟลเดอร์ ไม่ใช่ไฟล์" % p
+            return TR("ผิดพลาด: %s เป็นโฟลเดอร์ ไม่ใช่ไฟล์") % p
         exists = f.exists()
         script = guard.is_script_path(p)
         size = len(content.encode("utf-8"))
@@ -705,13 +706,13 @@ def write_file(path: str, content: str = "", confirm_token: str = "", **_) -> st
                 old_text = (_diff_text(_read_small(p)) if old_size <= DIFF_MAX_BYTES else None) \
                     if exists else ""
                 if exists:
-                    label = "เขียนทับไฟล์"
-                    human = "%s\n  ขนาดเดิม %s -> ใหม่ %s\n%s" % (
+                    label = TR("เขียนทับไฟล์")
+                    human = TR("%s\n  ขนาดเดิม %s -> ใหม่ %s\n%s") % (
                         p, _human(old_size), _human(size),
                         unified_diff(old_text, content, p, DIFF_PREVIEW_LINES))
                 else:
-                    label = "สร้างไฟล์สคริปต์/โปรแกรมใหม่ (รันได้)"
-                    human = "%s (%s)\n  เนื้อหาตอนต้น: %s" % (p, _human(size), _snippet(content))
+                    label = TR("สร้างไฟล์สคริปต์/โปรแกรมใหม่ (รันได้)")
+                    human = TR("%s (%s)\n  เนื้อหาตอนต้น: %s") % (p, _human(size), _snippet(content))
                 # R1: review = path + เนื้อหาใหม่ทั้งไฟล์ (ใหญ่: ขนาด + sha256 + diff แบบตัดพร้อมบอกจำนวนที่ไม่แสดง)
                 tok = guard.need_confirm(action, detail,
                                          review=_write_review(p, content, exists, old_size, old_text,
@@ -731,7 +732,7 @@ def write_file(path: str, content: str = "", confirm_token: str = "", **_) -> st
                                    "script": script, "checkpoint": cp.get("id")})
         diff = unified_diff(old_text, content if size <= DIFF_MAX_BYTES else None, p,
                             DIFF_MAX_LINES if exists else DIFF_NEW_FILE_LINES)
-        return "เขียนแล้ว %s (%s)\n%s\n%s" % (p, _human(size), checkpoint_note(cp), diff)
+        return TR("เขียนแล้ว %s (%s)\n%s\n%s") % (p, _human(size), checkpoint_note(cp), diff)
     except Exception as exc:
         return _err(exc)
 
@@ -750,18 +751,18 @@ def edit_file(path: str, old_string: str = "", new_string: str = "",
             return _checkpoints_denied()
         f = Path(p)
         if not f.exists():
-            return "ไม่พบไฟล์: %s" % p
+            return TR("ไม่พบไฟล์: %s") % p
         text = f.read_text(encoding="utf-8", errors="replace")
         old_string = "" if old_string is None else str(old_string)
         new_string = "" if new_string is None else str(new_string)
         if not old_string:
-            return "ต้องระบุ old_string"
+            return TR("ต้องระบุ old_string")
         n = text.count(old_string)
         if n == 0:
-            return "ไม่พบข้อความที่ต้องการแทนที่ในไฟล์ (ต้องตรงทุกตัวอักษรรวมช่องว่าง)"
+            return TR("ไม่พบข้อความที่ต้องการแทนที่ในไฟล์ (ต้องตรงทุกตัวอักษรรวมช่องว่าง)")
         if n > 1 and not replace_all:
-            return ("พบ %d ตำแหน่ง ข้อความกำกวม — เพิ่มบริบทรอบๆ ให้ยาวขึ้น "
-                    "หรือส่ง replace_all=true" % n)
+            return (TR("พบ %d ตำแหน่ง ข้อความกำกวม — เพิ่มบริบทรอบๆ ให้ยาวขึ้น "
+                    "หรือส่ง replace_all=true") % n)
         count = n if replace_all else 1
         action = "edit_file:%s" % p.lower()
         detail = "%s\nold=%s\nnew=%s\nall=%s\nbefore=%s" % (
@@ -769,20 +770,20 @@ def edit_file(path: str, old_string: str = "", new_string: str = "",
         new_text = text.replace(old_string, new_string)
         small = len(text) <= DIFF_MAX_BYTES and len(new_text) <= DIFF_MAX_BYTES
         if not confirm_token:
-            human = "%s (%d ตำแหน่ง)\n  เดิม: %s\n  ใหม่: %s\n%s" % (
+            human = TR("%s (%d ตำแหน่ง)\n  เดิม: %s\n  ใหม่: %s\n%s") % (
                 p, count, _snippet(old_string), _snippet(new_string),
                 unified_diff(text if small else None, new_text, p, DIFF_PREVIEW_LINES))
             tok = guard.need_confirm(action, detail, review=_edit_review(
                 p, count, bool(replace_all), old_string, new_string, text, new_text, small,
                 script=guard.is_script_path(p)))
-            return guard.confirm_hint(tok, "แก้ไขไฟล์", human)
+            return guard.confirm_hint(tok, TR("แก้ไขไฟล์"), human)
         if not guard.consume_confirm(confirm_token, action, detail):
             return _bad_token_msg()
         cp = checkpoint_before(p, "edit_file")                  # mcp-exec: สำเนาก่อนแก้เสมอ
         f.write_text(new_text, encoding="utf-8")
         checkpoint_after(cp, p)
         guard.audit("edit_file", {"path": p, "count": count, "checkpoint": cp.get("id")})
-        return "แก้ไขแล้ว %s (%d ตำแหน่ง)\n%s\n%s" % (
+        return TR("แก้ไขแล้ว %s (%d ตำแหน่ง)\n%s\n%s") % (
             p, count, checkpoint_note(cp), unified_diff(text if small else None, new_text, p))
     except Exception as exc:
         return _err(exc)
@@ -815,12 +816,12 @@ def file_glob_search(pattern: str, path: str = "", **_) -> str:
             except (OSError, ValueError):
                 continue
         if not hits:
-            return "ไม่พบไฟล์ที่ตรงกับ %s ใน %s" % (pattern, root)
+            return TR("ไม่พบไฟล์ที่ตรงกับ %s ใน %s") % (pattern, root)
         out = "\n".join(hits)
         if skipped:
-            out += "\n\n(ข้าม %d ไฟล์ที่อยู่ในพื้นที่ต้องห้าม)" % skipped
+            out += TR("\n\n(ข้าม %d ไฟล์ที่อยู่ในพื้นที่ต้องห้าม)") % skipped
         if len(hits) >= MAX_HITS:
-            out += "\n(แสดง %d รายการแรก)" % MAX_HITS
+            out += TR("\n(แสดง %d รายการแรก)") % MAX_HITS
         return out
     except Exception as exc:
         return _err(exc)
@@ -835,7 +836,7 @@ def grep_search(pattern: str, path: str = "", glob: str = "*",
         try:
             rx = re.compile(pattern, re.IGNORECASE if ignore_case else 0)
         except re.error as exc:
-            return "รูปแบบ regex ไม่ถูกต้อง: %s" % exc
+            return TR("รูปแบบ regex ไม่ถูกต้อง: %s") % exc
         base = Path(root)
         if base.is_file():
             files = [base]
@@ -863,10 +864,10 @@ def grep_search(pattern: str, path: str = "", glob: str = "*",
             except (OSError, ValueError):
                 continue
         if not hits:
-            return "ไม่พบ %s (ค้น %d ไฟล์)" % (pattern, scanned)
+            return TR("ไม่พบ %s (ค้น %d ไฟล์)") % (pattern, scanned)
         out = "\n".join(hits)
         if skipped:
-            out += "\n\n(ข้าม %d ไฟล์ที่อยู่ในพื้นที่ต้องห้าม)" % skipped
+            out += TR("\n\n(ข้าม %d ไฟล์ที่อยู่ในพื้นที่ต้องห้าม)") % skipped
         return out
     except Exception as exc:
         return _err(exc)
@@ -1340,16 +1341,16 @@ def _guard_command(cmd: str, workdir: str, readonly: bool | None = None) -> None
         guard.audit("denied", {"kind": "exec", "reason": reason,
                                "command": guard.scrub_text(cmd)[:300]})
         if reason == "secret_path":
-            raise guard.Denied("คำสั่งนี้อ้างถึงโฟลเดอร์ความลับของระบบ (secrets/token) จึงรันไม่ได้ไม่ว่ากรณีใด")
-        raise guard.Denied("คำสั่งที่เปลี่ยนแปลงเครื่องห้ามแตะโค้ด/ค่าตั้งของระบบหรือจุดที่ทำให้โปรแกรมรันเองอัตโนมัติ "
-                           "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal")
+            raise guard.Denied(TR("คำสั่งนี้อ้างถึงโฟลเดอร์ความลับของระบบ (secrets/token) จึงรันไม่ได้ไม่ว่ากรณีใด"))
+        raise guard.Denied(TR("คำสั่งที่เปลี่ยนแปลงเครื่องห้ามแตะโค้ด/ค่าตั้งของระบบหรือจุดที่ทำให้โปรแกรมรันเองอัตโนมัติ "
+                           "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal"))
     # git show/cat-file/log ... HEAD:<path> ที่ path เป็นไฟล์ต้องห้าม = อ่านเนื้อไฟล์ที่บล็อกไว้
     hit = guard.git_revpath_violation(_argv(cmd))
     if hit:
         guard.audit("denied", {"kind": "exec", "reason": "git_revpath_blocked",
                                "command": guard.scrub_text(cmd)[:300]})
-        raise guard.Denied("คำสั่ง git นี้ชี้ไปที่ไฟล์ต้องห้ามในรูป <rev>:<path> (เช่น credential/คีย์) "
-                           "จึงอ่านเนื้อไฟล์นั้นจาก git ไม่ได้")
+        raise guard.Denied(TR("คำสั่ง git นี้ชี้ไปที่ไฟล์ต้องห้ามในรูป <rev>:<path> (เช่น credential/คีย์) "
+                           "จึงอ่านเนื้อไฟล์นั้นจาก git ไม่ได้"))
     guard.check_workdir_for_exec(workdir, readonly)
     seen = set()
     tokens = list(_tokens(cmd)) + [(t, False) for t in _argv(cmd)]
@@ -1365,8 +1366,8 @@ def _guard_command(cmd: str, workdir: str, readonly: bool | None = None) -> None
             continue
         (guard.check_write if is_write else guard.check_read)(candidate)
         if not readonly and guard.is_write_protected(candidate):
-            raise guard.Denied("คำสั่งที่เปลี่ยนแปลงเครื่องห้ามอ้างถึง path ในเขตห้ามเขียน (%s) "
-                               "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal" % candidate)
+            raise guard.Denied(TR("คำสั่งที่เปลี่ยนแปลงเครื่องห้ามอ้างถึง path ในเขตห้ามเขียน (%s) "
+                               "ถ้าจำเป็นจริงให้ผู้ใช้รันเองใน terminal") % candidate)
 
 
 def _child_env(readonly: bool) -> dict:
@@ -1448,7 +1449,7 @@ def _redact_blocked_lines(text: str) -> str:
                 break
             except Exception:      # noqa: BLE001 — path แปลกๆ ในบรรทัด ไม่ถือเป็นการบล็อก
                 continue
-        out.append("  [ปิดบัง 1 บรรทัดที่อ้างถึง path ในพื้นที่ต้องห้าม]" if blocked else line)
+        out.append(TR("  [ปิดบัง 1 บรรทัดที่อ้างถึง path ในพื้นที่ต้องห้าม]") if blocked else line)
     return "\n".join(out)
 
 
@@ -1457,13 +1458,13 @@ def exec_shell_command(command: str, cwd: str = "", confirm_token: str = "",
     """รันคำสั่งระบบ — คำสั่งที่เปลี่ยนเครื่องต้องยืนยันสองขั้นตาม S03"""
     cmd = str(command or "").strip()
     if not cmd:
-        return "ต้องระบุคำสั่ง"
+        return TR("ต้องระบุคำสั่ง")
     if FORBIDDEN.search(cmd):
         guard.audit("denied", {"kind": "exec", "command": guard.scrub_text(cmd)[:300],
                                "reason": "forbidden_pattern"})
-        return ("ปฏิเสธ: คำสั่งนี้อยู่ในกลุ่มที่ทำลายระบบ เปลี่ยนสิทธิ์ หรือฝังตัวให้รันเองอัตโนมัติ "
+        return (TR("ปฏิเสธ: คำสั่งนี้อยู่ในกลุ่มที่ทำลายระบบ เปลี่ยนสิทธิ์ หรือฝังตัวให้รันเองอัตโนมัติ "
                 "(format/diskpart/reg/net user/schtasks/shutdown ฯลฯ) จึงรันไม่ได้ไม่ว่ากรณีใด "
-                "ถ้าจำเป็นจริง ให้ผู้ใช้รันเองใน terminal")
+                "ถ้าจำเป็นจริง ให้ผู้ใช้รันเองใน terminal"))
     readonly = _is_readonly(cmd)
     try:
         # ไม่ระบุ cwd = โฟลเดอร์ของโปรเจกต์นี้ (เดิมคือ C:\LLM ซึ่งมีโค้ดของ launcher/hub อยู่ตรงนั้นเลย)
@@ -1482,7 +1483,7 @@ def exec_shell_command(command: str, cwd: str = "", confirm_token: str = "",
                 tok = guard.need_confirm(action, detail, review=_exec_review(cmd, workdir, timeout))
             except guard.Denied as exc:
                 return _err(exc)
-            return guard.confirm_hint(tok, "รันคำสั่งระบบ", "%s\n  โฟลเดอร์: %s" % (cmd, workdir))
+            return guard.confirm_hint(tok, TR("รันคำสั่งระบบ"), TR("%s\n  โฟลเดอร์: %s") % (cmd, workdir))
         if not guard.consume_confirm(confirm_token, action, detail):
             return _bad_token_msg()
 
@@ -1496,7 +1497,7 @@ def exec_shell_command(command: str, cwd: str = "", confirm_token: str = "",
                               stdin=subprocess.DEVNULL, env=_child_env(readonly),
                               timeout=max(5, min(int(timeout), 600)))
     except subprocess.TimeoutExpired:
-        return "คำสั่งใช้เวลาเกิน %d วินาที จึงถูกยกเลิก" % timeout
+        return TR("คำสั่งใช้เวลาเกิน %d วินาที จึงถูกยกเลิก") % timeout
     except Exception as exc:
         return _err(exc)
 

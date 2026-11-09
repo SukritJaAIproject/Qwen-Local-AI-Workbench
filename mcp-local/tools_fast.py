@@ -51,6 +51,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 import guard  # noqa: E402
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # ให้ server.py เลือกเสิร์ฟเฉพาะสองเครื่องมือนี้ได้ ถ้าผู้ใช้อยากได้ผิวสัมผัสเล็กที่สุด
 FAST_ONLY = True
@@ -332,33 +333,33 @@ _REQUIRED.update({"creative_cancel": ("id",)})   # creative_video ตรวจ p
 def _help_block(title: str, note: str, rows) -> str:
     lines = [title, note]
     for action, params, desc in rows:
-        lines.append("  %-20s %-38s %s" % (action, params or "-", desc))
+        lines.append("  %-20s %-38s %s" % (action, params or "-", TR(desc)))
     return "\n".join(lines)
 
 
 def help_text() -> str:
     """คู่มือฉบับเต็มของทั้งสองเครื่องมือ — คือ acceptance test ของฟีเจอร์นี้"""
     parts = [
-        "Local Computer — สองเครื่องมือแทนเครื่องมือย่อย 28 ตัว",
-        "พารามิเตอร์ path ทุกตัวถูกตรวจด้วยชั้นป้องกันเดิมทุกครั้ง และ project ถูกเติมจาก URL "
-        "ให้อัตโนมัติ ไม่ต้องส่งเอง",
+        TR("Local Computer — สองเครื่องมือแทนเครื่องมือย่อย 28 ตัว"),
+        TR("พารามิเตอร์ path ทุกตัวถูกตรวจด้วยชั้นป้องกันเดิมทุกครั้ง และ project ถูกเติมจาก URL "
+        "ให้อัตโนมัติ ไม่ต้องส่งเอง"),
         "",
         _help_block("local_read(action=...)",
-                    "  อ่านอย่างเดียว ไม่แก้ไฟล์ของผู้ใช้เลย ไม่ต้องยืนยันสักกรณีเดียว\n"
-                    "  (บันทึก audit และสร้างโฟลเดอร์ของโปรเจกต์ครั้งแรกเท่านั้น)",
+                    TR("  อ่านอย่างเดียว ไม่แก้ไฟล์ของผู้ใช้เลย ไม่ต้องยืนยันสักกรณีเดียว\n"
+                    "  (บันทึก audit และสร้างโฟลเดอร์ของโปรเจกต์ครั้งแรกเท่านั้น)"),
                     READ_ROWS),
         "",
         _help_block("local_do(action=...)",
-                    "  เปลี่ยนแปลงเครื่อง — ดูป้ายหน้าคำอธิบายของแต่ละ action ก่อนเรียกเสมอ\n"
+                    TR("  เปลี่ยนแปลงเครื่อง — ดูป้ายหน้าคำอธิบายของแต่ละ action ก่อนเรียกเสมอ\n"
                     "  [ยืนยัน] คืน confirm_token + บล็อก REVIEW ก่อน ต้องแสดง REVIEW ให้ผู้ใช้และถาม แล้วเรียก "
                     "local_confirm(confirm_token=...)\n"
                     "  [ทับ?]   ยืนยันเฉพาะเมื่อไฟล์ปลายทางมีอยู่แล้ว ถ้าเป็นไฟล์ใหม่ลงมือทันที\n"
                     "  [ทันที]  ไม่มีขั้นยืนยันเลย ลงมือทันทีที่เรียก จึงต้องถามผู้ใช้ 'ก่อน' เรียก\n"
-                    "  ห้ามเดาว่าผู้ใช้อนุมัติแล้ว และห้ามคิดว่าเครื่องมือจะหยุดให้ทุกครั้ง",
+                    "  ห้ามเดาว่าผู้ใช้อนุมัติแล้ว และห้ามคิดว่าเครื่องมือจะหยุดให้ทุกครั้ง"),
                     DO_ROWS),
         "",
-        "หมายเหตุร่วม",
-        "  confirm_token   ได้จาก run, task_start, task_stop, edit, write (ตอนทับหรือไฟล์สคริปต์), "
+        TR("หมายเหตุร่วม"),
+        TR("  confirm_token   ได้จาก run, task_start, task_stop, edit, write (ตอนทับหรือไฟล์สคริปต์), "
         "media_* (ตอนทับ), browser_*, python (เมื่อ Docker sandbox ไม่พร้อม), undo, make_file (ตอนชื่อซ้ำ), "
         "creative_video\n"
         # รอบ review-fetch (S2): เดิมสั่งให้ส่ง review คัดลอกตรงตัว — โมเดล 4B คัดลอกไม่ครบแล้วติดวนถามผู้ใช้ซ้ำ
@@ -369,19 +370,19 @@ def help_text() -> str:
         "  review          ไม่บังคับ — ไม่ต้องคัดลอกบล็อก REVIEW กลับมา ถ้าส่งต้องตรงทุกตัวอักษร (ไม่ตรง = ไม่ทำอะไร "
         "แล้วเรียกใหม่ด้วย token อย่างเดียว)\n"
         "                  หน้าแชตแสดง REVIEW จากเซิร์ฟเวอร์ในกล่องอนุญาต = สิ่งที่จะรันจริง "
-        "(python ไม่เกิน 400 บรรทัดต่อครั้ง, token ค้างได้ 5 ตัว, python ทีละ 1)",
-        "  overwrite       edit=แทนทุกตำแหน่งที่พบ · media_*=ยอมให้ทับไฟล์ปลายทาง "
-        "(ยังต้องยืนยันอีกชั้น)",
-        "  run             รันทันทีเฉพาะคำสั่งอ่านอย่างเดียวในรายการ (dir, type, git status/log, "
+        "(python ไม่เกิน 400 บรรทัดต่อครั้ง, token ค้างได้ 5 ตัว, python ทีละ 1)"),
+        TR("  overwrite       edit=แทนทุกตำแหน่งที่พบ · media_*=ยอมให้ทับไฟล์ปลายทาง "
+        "(ยังต้องยืนยันอีกชั้น)"),
+        TR("  run             รันทันทีเฉพาะคำสั่งอ่านอย่างเดียวในรายการ (dir, type, git status/log, "
         "git diff --stat ...) ที่เหลือต้องยืนยัน\n"
-        "                  ห้ามใช้ run อ่าน/แก้ไฟล์ ใช้ action read/write/edit แทนเสมอ",
-        "  เขตห้ามเขียน     โค้ด/ค่าตั้งของระบบ, Startup, PowerShell profile, .git ถูกปฏิเสธแม้ผู้ใช้อนุมัติ",
-        "  ชื่อพารามิเตอร์ที่ใช้แทนกันได้: old/old_string, new/new_string, start/offset, "
-        "duration/t, kind/glob/mode, out/output",
+        "                  ห้ามใช้ run อ่าน/แก้ไฟล์ ใช้ action read/write/edit แทนเสมอ"),
+        TR("  เขตห้ามเขียน     โค้ด/ค่าตั้งของระบบ, Startup, PowerShell profile, .git ถูกปฏิเสธแม้ผู้ใช้อนุมัติ"),
+        TR("  ชื่อพารามิเตอร์ที่ใช้แทนกันได้: old/old_string, new/new_string, start/offset, "
+        "duration/t, kind/glob/mode, out/output"),
     ]
     if _LOAD_ERRORS:
         parts.append("")
-        parts.append("คำเตือน: โมดูลที่โหลดไม่สำเร็จ (action ที่พึ่งโมดูลนี้จะใช้ไม่ได้)")
+        parts.append(TR("คำเตือน: โมดูลที่โหลดไม่สำเร็จ (action ที่พึ่งโมดูลนี้จะใช้ไม่ได้)"))
         for mod, err in _LOAD_ERRORS.items():
             parts.append("  %-14s %s" % (mod, err))
     return "\n".join(parts)
@@ -391,9 +392,9 @@ def _unknown(action: str, tool: str) -> str:
     """action ที่เดาผิดต้องแก้ตัวได้ในเทิร์นเดียว จึงคืนคู่มือเต็มกลับไปพร้อมกัน"""
     other = "local_do" if tool == "local_read" else "local_read"
     other_index = _DO_INDEX if tool == "local_read" else _READ_INDEX
-    head = "ไม่รู้จัก action %r ของ %s" % (action, tool)
+    head = TR("ไม่รู้จัก action %r ของ %s") % (action, tool)
     if action in other_index:
-        head += " — action นี้อยู่ที่ %s ให้เรียกเครื่องมือนั้นแทน" % other
+        head += TR(" — action นี้อยู่ที่ %s ให้เรียกเครื่องมือนั้นแทน") % other
     return head + "\n\n" + help_text()
 
 
@@ -474,8 +475,8 @@ def _bool(value) -> bool:
 
 def _lacking(action: str, index: dict, lack) -> str:
     row = index.get(action)
-    usage = "  ใช้: %s  %s\n       %s" % (row[0], row[1], row[2]) if row else ""
-    return "ERROR: action %r ยังขาดพารามิเตอร์: %s\n%s" % (action, ", ".join(lack), usage)
+    usage = TR("  ใช้: %s  %s\n       %s") % (row[0], row[1], row[2]) if row else ""
+    return TR("ERROR: action %r ยังขาดพารามิเตอร์: %s\n%s") % (action, ", ".join(lack), usage)
 
 
 def _missing(action: str, index: dict, given: dict) -> str:
@@ -505,16 +506,16 @@ def _call(module: str, tool: str, **kwargs) -> str:
     """จุดเดียวที่ dispatcher แตะ implementation จริง — ผ่าน IMPL ที่โมดูลประกาศไว้เท่านั้น"""
     mod = _MODS.get(module)
     if mod is None:
-        return ("ERROR: ใช้ action นี้ไม่ได้ เพราะโมดูล %s โหลดไม่สำเร็จ (%s)\n"
-                "action อื่นที่ไม่ได้พึ่งโมดูลนี้ยังใช้ได้ตามปกติ"
+        return (TR("ERROR: ใช้ action นี้ไม่ได้ เพราะโมดูล %s โหลดไม่สำเร็จ (%s)\n"
+                "action อื่นที่ไม่ได้พึ่งโมดูลนี้ยังใช้ได้ตามปกติ")
                 % (module, _LOAD_ERRORS.get(module, "ไม่ทราบสาเหตุ")))
     fn = getattr(mod, "IMPL", {}).get(tool)
     if not callable(fn):
-        return "ERROR: โมดูล %s ไม่มีเครื่องมือชื่อ %s" % (module, tool)
+        return TR("ERROR: โมดูล %s ไม่มีเครื่องมือชื่อ %s") % (module, tool)
     try:
         return _s(fn(**kwargs))
     except Exception as exc:               # noqa: BLE001 — เครื่องมือต้องไม่โยนออกไปหา MCP client
-        return "ERROR: %s ล้มเหลว: %s: %s" % (tool, type(exc).__name__, exc)
+        return TR("ERROR: %s ล้มเหลว: %s: %s") % (tool, type(exc).__name__, exc)
 
 
 def _audit(tool: str, action: str, project: str, params: dict) -> None:
@@ -641,7 +642,7 @@ def local_read(action: str = "help", project: str = "", **params) -> str:
         # --- /creative ---
         return _unknown(act, "local_read")
     except Exception as exc:               # noqa: BLE001
-        return "ERROR: local_read ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: local_read ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 # -------------------------------------------------------------------- local_do
@@ -807,7 +808,7 @@ def local_do(action: str = "help", project: str = "", **params) -> str:
         # --- /creative ---
         return _unknown(act, "local_do")
     except Exception as exc:               # noqa: BLE001
-        return "ERROR: local_do ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: local_do ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 # -------------------------------------------------------------- MCP schema

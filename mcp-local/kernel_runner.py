@@ -37,6 +37,22 @@ import subprocess
 import sys
 import threading
 import time
+try:
+    from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
+except ImportError:  # โหลดจากนอก mcp-local (hub, mcp-websearch, python -I) — เอา i18n_tools.py ข้างไฟล์นี้มาเอง
+    import importlib.util as _ilu
+    import os as _os
+    import sys as _sys
+    try:
+        _spec = _ilu.spec_from_file_location(
+            "i18n_tools", _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "i18n_tools.py"))
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        _sys.modules.setdefault("i18n_tools", _mod)
+        TR = _mod.TR
+    except Exception:  # noqa: BLE001 — ไม่มีแคตตาล็อก = ข้อความไทยตามเดิม
+        def TR(text):
+            return text
 
 PREFIX = "@@QWK@@ "
 CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
@@ -282,11 +298,11 @@ class Runner:
                 names = json.loads(ast.literal_eval(data.get("text/plain") or "'[]'"))
                 for n in names:
                     if n.startswith("!"):
-                        out["notes"].append("บันทึกรูป matplotlib ไม่สำเร็จ %s" % n[1:])
+                        out["notes"].append(TR("บันทึกรูป matplotlib ไม่สำเร็จ %s") % n[1:])
                     elif _SAFE_NAME_RE.match(n):
                         out["files"].append(n)
             except Exception as exc:     # noqa: BLE001
-                out["notes"].append("ตรวจรูป matplotlib ไม่สำเร็จ: %s" % type(exc).__name__)
+                out["notes"].append(TR("ตรวจรูป matplotlib ไม่สำเร็จ: %s") % type(exc).__name__)
         out["elapsed"] = round(time.monotonic() - t0, 2)
         # pid ปัจจุบันของ kernel (เปลี่ยนหลังรีสตาร์ต) ให้ฝั่ง MCP ใช้ตรวจ/รายงานได้ถูกตัว
         out["pid"] = getattr(self.km.provisioner, "pid", None)
@@ -303,7 +319,7 @@ class Runner:
             try:
                 raw = base64.b64decode(png)
                 if len(raw) > MAX_IMAGE_BYTES:
-                    out["notes"].append("รูปใหญ่เกิน %d MB ไม่บันทึก" % (MAX_IMAGE_BYTES >> 20))
+                    out["notes"].append(TR("รูปใหญ่เกิน %d MB ไม่บันทึก") % (MAX_IMAGE_BYTES >> 20))
                     return 0
                 name = "fig-%s-%d.png" % (stamp, figs + 1)
                 with open(os.path.join(self.a.outdir, name), "wb") as fh:
@@ -311,7 +327,7 @@ class Runner:
                 out["files"].append(name)
                 return 1
             except Exception as exc:     # noqa: BLE001
-                out["notes"].append("บันทึกรูปไม่สำเร็จ: %s" % type(exc).__name__)
+                out["notes"].append(TR("บันทึกรูปไม่สำเร็จ: %s") % type(exc).__name__)
                 return 0
         fig = data.get("application/vnd.plotly.v1+json")
         if isinstance(fig, dict):
@@ -349,7 +365,7 @@ class Runner:
                                config={"staticPlot": True, "displayModeBar": False})
             html = html.replace("<head>", "<head><style>html,body{margin:0;background:#fff}</style>", 1)
         except Exception as exc:         # noqa: BLE001
-            return None, "แปลงกราฟ plotly ไม่สำเร็จ: %s" % type(exc).__name__
+            return None, TR("แปลงกราฟ plotly ไม่สำเร็จ: %s") % type(exc).__name__
         name = "fig-%s-%d.png" % (stamp, n)
         png_path = os.path.join(self.a.outdir, name)
         edge = self.a.edge
@@ -382,9 +398,9 @@ class Runner:
         try:
             with open(os.path.join(self.a.outdir, hname), "w", encoding="utf-8") as fh:
                 fh.write(html)
-            return hname, "แปลงกราฟ plotly เป็น PNG ไม่ได้ (Edge ใช้ไม่ได้) จึงบันทึกเป็น HTML แทน"
+            return hname, TR("แปลงกราฟ plotly เป็น PNG ไม่ได้ (Edge ใช้ไม่ได้) จึงบันทึกเป็น HTML แทน")
         except Exception as exc:         # noqa: BLE001
-            return None, "บันทึกกราฟ plotly ไม่สำเร็จ: %s" % type(exc).__name__
+            return None, TR("บันทึกกราฟ plotly ไม่สำเร็จ: %s") % type(exc).__name__
 
 
 def main() -> int:

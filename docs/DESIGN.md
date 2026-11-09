@@ -348,6 +348,29 @@ Backup before this round: `C:\LLM\projects\backup\llm-20260929-111524`.
   title words; `hasDict(l)` decides whether a page is translated at all (English is not), and the word joiner
   `glue()` is applied to Thai only. The small scripts (message queue, auto-recovery, shared/durable chats,
   browser panel) carry a `JZ` table keyed by their English text, or four-entry arrays.
+- Tool layer (2026-11, `mcp-local/i18n_tools.py` + generated `i18n_catalog.py`, shared by mcp-websearch through a
+  two-line shim): the tools keep their Thai messages in the code and wrap them at the point of production,
+  `TR("ไม่พบไฟล์: %s") % name` — gettext style, the Thai text is the key. `CATALOG = {thai: {en, ja, zh}}` holds
+  ~1,700 rows (runtime messages, every tool/parameter description, `RULES_SHORT`, `INSTRUCTIONS`, the
+  `local_read`/`local_do` action tables); `tr_for()` falls back en → Thai source, so an untranslated message is
+  never lost, and splits the first tool's `"<RULES_SHORT> || <description>"` prefix into two look-ups. The
+  language is the hub's: `ui_lang()` reads `projects\settings.json` → `lang` with a 2 s mtime cache
+  (`QWEN_SETTINGS_FILE` overrides the path, `set_lang()` pins it for a process — tests), so the UI switch reaches
+  the tools without a restart. server.py localizes on the way out: `tools/list` → `localize_tools()` (deep copy,
+  every `description` in the schema tree), `initialize.instructions` → `TR`, so the module constants stay Thai
+  and the Thai path returns the same objects. Processes outside mcp-local load `i18n_tools` by path, never by
+  pushing mcp-local onto sys.path (hub_browser, mcp-websearch's `_load_by_path`), and the three modules that are
+  themselves loaded from outside the folder — `netguard` (web search), `tools_memory` (hub's scan_secret),
+  `kernel_runner` (`python -I` under anaconda) — fall back to the sibling file when `from i18n_tools import TR`
+  fails. Pairs that already existed as Thai/English (`_msg`, `_L`,
+  research's `{"th","en"}` dicts) go through `pick(lang, th, en)`: th → th, ja/zh → catalogue row of the Thai
+  side, else en. Research is the one place that uses the **question's** language rather than the UI language:
+  `detect_lang()` returns th/en/ja/zh by script (≥ 2 kana = ja, Han without kana = zh), the model is told
+  `_LANG_NAME[lang]`, the banner/report headings use `_L`, and a draft whose kana+Han share is under 30 % is
+  rewritten once (`lang_retry`). The catalogue is the source of truth (one section per module, rows sorted by
+  Thai text): a new or changed Thai message gets its row there, and `tests\test_i18n_tools.py` fails on a
+  missing row, a placeholder (`%s %d %.1f {name}`), newline or edge-space mismatch, Thai left in a translation,
+  or Thai anywhere in the ja/zh `tools/list`, instructions and help text.
 - Hotkey Alt+Shift+L matched on `e.code === 'KeyL'` (a Thai layout puts a Thai char in `e.key`); caught on
   the shell document, the iframe window (capture listener in `hookFrame`, next to Ctrl+K) and PAGE;
   ignored on repeat and while a shell/WebUI modal is open.
@@ -496,6 +519,8 @@ Integration 2026-10-01 02:20-03:15: full suite 999 OK / 24 skipped; live E2E on 
 - `local_do research question [depth] [model]` → background job, returns id + ETA; `local_read research_status [id]`;
   `local_do research_cancel id`. State `data\<slug>\research\<id>.json`; reports `outputs\research-<date>-<id>.md/.docx`.
   No confirm (writes only its own project's research\ and outputs\). `/mcp` surface: research_start/status/cancel.
+  2026-11: the report language is the question's (th/en/ja/zh by script, `detect_lang`), progress and status
+  texts follow it too; see the tool-layer note in §10a.
 - **Routing hint (integrator, measured):** the 4B sent "ค้นคว้าเชิงลึกแล้วเขียนรายงานพร้อมอ้างอิงเรื่อง: …" (the "+" menu
   prefill) to `web_search` 3/3 times. Fixed with one sentence at the head of the `local_do` description AND one at the end
   of the `web_search` description (websearch server.py); either alone stayed 0/3, both = 3/3, plain web-search requests

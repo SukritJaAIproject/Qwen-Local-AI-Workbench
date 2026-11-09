@@ -58,6 +58,7 @@ if _HERE not in sys.path:
 
 import guard  # noqa: E402
 import extract  # noqa: E402
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # secrets_util อยู่ที่ C:\LLM (โฟลเดอร์แม่) — ต่อท้าย sys.path ไม่แทรกหน้า กันชื่อไปทับ stdlib
 _PARENT = os.path.dirname(_HERE)
@@ -169,13 +170,13 @@ def _db_path(base: str) -> str:
     guard.check_read(base)
     root = os.path.normcase(os.path.realpath(str(guard.PROJECT_DATA)))
     if os.path.normcase(os.path.dirname(os.path.realpath(base))) != root:
-        raise guard.Denied("คลังความรู้ต้องอยู่ในโฟลเดอร์ข้อมูลของโปรเจกต์")
+        raise guard.Denied(TR("คลังความรู้ต้องอยู่ในโฟลเดอร์ข้อมูลของโปรเจกต์"))
     folder = os.path.join(base, KB_DIR)
     os.makedirs(folder, exist_ok=True)
     # kb\ ต้องเป็นโฟลเดอร์จริงของโปรเจกต์ ไม่ใช่ junction ที่พาไฟล์ดัชนี (ซึ่งมีเนื้อหาไฟล์แนบ) ไปไว้ที่อื่น
     if os.path.normcase(os.path.realpath(folder)) != \
             os.path.normcase(os.path.join(os.path.realpath(base), KB_DIR)):
-        raise guard.Denied("โฟลเดอร์ kb ของโปรเจกต์ต้องเป็นโฟลเดอร์จริง ไม่ใช่ลิงก์/junction")
+        raise guard.Denied(TR("โฟลเดอร์ kb ของโปรเจกต์ต้องเป็นโฟลเดอร์จริง ไม่ใช่ลิงก์/junction"))
     return guard.check_read(os.path.join(folder, DB_NAME))
 
 
@@ -343,12 +344,12 @@ def chunks_of(res: extract.Result) -> list[tuple[str, str]]:
                 if not line:
                     continue
                 if group and size + len(line) > CHUNK:
-                    out.append(("%s แถวข้อมูล %d-%d" % (u.loc, first, idx - 1), "\n".join(group)))
+                    out.append((TR("%s แถวข้อมูล %d-%d") % (u.loc, first, idx - 1), "\n".join(group)))
                     group, size, first = [], 0, idx
                 group.append(line)
                 size += len(line) + 1
             if group:
-                out.append(("%s แถวข้อมูล %d-%d" % (u.loc, first, len(u.rows)), "\n".join(group)))
+                out.append((TR("%s แถวข้อมูล %d-%d") % (u.loc, first, len(u.rows)), "\n".join(group)))
             elif header:
                 out.append((u.loc, " · ".join(h for h in header if h)))
             continue
@@ -479,19 +480,19 @@ def update_index(base: str, budget: float | None = None, ocr_budget: float | Non
                 if res.warnings or res.notes:      # คำเตือนมาก่อน: search() หา BROKEN_TEXT_TAG ในสถานะนี้
                     status = "ok (" + "; ".join(res.warnings + res.notes)[:200] + ")"
             except guard.Denied as exc:
-                status = "ข้าม: %s" % exc
+                status = TR("ข้าม: %s") % exc
             except extract.ExtractError as exc:
-                status = "อ่านไม่ได้: %s" % exc
+                status = TR("อ่านไม่ได้: %s") % exc
                 stats["errors"].append("%s — %s" % (rel, str(exc)[:160]))
             except Exception as exc:     # noqa: BLE001 — ไฟล์เดียวพังต้องไม่ล้มคลังทั้งคลัง
-                status = "อ่านไม่ได้: %s" % type(exc).__name__
+                status = TR("อ่านไม่ได้: %s") % type(exc).__name__
                 stats["errors"].append("%s — %s" % (rel, type(exc).__name__))
             con.execute("DELETE FROM chunks WHERE file=?", (rel,))
             con.executemany("INSERT INTO chunks(text, file, loc) VALUES (?,?,?)",
                             [(text, rel, loc) for loc, text in rows])
             if incomplete:
                 stats["ocr_pending"] += 1
-                status = ("OCR ยังไม่ครบ; " + status)[:300]
+                status = (TR("OCR ยังไม่ครบ; ") + status)[:300]
             con.execute("INSERT OR REPLACE INTO files VALUES (?,?,?,?,?,?)",
                         (rel, size, -1 if incomplete else mtime, len(rows), status[:300], _now()))
             _bump_gen(con)
@@ -744,7 +745,7 @@ def embed_unavailable() -> str:
     """"" = ควรลองเรียกได้ ไม่งั้นเหตุผลที่เพิ่งล้มไม่นาน (ไม่ลองซ้ำจนพ้น EMBED_DOWN_TTL)"""
     with _EMBED_LOCK:
         if time.monotonic() < _EMBED_STATE["down_until"]:
-            return _EMBED_STATE["why"] or "ไม่พร้อม"
+            return _EMBED_STATE["why"] or TR("ไม่พร้อม")
     return ""
 
 
@@ -762,14 +763,14 @@ def reset_embed_state() -> None:
 def _unit(vec) -> array:
     """ตรวจรูปเวกเตอร์จากบริการ (ตัวเลขจริง มิติสมเหตุสมผล) แล้ว normalize — ค่าแปลก = ปฏิเสธทั้งชุด"""
     if not isinstance(vec, list) or not (16 <= len(vec) <= 8192):
-        raise _EmbedError("รูปแบบเวกเตอร์ไม่ถูกต้อง")
+        raise _EmbedError(TR("รูปแบบเวกเตอร์ไม่ถูกต้อง"))
     try:
         vals = [float(x) for x in vec]
     except (TypeError, ValueError) as exc:
-        raise _EmbedError("เวกเตอร์มีค่าที่ไม่ใช่ตัวเลข") from exc
+        raise _EmbedError(TR("เวกเตอร์มีค่าที่ไม่ใช่ตัวเลข")) from exc
     norm = math.sqrt(sum(x * x for x in vals))
     if not norm or not math.isfinite(norm):
-        raise _EmbedError("เวกเตอร์ว่าง")
+        raise _EmbedError(TR("เวกเตอร์ว่าง"))
     return array("f", [x / norm for x in vals])
 
 
@@ -790,24 +791,24 @@ def _post_embeddings(texts: list[str], timeout: float) -> list[array]:
         status = resp.status
         data = resp.read(128 * 1024 * 1024)
     except TimeoutError as exc:
-        raise _EmbedError("บริการ embedding ตอบช้าเกิน %d วินาที" % int(timeout)) from exc
+        raise _EmbedError(TR("บริการ embedding ตอบช้าเกิน %d วินาที") % int(timeout)) from exc
     except (OSError, http.client.HTTPException) as exc:
-        raise _EmbedError("ต่อบริการ embedding ที่พอร์ต %d ไม่ได้" % embed_port()) from exc
+        raise _EmbedError(TR("ต่อบริการ embedding ที่พอร์ต %d ไม่ได้") % embed_port()) from exc
     finally:
         conn.close()
     if status == 401:
-        raise _EmbedError("บริการ embedding ปฏิเสธ token (401)")
+        raise _EmbedError(TR("บริการ embedding ปฏิเสธ token (401)"))
     if status == 503:
-        raise _EmbedError("บริการ embedding กำลังโหลดโมเดล")
+        raise _EmbedError(TR("บริการ embedding กำลังโหลดโมเดล"))
     if status != 200:
-        raise _EmbedError("บริการ embedding ตอบ HTTP %d" % status)
+        raise _EmbedError(TR("บริการ embedding ตอบ HTTP %d") % status)
     try:
         doc = json.loads(data.decode("utf-8"))
         items = sorted(doc.get("data") or [], key=lambda d: int(d.get("index", 0)))
     except (ValueError, AttributeError, TypeError) as exc:
-        raise _EmbedError("คำตอบของบริการ embedding อ่านไม่ออก") from exc
+        raise _EmbedError(TR("คำตอบของบริการ embedding อ่านไม่ออก")) from exc
     if len(items) != len(texts):
-        raise _EmbedError("จำนวนเวกเตอร์ไม่ตรงกับที่ส่งไป")
+        raise _EmbedError(TR("จำนวนเวกเตอร์ไม่ตรงกับที่ส่งไป"))
     return [_unit(it.get("embedding")) for it in items]
 
 
@@ -1011,14 +1012,14 @@ def search_hybrid(base: str, query: str, k: int = DEFAULT_K, mode: str = "auto")
         info["note"] = str(exc)
         return _finish(scored, [], k, terms, qgrams, broken), len(scored), info
     except sqlite3.Error as exc:
-        info["note"] = "อ่านเวกเตอร์ไม่ได้ (%s)" % type(exc).__name__
+        info["note"] = TR("อ่านเวกเตอร์ไม่ได้ (%s)") % type(exc).__name__
         return _finish(scored, [], k, terms, qgrams, broken), len(scored), info
     finally:
         _foreground(-1)
     cov = info["coverage"]
     if mode == "semantic" and not sem and cov and cov[0] < cov[1]:
         # ขอความหมายอย่างเดียวแต่เวกเตอร์ยังไม่ครบ = "ไม่พบ" อาจเป็นเพราะก้อนนั้นยังไม่ถูก embed — ให้ผลคำตรงแทน
-        info["note"] = "ดัชนีความหมายยังไม่ครบ %d/%d ก้อน (กำลังสร้างเบื้องหลัง)" % cov
+        info["note"] = TR("ดัชนีความหมายยังไม่ครบ %d/%d ก้อน (กำลังสร้างเบื้องหลัง)") % cov
         return _finish(scored, [], k, terms, qgrams, broken), len(scored), info
     info["used"] = "semantic" if mode == "semantic" else "hybrid"
     lex = [] if mode == "semantic" else scored
@@ -1263,7 +1264,7 @@ def kb_search(query: str = "", k=None, project: str = "", mode: str = "", **_) -
     try:
         q = _s(query).strip()
         if not q:
-            return "ERROR: ต้องระบุ query (คำหรือประโยคที่ต้องการค้น)"
+            return TR("ERROR: ต้องระบุ query (คำหรือประโยคที่ต้องการค้น)")
         try:
             kk = int(float(_s(k).strip())) if _s(k).strip() else DEFAULT_K
         except ValueError:
@@ -1282,61 +1283,61 @@ def kb_search(query: str = "", k=None, project: str = "", mode: str = "", **_) -
         guard.audit("kb_search", {"project": slug, "query_chars": len(q), "k": kk, "hits": len(hits),
                                   "files": stats["files"], "updated": stats["updated"],
                                   "mode": md, "used": info["used"]})
-        head = ("คลังความรู้ของโปรเจกต์: %d ไฟล์ %d ก้อน (attachments/ + outputs/)"
+        head = (TR("คลังความรู้ของโปรเจกต์: %d ไฟล์ %d ก้อน (attachments/ + outputs/)")
                 % (stats["files"], stats["chunks"]))
         if stats["updated"] or stats["removed"]:
-            head += " · อัปเดตดัชนี %d ไฟล์" % stats["updated"] + (
-                ", ลบ %d" % stats["removed"] if stats["removed"] else "")
+            head += TR(" · อัปเดตดัชนี %d ไฟล์") % stats["updated"] + (
+                TR(", ลบ %d") % stats["removed"] if stats["removed"] else "")
         lines = [extract.BANNER, head]
         if info["used"] == "hybrid":
-            lines.append("ค้นแบบผสม: คำตรง + ความหมาย")
+            lines.append(TR("ค้นแบบผสม: คำตรง + ความหมาย"))
         elif info["used"] == "semantic":
-            lines.append("ค้นตามความหมาย (mode=semantic)")
+            lines.append(TR("ค้นตามความหมาย (mode=semantic)"))
         if info["note"]:
-            lines.append("[หมายเหตุ] ค้นตามความหมายไม่ได้ตอนนี้ (%s) — ใช้การค้นแบบคำตรงอย่างเดียว" % info["note"])
+            lines.append(TR("[หมายเหตุ] ค้นตามความหมายไม่ได้ตอนนี้ (%s) — ใช้การค้นแบบคำตรงอย่างเดียว") % info["note"])
         cov = info.get("coverage")
         partial = bool(cov and cov[0] < cov[1])
         if info["used"] != "lexical" and partial:
             # docs2 fixer: บอกให้ชัดว่า "ไม่พบ" ตอนนี้ไม่ได้แปลว่าไม่มี — เดิมโมเดลตอบผู้ใช้ว่า "ไม่มีข้อมูลเรื่องนี้"
             # ทั้งที่ไฟล์แนบใหม่ยังไม่ถูกทำเวกเตอร์
-            lines.append("[หมายเหตุ] ดัชนีความหมายมี %d/%d ก้อน กำลังทำส่วนที่เหลือเบื้องหลัง — ผลตามความหมายยังไม่ครบ "
-                         "ถ้าไม่เจอสิ่งที่ต้องการ อย่าสรุปว่าไม่มี ให้ค้นอีกครั้งด้วยคำสั้นๆ ตรงตัว (เช่นชื่อค่า/รหัส)" % cov)
+            lines.append(TR("[หมายเหตุ] ดัชนีความหมายมี %d/%d ก้อน กำลังทำส่วนที่เหลือเบื้องหลัง — ผลตามความหมายยังไม่ครบ "
+                         "ถ้าไม่เจอสิ่งที่ต้องการ อย่าสรุปว่าไม่มี ให้ค้นอีกครั้งด้วยคำสั้นๆ ตรงตัว (เช่นชื่อค่า/รหัส)") % cov)
         if stats["pending"]:
-            lines.append("[หมายเหตุ] ยังทำดัชนีไม่ครบ ค้าง %d ไฟล์ — เรียก kb อีกครั้งเพื่อทำต่อ" % stats["pending"])
+            lines.append(TR("[หมายเหตุ] ยังทำดัชนีไม่ครบ ค้าง %d ไฟล์ — เรียก kb อีกครั้งเพื่อทำต่อ") % stats["pending"])
         if stats.get("ocr_pending"):
-            lines.append("[หมายเหตุ] OCR (PDF สแกน/ภาพ) ยังไม่ครบ %d ไฟล์ — กำลังทำต่อเบื้องหลัง "
-                         "ค้นอีกครั้งภายหลังจะเจอเนื้อหาส่วนนั้น" % stats["ocr_pending"])
+            lines.append(TR("[หมายเหตุ] OCR (PDF สแกน/ภาพ) ยังไม่ครบ %d ไฟล์ — กำลังทำต่อเบื้องหลัง "
+                         "ค้นอีกครั้งภายหลังจะเจอเนื้อหาส่วนนั้น") % stats["ocr_pending"])
         for e in stats["errors"][:5]:
-            lines.append("[หมายเหตุ] อ่านไม่ได้: %s" % e)
+            lines.append(TR("[หมายเหตุ] อ่านไม่ได้: %s") % e)
         if not stats["files"]:
-            lines.append("ยังไม่มีไฟล์ในคลัง — ให้ผู้ใช้แนบไฟล์ในแผงโปรเจกต์ (หรือสร้างไฟล์ด้วย make_file) ก่อน")
+            lines.append(TR("ยังไม่มีไฟล์ในคลัง — ให้ผู้ใช้แนบไฟล์ในแผงโปรเจกต์ (หรือสร้างไฟล์ด้วย make_file) ก่อน"))
             lines.append(extract.END_MARK)
             return "\n".join(lines)
         if not hits:
-            lines.append("ไม่พบเนื้อหาที่ตรงกับ \"%s\" — ไม่พบ ≠ ไม่มี: ลองคำที่สั้นลง/คำพ้อง/ชื่อค่าหรือรหัสตรงตัว "
-                         "หรือดูรายชื่อไฟล์ด้วย local_read action=\"list\" path=\"attachments\" แล้ว extract ไฟล์ที่น่าจะใช่"
+            lines.append(TR("ไม่พบเนื้อหาที่ตรงกับ \"%s\" — ไม่พบ ≠ ไม่มี: ลองคำที่สั้นลง/คำพ้อง/ชื่อค่าหรือรหัสตรงตัว "
+                         "หรือดูรายชื่อไฟล์ด้วย local_read action=\"list\" path=\"attachments\" แล้ว extract ไฟล์ที่น่าจะใช่")
                          % extract.clean_text(q)[:80])
             lines.append(extract.END_MARK)
             return "\n".join(lines)
-        lines.append("ผลค้น \"%s\": %d ก้อนที่ตรงที่สุด (จากผู้สมัคร %d)" % (extract.clean_text(q)[:80],
+        lines.append(TR("ผลค้น \"%s\": %d ก้อนที่ตรงที่สุด (จากผู้สมัคร %d)") % (extract.clean_text(q)[:80],
                                                                          len(hits), total))
         lines.append("")
         for i, h in enumerate(hits, 1):
             tag = ""
             if h.get("via") == "sem":
-                tag = " · ตรงตามความหมาย" if h.get("cos", 1.0) >= SEM_TAG_MIN else " · ใกล้เคียงตามความหมาย"
+                tag = TR(" · ตรงตามความหมาย") if h.get("cos", 1.0) >= SEM_TAG_MIN else TR(" · ใกล้เคียงตามความหมาย")
             if _WEB_REPORT_RE.match(h["file"] or ""):
-                tag += " · รายงานค้นคว้าจากเว็บ (ไม่ใช่เอกสารของโปรเจกต์)"
+                tag += TR(" · รายงานค้นคว้าจากเว็บ (ไม่ใช่เอกสารของโปรเจกต์)")
             lines.append("[%d] %s · %s%s" % (i, h["file"], h["loc"], tag))
             lines.append("    " + h["snippet"])
         if info["used"] == "hybrid" and all(h.get("via") == "sem" for h in hits):
-            lines.append("[หมายเหตุ] ไม่มีผลที่ตรงคำเลย ผลข้างบนมาจากความหมายอย่างเดียว — ถ้าไม่ตอบคำถาม "
-                         "ลองค้นอีกครั้งด้วยคำสั้นๆ ตรงตัว (ไม่พบ ≠ ไม่มี)")
+            lines.append(TR("[หมายเหตุ] ไม่มีผลที่ตรงคำเลย ผลข้างบนมาจากความหมายอย่างเดียว — ถ้าไม่ตอบคำถาม "
+                         "ลองค้นอีกครั้งด้วยคำสั้นๆ ตรงตัว (ไม่พบ ≠ ไม่มี)"))
         for f in sorted({h["file"] for h in hits if h.get("broken")}):
-            lines.append("[หมายเหตุ] %s: ข้อความไทยใน %s อาจเพี้ยนบางตัว (วรรณยุกต์กลายเป็นอักษรอื่น) "
-                         "อ่านตามบริบท" % (extract.BROKEN_TEXT_TAG, f))
+            lines.append(TR("[หมายเหตุ] %s: ข้อความไทยใน %s อาจเพี้ยนบางตัว (วรรณยุกต์กลายเป็นอักษรอื่น) "
+                         "อ่านตามบริบท") % (extract.BROKEN_TEXT_TAG, f))
         if any("(OCR)" in h["loc"] for h in hits):
-            lines.append("[หมายเหตุ] ผลที่ติดป้าย (OCR) อ่านจากภาพ อาจมีคำ/ตัวเลขผิด — ยกตัวเลขสำคัญให้บอกผู้ใช้ว่ามาจาก OCR")
+            lines.append(TR("[หมายเหตุ] ผลที่ติดป้าย (OCR) อ่านจากภาพ อาจมีคำ/ตัวเลขผิด — ยกตัวเลขสำคัญให้บอกผู้ใช้ว่ามาจาก OCR"))
         first = hits[0]
         m = re.match(r"(หน้า|สไลด์) (\d+)", first["loc"])
         hint = ' pages="%s"' % m.group(2) if m else ""
@@ -1345,17 +1346,17 @@ def kb_search(query: str = "", k=None, project: str = "", mode: str = "", **_) -
         if m_t and _stt.is_media(first["file"]):
             # [voice] ไฟล์เสียง/วิดีโอ extract อ่านไม่ได้ — ชี้ไปที่ transcribe เริ่มจากเวลาของผลแรก
             secs = int(m_t.group(1)) * 3600 + int(m_t.group(2)) * 60 + int(m_t.group(3))
-            lines.append("[หมายเหตุ] ฟังช่วงเต็มด้วย local_read action=\"transcribe\" path=\"%s\" start=\"%d\" — อ้างชื่อไฟล์"
-                         "และเวลาเมื่อตอบผู้ใช้ (ข้อความจากการถอดเสียงอาจสะกดผิด)" % (first["file"], secs))
+            lines.append(TR("[หมายเหตุ] ฟังช่วงเต็มด้วย local_read action=\"transcribe\" path=\"%s\" start=\"%d\" — อ้างชื่อไฟล์"
+                         "และเวลาเมื่อตอบผู้ใช้ (ข้อความจากการถอดเสียงอาจสะกดผิด)") % (first["file"], secs))
         else:
-            lines.append("[หมายเหตุ] อ่านเต็มด้วย local_read action=\"extract\" path=\"%s\"%s — อ้างชื่อไฟล์"
-                         "และหน้า/ชีตเมื่อตอบผู้ใช้" % (first["file"], hint))
+            lines.append(TR("[หมายเหตุ] อ่านเต็มด้วย local_read action=\"extract\" path=\"%s\"%s — อ้างชื่อไฟล์"
+                         "และหน้า/ชีตเมื่อตอบผู้ใช้") % (first["file"], hint))
         lines.append(extract.END_MARK)
         return "\n".join(lines)
     except Exception as exc:                     # noqa: BLE001
         if isinstance(exc, guard.Denied):
-            return "ปฏิเสธ: %s" % exc
-        return "ERROR: kb ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+            return TR("ปฏิเสธ: %s") % exc
+        return TR("ERROR: kb ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 # ------------------------------------------------------------------ ชื่อไฟล์ที่ใกล้เคียง (docs2 fixer)
@@ -1446,10 +1447,10 @@ def doc_extract_near(path: str = "", pages: str = "", sheet: str = "", max_chars
         got = tools_docs.doc_extract(path=best, pages=pages, sheet=sheet, max_chars=max_chars, project=project)
         if str(got).startswith(extract.BANNER):
             shown = extract.clean_text(_s(path).replace("\\", "/").split("/")[-1])[:120]
-            return ("[หมายเหตุ] ไม่พบไฟล์ \"%s\" — ใช้ไฟล์ที่ชื่อใกล้ที่สุด \"%s\" แทน (ถ้าไม่ใช่ไฟล์ที่ผู้ใช้หมายถึง "
-                    "ให้ถามผู้ใช้)\n" % (shown, best)) + got
-    return (out + "\nหมายถึงไฟล์นี้ไหม: " + ", ".join('"%s"' % n for n, _r in near)
-            + " — เรียก extract อีกครั้งด้วยชื่อนั้นตรงตัว")
+            return (TR("[หมายเหตุ] ไม่พบไฟล์ \"%s\" — ใช้ไฟล์ที่ชื่อใกล้ที่สุด \"%s\" แทน (ถ้าไม่ใช่ไฟล์ที่ผู้ใช้หมายถึง "
+                    "ให้ถามผู้ใช้)\n") % (shown, best)) + got
+    return (out + TR("\nหมายถึงไฟล์นี้ไหม: ") + ", ".join('"%s"' % n for n, _r in near)
+            + TR(" — เรียก extract อีกครั้งด้วยชื่อนั้นตรงตัว"))
 
 
 TOOLS = [
