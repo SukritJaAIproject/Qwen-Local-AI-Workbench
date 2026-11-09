@@ -77,6 +77,7 @@ class FakeStt:
                 body = self.rfile.read(n)
                 q = parse_qs(urlsplit(self.path).query)
                 owner.requests.append({"path": urlsplit(self.path).path, "lang": (q.get("language") or [""])[0],
+                                       "hint": (q.get("hint") or [""])[0],
                                        "auth": self.headers.get("Authorization", ""),
                                        "host": self.headers.get("Host", ""), "ctype": self.headers.get("Content-Type"),
                                        "bytes": len(body)})
@@ -180,6 +181,7 @@ class TranscribeTests(SttBase):
             self.assertEqual(r["host"], "127.0.0.1:%d" % self.fake.port)
             self.assertEqual(r["ctype"], "audio/wav")
             self.assertEqual(r["lang"], "auto")
+            self.assertEqual(r["hint"], "th")                     # 2026-11: ภาษาของหน้าจอไปกับทุกคำขอ
         # เวลาในผล = เวลาในท่อน + เวลาเริ่มของท่อน และข้อความ (วินาทีจริงในไฟล์) ต้องตรงกับเวลาเริ่มทุกบรรทัด
         self.assertIn("[00:00:00–00:00:10] เสียงวินาทีที่ 0", out)
         self.assertIn("[00:02:00–00:02:10] เสียงวินาทีที่ 120", out)
@@ -222,6 +224,19 @@ class TranscribeTests(SttBase):
         self.run_t(path="b.wav")
         self.run_t(path="b.wav", language="th")                  # บริการปลอมตอบ language=th เสมอ
         self.assertEqual(len(self.fake.requests), 2)
+
+    def test_ui_language_goes_with_the_request_as_hint(self):
+        """2026-11: หน้าจอญี่ปุ่น -> hint=ja และชื่อภาษาในหัวผลลัพธ์เป็นภาษาของหน้าจอ (บริการปลอมตอบ th เสมอ)"""
+        i18n = C.import_local("i18n_tools")
+        self.audio("c.wav", 5)
+        i18n.set_lang("ja")
+        try:
+            out = self.run_t(path="c.wav")
+        finally:
+            i18n.set_lang(None)
+        self.assertEqual(self.fake.requests[-1]["hint"], "ja")
+        self.assertIn("言語: タイ語 (th)", out)
+        self.assertNotIn("ภาษา: ไทย", out)
         self.assertIn("ERROR", self.run_t(path="b.wav", language="klingon-x"))
 
     def test_budget_partial_then_continue(self):
@@ -505,6 +520,14 @@ class SurfaceTests(unittest.TestCase):
         self.assertEqual(tools_stt.hms(3723.4), "01:02:03")
         self.assertEqual(tools_stt.norm_language("TH"), "th")
         self.assertEqual(tools_stt.norm_language("อัตโนมัติ"), "")
+        # 2026-11: ญี่ปุ่น/จีน
+        self.assertEqual(tools_stt.norm_language("ญี่ปุ่น"), "ja")
+        self.assertEqual(tools_stt.norm_language("日本語"), "ja")
+        self.assertEqual(tools_stt.norm_language("zh-CN"), "zh")
+        self.assertEqual(tools_stt.norm_language("简体中文"), "zh")
+        with self.assertRaises(tools_stt.SttError) as cm:
+            tools_stt.norm_language("1234")
+        self.assertIn("ja, zh", str(cm.exception))
         self.assertNotIn(".ts", tools_stt.MEDIA_EXTS)
         self.assertTrue(tools_stt.is_media("x/รายงาน.M4A"))
         self.assertFalse(tools_stt.is_media("x/app.ts"))

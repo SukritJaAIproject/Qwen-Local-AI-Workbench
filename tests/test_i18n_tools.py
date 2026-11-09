@@ -415,5 +415,67 @@ class StandaloneLoadTests(unittest.TestCase):
         self.assertFalse(THAI.search(out), out)
 
 
+class OcrLanguageTests(unittest.TestCase):
+    """2026-11: OCR เพิ่มชุดข้อมูลของภาษาหน้าจอ (ja -> jpn, zh -> chi_sim) เมื่อมีไฟล์ .traineddata และแคชต่อหน้าจำชุดภาษา"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ex = C.import_local("extract")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self._saved = (self.ex.TESSDATA_DIR, self.ex.OCR_LANGS)
+        self.ex.TESSDATA_DIR = self.tmp.name
+        self.ex.OCR_LANGS = "tha+eng"
+        i18n.set_lang(None)
+
+    def tearDown(self):
+        self.ex.TESSDATA_DIR, self.ex.OCR_LANGS = self._saved
+        i18n.set_lang(None)
+        self.tmp.cleanup()
+
+    def _install(self, pack):
+        Path(self.tmp.name, pack + ".traineddata").write_bytes(b"x")
+
+    def test_ui_language_adds_its_pack_only_when_installed(self):
+        i18n.set_lang("ja")
+        self.assertEqual(self.ex.ocr_langs(), "tha+eng")                 # ยังไม่มีไฟล์ = ชุดเดิม เงียบๆ
+        self._install("jpn")
+        self.assertEqual(self.ex.ocr_langs(), "tha+eng+jpn")
+        i18n.set_lang("zh")
+        self.assertEqual(self.ex.ocr_langs(), "tha+eng")
+        self._install("chi_sim")
+        self.assertEqual(self.ex.ocr_langs(), "tha+eng+chi_sim")
+        for lang in ("th", "en"):
+            i18n.set_lang(lang)
+            self.assertEqual(self.ex.ocr_langs(), "tha+eng")               # หน้าจอไทย/อังกฤษไม่เปลี่ยน
+        self.ex.OCR_LANGS = "tha+eng+jpn"                                   # ตั้งไว้ในชุดพื้นฐานแล้ว = ไม่ซ้ำ
+        i18n.set_lang("ja")
+        self.assertEqual(self.ex.ocr_langs(), "tha+eng+jpn")
+        self.assertTrue(self.ex.ocr_pack_installed("jpn"))
+        self.assertFalse(self.ex.ocr_pack_installed("kor"))
+        self.assertFalse(self.ex.ocr_pack_installed(""))
+
+    def test_cached_page_from_another_language_set_is_redone(self):
+        self._install("jpn")
+        run = self.ex._OcrRun.__new__(self.ex._OcrRun)
+        run.cache, run._sha, run.hits, run.path = self.tmp.name, "a" * 64, 0, "x.pdf"
+        rec = {"text": "ข้อความ", "conf": 90.0, "words": 3}                 # ระเบียนรุ่นก่อน (ไม่มี langs = tha+eng)
+        saved = self.ex._cache_read
+        self.ex._cache_read = lambda d, sha, n: dict(rec)
+        try:
+            i18n.set_lang("th")
+            self.assertIsNotNone(run.cached(1))
+            i18n.set_lang("ja")
+            self.assertIsNone(run.cached(1))                                 # ชุดตอนนี้ tha+eng+jpn ≠ ระเบียน
+            rec["langs"] = "tha+eng+jpn"
+            self.assertIsNotNone(run.cached(1))
+            rec.update(blank=True, langs="tha+eng")
+            self.assertIsNotNone(run.cached(1))                              # หน้าว่างไม่ขึ้นกับภาษา
+        finally:
+            self.ex._cache_read = saved
+        self.assertEqual(run.hits, 2)                                        # หน้าว่างไม่นับเป็น hit
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -277,6 +277,42 @@ def sandbox_enabled(path=None):
     return isinstance(doc, dict) and doc.get("enabled") is True
 
 
+# 2026-11: ชุดข้อมูล OCR ของ Tesseract ที่หน้าจอแต่ละภาษาใช้เพิ่ม (ตรงกับ OCR_UI_PACKS ของ mcp-local/extract.py) + ชื่อภาษาในคำแนะนำ
+OCR_UI_PACKS = {"ja": "jpn", "zh": "chi_sim"}
+OCR_PACK_LANG_NAMES = {"ja": {"th": "ญี่ปุ่น", "en": "Japanese", "ja": "日本語", "zh": "日语"},
+                       "zh": {"th": "จีน", "en": "Chinese", "ja": "中国語", "zh": "中文"}}
+
+
+def ocr_packs(tessdata_dir):
+    """ไฟล์ .traineddata ที่มีอยู่ (ชุดพื้นฐาน tha/eng + ชุดของภาษาหน้าจอ) — ใช้บอกผู้ใช้ญี่ปุ่น/จีนว่ายังขาดชุดของตัวเอง"""
+    d = str(tessdata_dir or "")
+    names = ("tha", "eng") + tuple(OCR_UI_PACKS.values())
+    present = {}
+    for name in names:
+        try:
+            present[name] = bool(d) and os.path.isfile(os.path.join(d, name + ".traineddata"))
+        except (OSError, ValueError):
+            present[name] = False
+    return {"dir": d, "packs": present}
+
+
+def ocr_pack_fixes(rep, lang):
+    """แถวคำแนะนำ (severity info) เมื่อหน้าเป็นญี่ปุ่น/จีนแต่ไม่มีชุดข้อมูล OCR ของภาษานั้น — ขึ้นกับภาษาของหน้า จึงเติมตอน localize"""
+    pack = OCR_UI_PACKS.get(lang)
+    meta = rep.get("_meta") if isinstance(rep.get("_meta"), dict) else {}
+    ocr = meta.get("ocr") if isinstance(meta.get("ocr"), dict) else None
+    if not pack or not ocr or ocr.get("packs", {}).get(pack, True):
+        return []
+    folder = ocr.get("dir") or ""
+    row = {"id": "ocr_pack", "severity": FIX_SEVERITY["ocr_pack"]}
+    th, en = FIX["ocr_pack"]
+    ja, zh = FIX_JA_ZH["ocr_pack"]
+    names = OCR_PACK_LANG_NAMES[lang]
+    for code, tpl in (("th", th), ("en", en), ("ja", ja), ("zh", zh)):
+        row[code] = tpl % (names[code], pack, folder)
+    return [row]
+
+
 def docker_status():
     """ใช้ Docker ได้ไหม (CLI + engine pipe) — ไม่รันคำสั่ง docker (อาจค้างหลายวินาทีถ้า engine ไม่ตอบ)"""
     if not sandbox_enabled():
@@ -470,6 +506,11 @@ FIX = {
               "Web search is in the limited mode (Wikipedia + DuckDuckGo instant answers) → remove \"provider\": \"builtin\" "
               "from C:\\LLM\\mcp-websearch\\config.json to use DDGS (no key), or put a Brave key in "
               "C:\\LLM\\secrets\\brave-search.key"),
+    # 2026-11: หน้าจอญี่ปุ่น/จีนแต่ไม่มีชุดข้อมูล OCR ของภาษานั้น (args: ชื่อภาษา, ชื่อไฟล์, โฟลเดอร์) — แถวนี้ใส่ตอน localize ตามภาษาของหน้า
+    "ocr_pack": ("OCR ภาษา%s: ไม่มีไฟล์ %s.traineddata ใน %s → ดาวน์โหลดจาก https://github.com/tesseract-ocr/tessdata_best "
+                 "แล้ววางในโฟลเดอร์นั้น (ไม่ต้องรีสตาร์ต — หน้าสแกน/รูปถ่ายภาษานั้นจะอ่านได้ทันที)",
+                 "OCR for %s: %s.traineddata is missing from %s → download it from https://github.com/tesseract-ocr/tessdata_best "
+                 "into that folder (no restart needed — scanned pages and photos in that language are read from then on)"),
     "docker": ("Docker ใช้ไม่ได้ (%s) → ติดตั้ง Docker Desktop เอง (ต้องกด UAC/ยอมรับเงื่อนไข) — ระหว่างนี้ python รันบนเครื่องพร้อมขอยืนยัน",
                "Docker is not usable (%s) → install Docker Desktop yourself (UAC + licence); python runs on the host with approval meanwhile"),
     "docker_reinstall": ("Docker ใช้ไม่ได้ (%s) → ติดตั้ง Docker Desktop ใหม่เอง (ต้องกด UAC/ยอมรับเงื่อนไข) "
@@ -491,7 +532,8 @@ FIX = {
 # info ไม่นับใน overall: เครื่องที่ทุกบริการปกติแต่ยังไม่มี Brave key/Docker เคยได้ overall=warn ตลอดกาล ขณะที่หน้าเว็บขึ้นเขียว
 # (รายงานข้อความ/สคริปต์ที่อ่าน overall จึงบอก "มีข้อสังเกต" ทั้งที่ไม่มีปัญหา)
 FIX_SEVERITY = {"router": "error", "router_auth": "error", "mcp_local": "error", "mcp_web": "error", "mcp_auth": "error",
-                "embed": "error", "stt": "error", "scheduler": "error", "gateway": "error", "brave": "info", "docker": "info"}
+                "embed": "error", "stt": "error", "scheduler": "error", "gateway": "error", "brave": "info", "docker": "info",
+                "ocr_pack": "info"}
 
 # 2026-11: คำแนะนำเดียวกันเป็นญี่ปุ่น/จีน (คำสั่ง/พาธคงเดิม) — คีย์ที่ไม่มีในนี้ หน้าเว็บถอยไปใช้อังกฤษ
 FIX_JA_ZH = {
@@ -539,6 +581,10 @@ FIX_JA_ZH = {
               "\"provider\": \"builtin\" を外して DDGS（キー不要）を使うか、Brave キーを C:\\LLM\\secrets\\brave-search.key に置く",
               "网络搜索处于受限模式 (Wikipedia + DuckDuckGo instant answers) → 从 C:\\LLM\\mcp-websearch\\config.json 中删除 "
               "\"provider\": \"builtin\" 以使用 DDGS（无需密钥），或把 Brave 密钥放到 C:\\LLM\\secrets\\brave-search.key"),
+    "ocr_pack": ("%s の OCR: %s.traineddata が %s にありません → https://github.com/tesseract-ocr/tessdata_best からダウンロードして"
+                 "そのフォルダーに置いてください（再起動不要 — その言語のスキャン/写真がすぐ読めるようになります）",
+                 "%s OCR：缺少 %s.traineddata（应放在 %s）→ 从 https://github.com/tesseract-ocr/tessdata_best 下载并放入该文件夹"
+                 "（无需重启 — 之后即可识别该语言的扫描件/照片）"),
     "docker": ("Docker が使えません (%s) → Docker Desktop を自分でインストール（UAC とライセンスの同意が必要）。その間 python は承認のうえ"
                "ホストで実行されます",
                "Docker 不可用 (%s) → 请自行安装 Docker Desktop（需要 UAC 和接受许可）；期间 python 经批准后在本机运行"),
@@ -754,6 +800,7 @@ class Doctor:
                                         stats=self._log_stats),
             "models": lambda: models_present(self.cfg["model_dirs"]),
             "memory": memory_status, "disks": disks, "docker": docker_status,
+            "ocr": lambda: ocr_packs(self.cfg.get("tessdata_dir")),
         }
         results = {}
 
@@ -869,6 +916,7 @@ class Doctor:
             "gpu": gpu_rows, "memory": mem, "disks": dsk, "keys": keys, "brave_key": bool(keys.get("brave_key")),
             "docker": dock, "errors": logs[0], "tests": tests,
             "_meta": {"gpu_error": gpu_err, "errors_skipped": logs[1], "late": late,
+                      "ocr": res.get("ocr") if isinstance(res.get("ocr"), dict) and "packs" in res.get("ocr") else None,
                       # [fix-hub b3] ไฟล์ log ที่ไม่นับ: เก่ากว่า ERR_MAX_AGE_S / ของพอร์ตทดสอบ
                       "errors_old_files": int(self._log_stats.get("old_files", 0)),
                       "errors_test_logs": int(self._log_stats.get("test_logs", 0)),
@@ -965,6 +1013,10 @@ def localize(rep, lang="th"):
                 s["heartbeat_message"] = None
     if isinstance(rep.get("docker"), dict):
         out["docker"] = dict(rep["docker"], reason=docker_reason(rep["docker"], lang))
+    # 2026-11: คำแนะนำที่ขึ้นกับภาษาของหน้า (ชุดข้อมูล OCR ของภาษาญี่ปุ่น/จีน) — info ไม่กระทบ overall
+    extra = ocr_pack_fixes(rep, lang)
+    if extra:
+        out["fixes"] = list(rep.get("fixes") or []) + extra
     out["lang"] = lang
     return out
 

@@ -23,6 +23,19 @@ in the chat.
 > ส่วนหน้าจอสลับภาษาได้จากปุ่ม ไทย | EN | 日本語 | 中文 หรือกด `Alt+Shift+L` แล้วข้อความจากเครื่องมือ
 > (คำอธิบายเครื่องมือ ผลลัพธ์ ข้อผิดพลาด หน้ายืนยัน) จะตามภาษาที่เลือกด้วย ส่วนรายงานวิจัยเชิงลึกเขียนตามภาษาของคำถาม
 
+> **日本語:** Qwen Local AI Workbench は、Windows 11 と NVIDIA GPU の PC だけで動くローカル AI ワークベンチです。
+> llama.cpp と Qwen モデルをベースに、日本語・英語・タイ語・簡体字中国語のチャット画面、プロジェクトごとの
+> ワークスペース、承認付きのローカルツール (MCP)、文書の読み取りと作成、ファイル検索、音声入力、内蔵ブラウザー、
+> GPU への自動配置を備えています。データはウェブ検索系のツールを使うとき以外 PC の外に出ません。インストール手順は
+> [Quick start](#quick-start)（英語）をご覧ください。ไทย | EN | 日本語 | 中文 ボタンか `Alt+Shift+L` で日本語に切り替えると、
+> ツールの説明・結果・確認画面、音声入力の言語判定、OCR（`jpn` データを追加した場合）も日本語に対応します。
+
+> **简体中文:** Qwen Local AI Workbench 是一套完全在本机运行的 AI 工作台（Windows 11 + NVIDIA GPU），基于 llama.cpp
+> 和 Qwen 模型，提供中文、英文、日文和泰文聊天界面、按项目划分的工作区、需确认的本机工具 (MCP)、文档读取与生成、
+> 文件检索、语音输入、内置浏览器以及 GPU 自动分配。除使用联网搜索类工具外，数据不会离开本机。安装步骤见
+> [Quick start](#quick-start)（英文）。用 ไทย | EN | 日本語 | 中文 按钮或 `Alt+Shift+L` 切换到中文后，工具说明、结果与
+> 确认页面、语音输入的语言识别以及 OCR（添加 `chi_sim` 数据后）也会支持中文。
+
 ![Chat in a project: a summary table and action list built from a project file](docs/screenshots/01-chat-en-dark.png)
 
 > **Status.** This is a personal setup that grew feature by feature on one Windows 11 laptop. It works
@@ -69,14 +82,17 @@ in the chat.
   the hub detects Thai, Japanese and Chinese text to keep its own notes in that language. The local tools speak
   the same language: tool descriptions, server instructions, results, errors and confirmation reviews from
   `mcp-local` and `mcp-websearch` follow the UI setting (a catalogue of about 1,700 messages, English when a
-  translation is missing), and a deep-research report is written in the language of the question.
+  translation is missing), and a deep-research report is written in the language of the question. Dictation and
+  OCR follow it too: a Japanese or Chinese UI adds that language to speech auto-detection, and to OCR once the
+  `jpn` / `chi_sim` Tesseract data is installed (the Doctor page says when it is missing).
 - **Tools you can trust.** The local MCP server's tools (files, shell, Python, Office, media and its isolated
   browser) go through a policy guard, and anything that changes the machine needs a two-step confirmation that
   shows you exactly what will run. Two newer paths have lighter gates: llama.cpp's built-in agent tools (on by
   default; `-Agent:$false` turns them off) and the browser panel. Bypass permissions turns the prompts off per
   project; see [Security notes](#security-notes).
-- **Documents and knowledge.** Read PDF/DOCX/XLSX/PPTX/CSV, OCR scanned Thai and English pages, create DOCX, XLSX,
-  PPTX, PDF, CSV and Markdown files, and search project files by keyword and by meaning.
+- **Documents and knowledge.** Read PDF/DOCX/XLSX/PPTX/CSV, OCR scanned Thai and English pages (Japanese and
+  Simplified Chinese with the optional language data), create DOCX, XLSX, PPTX, PDF, CSV and Markdown files, and
+  search project files by keyword and by meaning.
 - **Deep research** in the background with a cited Markdown/DOCX report.
 - **Built-in browser.** A per-project browser panel beside the chat: you and the model work in the same visible
   tab, and it can only reach public addresses.
@@ -195,7 +211,9 @@ the author's machine. Taken with v1.1.0.
 ### Documents and knowledge
 - **Read** PDF, DOCX, XLSX, CSV, PPTX and text into Markdown with page/sheet markers (zip-bomb and XXE safe).
 - **OCR** of scanned PDF pages and images with Tesseract (Thai + English, 300 dpi), with a confidence label per page
-  and a cache.
+  and a cache. With the UI in Japanese or Chinese and `jpn.traineddata` / `chi_sim.traineddata` from
+  [tessdata_best](https://github.com/tesseract-ocr/tessdata_best) in `C:\LLM\tools\tesseract\tessdata`, that language
+  is read as well; pages are read again when the language set changes.
 - **Create** DOCX, XLSX, PPTX, PDF, CSV and Markdown files in the project's `outputs` folder, with download links in
   the chat. Every write keeps a checkpoint and shows a diff; undo is one call away.
 - **Knowledge search** over attachments and outputs: SQLite FTS5 trigram index plus semantic vectors from a local
@@ -238,7 +256,9 @@ the author's machine. Taken with v1.1.0.
 ### Voice
 - **Dictation:** the microphone button records in the browser and the hub forwards the clip to a local
   faster-whisper (large-v3-turbo) service. It uses the GPU when at least 1.5 GB of VRAM is free, otherwise CPU int8,
-  and gives the VRAM back two seconds after each clip. Auto language detection is limited to Thai and English.
+  and gives the VRAM back two seconds after each clip. Auto language detection covers Thai and English, plus
+  Japanese or Chinese when the UI is set to that language; the UI language is also the fallback for short, unclear
+  clips.
 - **Transcribe files** (audio/video in the project) through the `transcribe` tool; results are cached and indexed.
 - **Read aloud** any answer with the browser's speech engine, switching between Thai and English voices.
 
@@ -375,7 +395,7 @@ Other measurements from the same machine:
 | Models | GGUF files in `C:\LLM\models` | **`Qwen3.8-27B-UD-Q4_K_M.gguf` is required** (the launcher exits without it); the others are optional. Not included; see [THIRD_PARTY.md](THIRD_PARTY.md). Embedding model expected at `D:\LLM\models-embed\Qwen3-Embedding-0.6B-Q8_0.gguf` |
 | Anaconda | optional | Python tool kernel and Office bridge: `%USERPROFILE%\anaconda3\python.exe` by default (jupyter_client, ipykernel, pandas, matplotlib, plotly, pywin32, psutil); point `QWEN_PY_KERNEL_PYTHON` / `QWEN_OFFICE_PYTHON` at another interpreter if yours lives elsewhere |
 | faster-whisper | optional | Voice input: conda env named `flexxfast` under `%USERPROFILE%\anaconda3\envs` with faster-whisper 1.2, CTranslate2, PyAV; model large-v3-turbo in the Hugging Face cache (or set `QWEN_STT_HF_HUB`) |
-| Tesseract | optional | OCR: Tesseract 5.4 in `C:\LLM\tools\tesseract` with `tessdata_best` tha + eng |
+| Tesseract | optional | OCR: Tesseract 5.4 in `C:\LLM\tools\tesseract` with `tessdata_best` tha + eng (+ jpn / chi_sim for a Japanese / Chinese UI) |
 | Microsoft Office | optional | Office bridge (Excel, Word, PowerPoint via COM) |
 | FFmpeg | optional | Media tools; on `PATH`, in `C:\LLM\tools\ffmpeg\bin`, or set `MCP_LOCAL_FFMPEG` / `MCP_LOCAL_FFPROBE` |
 | Microsoft Edge | included with Windows | Headless screenshot harness, the isolated browser tool and the built-in browser panel |

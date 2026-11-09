@@ -846,6 +846,36 @@ class EngineLanguageTests(unittest.TestCase):
         eng.transcribe("pcm", 90.0, None)
         self.assertEqual([(k["language"], k["multilingual"]) for k in eng.model.kwargs], [(None, False), ("th", False)])
 
+    def test_japanese_or_chinese_ui_hint_joins_the_set(self):
+        """2026-11: hint=ja|zh (หน้าจอภาษานั้น) เพิ่มภาษาเข้าชุดตรวจเองของคำขอนั้นและเป็นภาษาสำรอง — ชุดของหน้าจอไทย/อังกฤษไม่เปลี่ยน"""
+        eng = self.engine("ja", 0.42)
+        out = eng.transcribe("pcm", 1.4, None, hint="ja")
+        self.assertEqual((out["language"], len(eng.model.kwargs)), ("ja", 1))        # รับทันที ไม่ถอดซ้ำ
+        self.assertEqual(out["detected"]["rule"], "detected")
+        eng = self.engine("en", 0.97)
+        self.assertEqual(eng.transcribe("pcm", 1.4, None, hint="ja")["language"], "en")   # อังกฤษมั่นใจ = อังกฤษ
+        eng = self.engine("en", 0.6)
+        self.assertEqual(eng.transcribe("pcm", 1.4, None, hint="ja")["language"], "ja")   # ไม่มั่นใจ = ภาษาสำรอง (ja)
+        eng = self.engine("ko", 0.38)
+        self.assertEqual(eng.transcribe("pcm", 1.4, None, hint="zh")["language"], "zh")   # นอกชุด = ภาษาสำรอง (zh)
+        eng = self.engine("th", 0.95)
+        self.assertEqual(eng.transcribe("pcm", 1.4, None, hint="zh")["language"], "th")   # ไทยมั่นใจบนหน้าจอจีน = ไทย
+        eng = self.engine("zh", 0.99)
+        eng.transcribe("pcm", 90.0, None, hint="zh")                                       # คลิปยาว อีกภาษาในชุด = multilingual
+        self.assertEqual([(k["language"], k["multilingual"]) for k in eng.model.kwargs], [(None, False), (None, True)])
+        # หน้าจอไทย/ไม่มี hint: คำไทยสั้นที่เพี้ยนเป็นญี่ปุ่นยังกลับเป็นไทย — แม้ตัวตรวจจะมั่นใจ (ja ไม่อยู่ในชุด th,en)
+        eng = self.engine("ja", 0.375)
+        self.assertEqual(eng.transcribe("pcm", 1.4, None, hint="th")["language"], "th")
+        eng = self.engine("ja", 0.95)
+        self.assertEqual(eng.transcribe("pcm", 1.4, None)["language"], "th")
+        self.assertEqual(eng.allowed_for("ja"), ("th", "en", "ja"))
+        self.assertEqual(eng.allowed_for("zh"), ("th", "en", "zh"))
+        self.assertEqual(eng.allowed_for("ko"), ("th", "en"))                              # ไม่ใช่ภาษาของหน้าจอ = ไม่เพิ่ม
+        self.assertEqual(eng.allowed_for(None), ("th", "en"))
+        self.assertEqual(eng.allowed_for("en"), ("th", "en"))
+        self.assertEqual(self.make(languages=(), primary_language="th").allowed_for("ja"), ())   # ไม่จำกัด คงไม่จำกัด
+        self.assertEqual(eng.status()["hint_languages"], ["ja", "zh"])
+
     def test_languages_option(self):
         eng = self.make(languages=("en",), primary_language="th")
         self.assertEqual(eng.languages, ("th", "en"))                  # ภาษาหลักอยู่ในชุดเสมอ
