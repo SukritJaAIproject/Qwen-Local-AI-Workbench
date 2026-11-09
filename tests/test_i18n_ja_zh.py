@@ -16,8 +16,11 @@ hub_doctor.py, hub_compact.py และสวิตช์ภาษาสี่�
 """
 import ast
 import importlib.util
+import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -303,6 +306,195 @@ class HubStringsTests(unittest.TestCase):
         self.assertIn(snap["message"], (snap["message_th"], snap["message_en"], snap["message_ja"], snap["message_zh"]))
 
 
+NODE = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
+HAVE_NODE = os.path.isfile(NODE) if os.path.isabs(NODE) else bool(shutil.which("node"))
+STATIC = os.path.join(PROJ, "static")
+
+
+def read(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def js_block(src, start):
+    """ข้อความตั้งแต่ start ถึงวงเล็บปีกกา/เหลี่ยมที่ปิดสมดุล (สำหรับดึง var X = {...} ออกมารันใน node)"""
+    depth, j = 0, start
+    while True:
+        c = src[j]
+        if c in "{[":
+            depth += 1
+        elif c in "}]":
+            depth -= 1
+            if depth == 0:
+                return src[start:j + 1]
+        j += 1
+
+
+def js_function(src, name):
+    m = re.search(r"\n  function %s\(" % re.escape(name), src)
+    if not m:
+        raise AssertionError("function %s not found" % name)
+    return js_block(src, m.start() + 1)
+
+
+def run_node(code):
+    fd, fn = tempfile.mkstemp(suffix=".js", prefix="i18ntest-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(code)
+        r = subprocess.run([NODE, fn], capture_output=True, text=True, encoding="utf-8", timeout=60)
+    finally:
+        os.remove(fn)
+    if r.returncode:
+        raise AssertionError("node error: " + (r.stderr or "")[-1500:])
+    return json.loads(r.stdout)
+
+
+class WebUILayerTests(unittest.TestCase):
+    """ชั้น WebUI (static/*.js): พจนานุกรม ja/zh ครบคีย์เดียวกับไทย กติกา regex ครบสามภาษา และสคริปต์เล็กมีตาราง ja/zh"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = read(os.path.join(STATIC, "webui-enhance.js"))
+
+    def grab(self, marker, end="\n  };\n"):
+        i = self.src.index(marker)
+        j = self.src.index(end, i)
+        return self.src[i:j + len(end)]
+
+    def dict_code(self):
+        s = self.src
+        parts = [self.grab("  var TH = {"), self.grab("  var GLUE_RE = new RegExp(", '"g");\n'), js_function(s, "glue"),
+                 self.grab("  var JA = {"), self.grab("  var ZH = {"),
+                 "  var WORDS = { th: TH, ja: JA, zh: ZH };\n  function hasOwn(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }\n"
+                 "  function hasDict(l) { return hasOwn(WORDS, l); }\n  var APP_NAME = \"Qwen3.8\";\n",
+                 self.grab("  var STAT_UNIT = {")]
+        i = s.index("  var DUR = {")
+        parts.append(s[i:s.index("\n  var TH_RE = RULES;", i) + 1])
+        parts += [self.grab("  var FRAG = {"), self.grab("  var TITLE_WORDS = {", " };\n"), js_function(s, "titleOf"),
+                  "  var THAI = /[\\u0e00-\\u0e7f]/;\n  function txKey(s) { return s.replace(/\\s+/g, \" \").trim().replace(/…/g, \"...\"); }\n",
+                  js_function(s, "wordOf")]
+        return "\n".join(parts)
+
+    def test_static_shape(self):
+        s = self.src
+        self.assertIn("var WORDS = { th: TH, ja: JA, zh: ZH };", s)
+        self.assertIn("function hasDict(l) { return hasOwn(WORDS, l); }", s)
+        self.assertIn("var B2B = { th: TH_B2B, ja: JA_B2B, zh: ZH_B2B };", s)
+        self.assertIn("var B3 = { th: TH_B3, ja: JA_B3, zh: ZH_B3 };", s)
+        self.assertIn('var LOCALE = { th: "th-TH", en: "en-GB", ja: "ja-JP", zh: "zh-CN" };', s)
+        # ไม่มีทางแยกไทย/อังกฤษแบบสองค่าเหลืออยู่ในตัวแปล (ยกเว้น word joiner ที่ใส่เฉพาะไทย)
+        for bad in ('l !== "th" ||', 'lang() === "th" ?', 'lang() !== "th") return', 'l === "th" && LETTER',
+                    "function thTitle(", "FRAG_TH", "STAT_UNIT_TH", "NO_UNDO_TH", "thVerb("):
+            self.assertNotIn(bad, s, bad)
+        self.assertIn('var s = d && (d["error_" + lang()] || d.error_en || d.error_th);', s)
+        # STR ครบสี่ภาษา
+        for code in ("th", "en", "ja", "zh"):
+            self.assertRegex(s, r"\n    %s: \{\n      greet: \[" % code)
+
+    @unittest.skipUnless(HAVE_NODE, "ไม่มี node")
+    def test_dictionaries_and_rules(self):
+        out = run_node(self.dict_code() + r"""
+var cjk = /[\u3040-\u30ff\u3400-\u9fff]/, han = /[\u3400-\u9fff]/, thai = /[\u0e00-\u0e7f]/;
+var keys = Object.keys(TH).sort();
+var out = {
+  same: JSON.stringify(keys) === JSON.stringify(Object.keys(JA).sort()) && JSON.stringify(keys) === JSON.stringify(Object.keys(ZH).sort()),
+  n: keys.length,
+  emptyJa: keys.filter(function (k) { return TH[k] && !JA[k]; }), emptyZh: keys.filter(function (k) { return TH[k] && !ZH[k]; }),
+  thaiJa: keys.filter(function (k) { return thai.test(JA[k]); }), thaiZh: keys.filter(function (k) { return thai.test(ZH[k]); }),
+  cjkJa: keys.filter(function (k) { return JA[k] && cjk.test(JA[k]); }).length, hanZh: keys.filter(function (k) { return ZH[k] && han.test(ZH[k]); }).length,
+  ph: keys.filter(function (k) { var p = (k.match(/\{[a-z]+\}/g) || []).sort().join(); return p !== (JA[k].match(/\{[a-z]+\}/g) || []).sort().join() || p !== (ZH[k].match(/\{[a-z]+\}/g) || []).sort().join(); }),
+  rules: RULES.length,
+  rulesAll: RULES.every(function (r) { return r[0] instanceof RegExp && typeof r[1].th === "function" && typeof r[1].ja === "function" && typeof r[1].zh === "function"; }),
+  settings: ["th", "ja", "zh", "en"].map(function (l) { return wordOf("Settings", l); }),
+  speed: ["th", "ja", "zh"].map(function (l) { return wordOf("12.3 tokens/s", l); }),
+  dur: ["th", "ja", "zh"].map(function (l) { return wordOf("2min 22s", l); }),
+  del: ["th", "ja", "zh"].map(function (l) { return wordOf('Delete "My chat"? This action cannot be undone.', l); }),
+  sel: ["th", "ja", "zh"].map(function (l) { return wordOf("Select รายงาน", l); }),
+  title: ["th", "ja", "zh"].map(function (l) { return titleOf("Chat - llama-ui", l); }),
+  none: wordOf("not a key at all", "ja"),
+  frag: ["th", "ja", "zh"].every(function (l) { return FRAG[l]["Are you sure you want to delete"] && FRAG[l]["? This action cannot be undone."]; })
+};
+console.log(JSON.stringify(out));
+""")
+        self.assertTrue(out["same"])
+        self.assertGreater(out["n"], 700)
+        self.assertEqual(out["emptyJa"], [])
+        self.assertEqual(out["emptyZh"], [])
+        self.assertEqual(out["thaiJa"], [])
+        self.assertEqual(out["thaiZh"], [])
+        self.assertGreater(out["cjkJa"], 0.95 * out["n"])
+        self.assertGreater(out["hanZh"], 0.95 * out["n"])
+        self.assertEqual(out["ph"], [])
+        self.assertGreaterEqual(out["rules"], 76)
+        self.assertTrue(out["rulesAll"])
+        self.assertEqual(out["settings"][1:], ["設定", "设置", None])
+        self.assertEqual(out["speed"][1:], ["12.3 トークン/秒", "12.3 token/秒"])
+        self.assertEqual(out["dur"][1:], ["2 分 22 秒", "2 分 22 秒"])
+        self.assertEqual(out["del"][1], '"My chat" を削除しますか？元に戻せません。')
+        self.assertEqual(out["del"][2], '删除 "My chat"？无法撤销。')
+        self.assertEqual(out["sel"], ["เลือก รายงาน", "รายงาน を選択", "选择 รายงาน"])      # ชื่อแชตคงเดิม
+        self.assertEqual(out["title"], ["แชต - Qwen3.8", "チャット - Qwen3.8", "对话 - Qwen3.8"])
+        self.assertIsNone(out["none"])
+        self.assertTrue(out["frag"])
+
+    @unittest.skipUnless(HAVE_NODE, "ไม่มี node")
+    def test_b2b_b3_same_keys(self):
+        s = self.src
+        code = "\n".join(js_block(s, s.index("var %s = {" % n)).replace("var %s =" % n, "const %s =" % n, 1)
+                         for n in ("TH_B2B", "JA_B2B", "ZH_B2B", "TH_B3", "JA_B3", "ZH_B3"))
+        out = run_node(code + "\nconsole.log(JSON.stringify({b2b: [Object.keys(TH_B2B), Object.keys(JA_B2B), Object.keys(ZH_B2B)],"
+                       " b3: [Object.keys(TH_B3), Object.keys(JA_B3), Object.keys(ZH_B3)], ja: JA_B2B, zh: ZH_B2B}));")
+        self.assertEqual(sorted(out["b2b"][0]), sorted(out["b2b"][1]))
+        self.assertEqual(sorted(out["b2b"][0]), sorted(out["b2b"][2]))
+        self.assertEqual(sorted(out["b3"][0]), sorted(out["b3"][1]))
+        self.assertEqual(sorted(out["b3"][0]), sorted(out["b3"][2]))
+        for k in out["b2b"][0]:
+            for ph in re.findall(r"\{[a-z]+\}", k):
+                self.assertIn(ph, out["ja"][k], (k, ph))
+                self.assertIn(ph, out["zh"][k], (k, ph))
+
+    @unittest.skipUnless(HAVE_NODE, "ไม่มี node")
+    def test_speak_chunks_pick_cjk_voices(self):
+        code = ("var THAI_CH = /[\\u0E00-\\u0E7F]/;\nfunction lang() { return 'ja'; }\n" + js_function(self.src, "speakChunks") + r"""
+var out = { ja: speakChunks("東京タワーの高さは 333 メートルです。"), zh: speakChunks("北京的人口大约有两千万。"),
+  mixed: speakChunks("まず Heartbeat を確認してください then check the WebSocket ping interval twice"), th: speakChunks("สวัสดีครับ ทดสอบ") };
+console.log(JSON.stringify(out));
+""")
+        out = run_node(code)
+        self.assertEqual([c["lang"] for c in out["ja"]], ["ja-JP"])
+        self.assertEqual([c["lang"] for c in out["zh"]], ["ja-JP"])      # หน้าเป็นญี่ปุ่น: อักษรฮั่นล้วนอ่านด้วยเสียงญี่ปุ่น
+        self.assertEqual([c["lang"] for c in out["mixed"]], ["ja-JP", "en-US"])
+        self.assertEqual([c["lang"] for c in out["th"]], ["th-TH"])
+
+    def test_small_scripts_have_ja_zh(self):
+        # browser-panel.js: ทุกคีย์ของ STR มี 4 ข้อความ [th, en, ja, zh]
+        bp = read(os.path.join(STATIC, "browser-panel.js"))
+        self.assertIn('var LANG_IDX = { th: 0, en: 1, ja: 2, zh: 3 };', bp)
+        block = js_block(bp, bp.index("var STR = {"))
+        arrays = re.findall(r"\w+: \[((?:\s*\"(?:[^\"\\]|\\.)*\",?\s*)+)\]", block)
+        self.assertGreater(len(arrays), 30)
+        for arr in arrays:
+            vals = re.findall(r'"(?:[^"\\]|\\.)*"', arr)
+            self.assertEqual(len(vals), 4, arr[:60])
+        # สคริปต์ที่ใช้คู่ (อังกฤษ, ไทย): ทุกข้อความอังกฤษที่เป็น literal มีคำแปล ja/zh ในตาราง JZ
+        for name, fn, order in (("message-queue.js", "T", "th-en"), ("auto-recovery.js", "text", "en-th"),
+                                ("shared-chats.js", "label", "en-th"), ("durable-chats.js", "label", "en-th")):
+            src = read(os.path.join(STATIC, name))
+            jz = json.loads(js_block(src, src.index("var JZ = ") + len("var JZ = ")))
+            calls = re.findall(r"\b%s\(\s*(\"(?:[^\"\\]|\\.)*\")\s*,\s*(\"(?:[^\"\\]|\\.)*\")\s*\)" % fn, src, re.S)
+            self.assertGreater(len(calls), 5, name)
+            for a, b in calls:
+                en = json.loads(b if order == "th-en" else a)
+                self.assertIn(en, jz, (name, en))
+                self.assertEqual(len(jz[en]), 2, (name, en))
+                for ph in re.findall(r"\{[a-z]+\}", en):
+                    self.assertIn(ph, jz[en][0], (name, en))
+                    self.assertIn(ph, jz[en][1], (name, en))
+            for en, pair in jz.items():
+                self.assertFalse(THAI.search(pair[0]) or THAI.search(pair[1]), (name, en))
+
+
 class ShellMarkupTests(unittest.TestCase):
     def test_four_buttons_in_both_pages(self):
         for tpl, group in ((parts.SHELL, "langSw"), (parts.PAGE, "lang")):
@@ -343,9 +535,6 @@ class ShellMarkupTests(unittest.TestCase):
             js = fh.read()
         self.assertIn('var UI_LANGS = ["th", "en", "ja", "zh"];', js)
         self.assertIn("return sh && UI_LANGS.indexOf(sh.lang) >= 0 ? sh.lang : null;", js)
-        with open(os.path.join(PROJ, "static", "browser-panel.js"), encoding="utf-8") as fh:
-            bp = fh.read()
-        self.assertIn('var TH = document.documentElement.lang === "th";', bp)
 
 
 class DoctorTests(unittest.TestCase):

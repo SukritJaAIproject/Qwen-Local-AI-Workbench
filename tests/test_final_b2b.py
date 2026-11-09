@@ -10,6 +10,7 @@
 import copy
 import importlib.util
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -51,20 +52,22 @@ class OfficeNoteTests(unittest.TestCase):
         with open(ENH, encoding="utf-8") as f:
             src = f.read()
         found = 0
+        # 2026-11: ชิปมีสี่ภาษา — ภาษาของข้อความชิปตัดสินจากชุดอักษร แล้วหมายเหตุต้องเป็นภาษานั้น
+        tails = {"th": "สรุปสั้นๆ", "en": "summarize it", "ja": "要約して", "zh": "总结一下"}
+        heads = {"th": ("[หมายเหตุจากระบบ", "ภาษาไทย"), "en": ("[Note from the system", "in English"),
+                 "ja": ("[システムからの注記", "日本語で"), "zh": ("[系统备注", "简体中文")}
         for line in src.splitlines():
             if line.strip().startswith('["office", "Office", "'):
                 prefill = line.split('"Office", "', 1)[1].split('"', 1)[0]
-                prefill += "สรุปสั้นๆ" if "เลือก" in prefill else "summarize it"     # ผู้ใช้พิมพ์ต่อท้ายชิป
+                lang = ("th" if re.search("[\u0e00-\u0e7f]", prefill) else "ja" if re.search("[\u3040-\u30ff]", prefill)
+                        else "zh" if re.search("[\u4e00-\u9fff]", prefill) else "en")
+                prefill += tails[lang]                                      # ผู้ใช้พิมพ์ต่อท้ายชิป
                 found += 1
                 note = hub.office_read_note(prefill, {"local_read", "local_do"})
                 self.assertIn('local_read action="office" what="excel"', note, prefill)
-                if "เลือก" in prefill:
-                    self.assertTrue(note.startswith("[หมายเหตุจากระบบ"), note)
-                    self.assertIn("ภาษาไทย", note)
-                else:
-                    self.assertTrue(note.startswith("[Note from the system"), note)
-                    self.assertIn("in English", note)
-        self.assertGreaterEqual(found, 2)
+                self.assertTrue(note.startswith(heads[lang][0]), (lang, note))
+                self.assertIn(heads[lang][1], note, lang)
+        self.assertGreaterEqual(found, 4)
 
     def test_app_follows_the_message(self):
         self.assertIn('what="word"', hub.office_read_note("สรุปย่อหน้าที่เคอร์เซอร์อยู่ในเอกสาร Word ที่เปิดอยู่ให้หน่อย",

@@ -99,11 +99,11 @@ class StringsTests(unittest.TestCase):
 
     def test_prefill_text_is_identical_in_shell_and_enhance(self):
         src = enhance_src()
-        # STR ของ enhance เรียง th แล้ว en
-        self.assertEqual(re.findall(r'researchPrefill: "([^"]*)"', src),
-                         [hub.STRINGS["th"]["res_prefill"], hub.STRINGS["en"]["res_prefill"]])
+        # STR ของ enhance เรียง th, en, ja, zh (2026-11: สี่ภาษา)
+        langs = ("th", "en", "ja", "zh")
+        self.assertEqual(re.findall(r'researchPrefill: "([^"]*)"', src), [hub.STRINGS[l]["res_prefill"] for l in langs])
         labels = re.findall(r'\bresearch: "([^"]*)"', src)
-        self.assertEqual(labels, [hub.STRINGS["th"]["svc_research"], hub.STRINGS["en"]["svc_research"]])
+        self.assertEqual(labels, [hub.STRINGS[l]["svc_research"] for l in langs])
 
 
 class ShellPageTests(unittest.TestCase):

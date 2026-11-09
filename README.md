@@ -62,10 +62,10 @@ in the chat.
   thinking mode, and its own isolated tool scope.
 - **Four UI languages.** Thai, English, Japanese and Simplified Chinese for the shell, the manage page, the Doctor
   report, API messages and the notes the hub writes for the model; switch with one click (ไทย | EN | 日本語 | 中文)
-  or cycle with `Alt+Shift+L`. The llama.cpp WebUI's own menus are translated too (about 700 strings, Thai and
-  English today, Japanese and Chinese in progress), while chat content is never touched. The model is told to
-  answer in the language you write in, and the hub detects Thai, Japanese and Chinese text to keep its own notes
-  in that language.
+  or cycle with `Alt+Shift+L`. The llama.cpp WebUI's own menus, dialogs and toasts are translated on the fly too
+  (about 750 strings per language, plus the message queue, connection recovery, shared-chat and browser-panel
+  scripts), while chat content is never touched. The model is told to answer in the language you write in, and
+  the hub detects Thai, Japanese and Chinese text to keep its own notes in that language.
 - **Tools you can trust.** The local MCP server's tools (files, shell, Python, Office, media and its isolated
   browser) go through a policy guard, and anything that changes the machine needs a two-step confirmation that
   shows you exactly what will run. Two newer paths have lighter gates: llama.cpp's built-in agent tools (on by

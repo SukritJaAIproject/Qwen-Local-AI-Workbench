@@ -343,8 +343,11 @@ Backup before this round: `C:\LLM\projects\backup\llm-20260929-111524`.
   localize_fields()` adds `error_ja/error_zh` from `API_TEXTS` in `_json()`, and `srvMsg()` reads
   `error_<LANG> || error_en || error_th`. CJK fonts come from `tokens.css` (`html[lang="ja"|"zh"]` override the
   font variables with the system's Yu Gothic UI / Microsoft YaHei UI stacks). The WebUI layer
-  (`webui-enhance.js`) still has only Thai/English dictionaries: for ja/zh it shows English and sets
-  `<html lang>` to the real language so the fonts apply.
+  (`webui-enhance.js`) keeps one English-keyed dictionary per language (`WORDS = {th: TH, ja: JA, zh: ZH}`), one
+  table of whole-text regex rules with a function per language (`RULES`), and per-language `B2B`/`B3`/`STR`/`FRAG`/
+  title words; `hasDict(l)` decides whether a page is translated at all (English is not), and the word joiner
+  `glue()` is applied to Thai only. The small scripts (message queue, auto-recovery, shared/durable chats,
+  browser panel) carry a `JZ` table keyed by their English text, or four-entry arrays.
 - Hotkey Alt+Shift+L matched on `e.code === 'KeyL'` (a Thai layout puts a Thai char in `e.key`); caught on
   the shell document, the iframe window (capture listener in `hookFrame`, next to Ctrl+K) and PAGE;
   ignored on repeat and while a shell/WebUI modal is open.

@@ -32,10 +32,71 @@
   function state() { try { return window.qwenEnhance && window.qwenEnhance.autoContinue() || {}; } catch (_) { return {}; } }
   function route() { try { return window.qwenEnhance && window.qwenEnhance.route() || {}; } catch (_) { return {}; } }
   function isPlan() { try { return !!(window.qwenEnhance && window.qwenEnhance.plan && window.qwenEnhance.plan().on); } catch (_) { return true; } }
+  // 2026-11 ญี่ปุ่น/จีนตัวย่อ ตามข้อความอังกฤษ — คีย์ที่ไม่มีได้อังกฤษ
+  var JZ = {
+      "Connection recovery is waiting for this chat and a network connection.": [
+          "接続復旧はこのチャットとネットワーク接続を待っています。",
+          "连接恢复正在等待此对话和网络连接。"
+      ],
+      "The chat branch changed or cannot be verified. The saved task was not repeated.": [
+          "チャットの分岐が変わったか確認できません。保存されたタスクは繰り返しませんでした。",
+          "对话分支已更改或无法验证。已保存的任务没有重复执行。"
+      ],
+      "The original task saved an error response and needs review. It was not repeated.": [
+          "元のタスクはエラー応答を保存しており確認が必要です。繰り返しませんでした。",
+          "原任务保存了错误响应，需要检查。没有重复执行。"
+      ],
+      "Recovery stopped: HTTP {code}. The original action was retained and was not repeated.": [
+          "復旧を停止しました: HTTP {code}。元の操作は保持され、繰り返しませんでした。",
+          "恢复已停止：HTTP {code}。原操作已保留，没有重复执行。"
+      ],
+      "The recovery byte position did not match. The action was not repeated.": [
+          "復旧のバイト位置が一致しませんでした。操作は繰り返しませんでした。",
+          "恢复的字节位置不匹配。操作没有重复执行。"
+      ],
+      "Connection interrupted. Reconnecting to the same task…": [
+          "接続が中断されました。同じタスクに再接続中…",
+          "连接中断。正在重新连接到同一任务…"
+      ],
+      "The saved response ended before completion. The task needs review; no action was repeated.": [
+          "保存された応答は完了前に終わっています。タスクの確認が必要です。操作は繰り返しませんでした。",
+          "保存的响应在完成前就结束了。任务需要检查；没有重复任何操作。"
+      ],
+      "The interrupted response was saved. Reopen this chat to restore it, or review the saved task.": [
+          "中断された応答を保存しました。このチャットを開き直して復元するか、保存されたタスクを確認してください。",
+          "被中断的响应已保存。重新打开此对话以恢复，或检查已保存的任务。"
+      ],
+      "Recovered results were saved. A tool still needs your approval.": [
+          "復元した結果を保存しました。まだ承認が必要なツールがあります。",
+          "已保存恢复的结果。仍有一个工具需要你的批准。"
+      ],
+      "The saved response needs review before it can be merged into this chat.": [
+          "保存された応答は、このチャットに統合する前に確認が必要です。",
+          "保存的响应需要检查后才能合并到此对话。"
+      ],
+      "The original task is still running. Its result will be restored when it finishes.": [
+          "元のタスクはまだ実行中です。終わり次第、結果が復元されます。",
+          "原任务仍在运行。完成后会恢复其结果。"
+      ],
+      "The previous task's outcome needs review. It was not repeated automatically.": [
+          "前のタスクの結果は確認が必要です。自動では繰り返しませんでした。",
+          "上一个任务的结果需要检查。没有自动重复执行。"
+      ],
+      "Waiting to reconnect to the saved task…": [
+          "保存されたタスクへの再接続を待っています…",
+          "正在等待重新连接到已保存的任务…"
+      ],
+      "Continue the interrupted task from the recovered result. Verify any uncertain action before repeating it.": [
+          "復元した結果から中断されたタスクを続けてください。不確かな操作は繰り返す前に確認してください。",
+          "从恢复的结果继续被中断的任务。重复任何不确定的操作前请先核实。"
+      ]
+  };
   function text(en, th) {
     var language = document.documentElement.lang;
     try { if (window.qwenEnhance && typeof window.qwenEnhance.lang === "function") language = window.qwenEnhance.lang(); } catch (_) {}
-    return language === "th" ? th : en;
+    if (language === "th") return th;
+    var x = (language === "ja" || language === "zh") && Object.prototype.hasOwnProperty.call(JZ, en) ? JZ[en] : null;
+    return x ? x[language === "ja" ? 0 : 1] : en;
   }
   function abortError(message) { var e = new Error(message || "Connection recovery paused"); e.name = "AbortError"; return e; }
   function fatal(message, code) { var e = new Error(message); e.recoveryTerminal = true; e.status = code || 0; return e; }
@@ -203,7 +264,7 @@
             throw new Error("The recovery service is temporarily unavailable");
           }
           // A retained failed operation may have already produced effects. Never replace its ID.
-          throw fatal(text("Recovery stopped: HTTP " + response.status + ". The original action was retained and was not repeated.", "พักการกู้คืนเนื่องจากข้อผิดพลาด HTTP " + response.status + " ระบบเก็บงานเดิมไว้และไม่ได้สั่งงานซ้ำ"), response.status);
+          throw fatal(text("Recovery stopped: HTTP {code}. The original action was retained and was not repeated.", "พักการกู้คืนเนื่องจากข้อผิดพลาด HTTP {code} ระบบเก็บงานเดิมไว้และไม่ได้สั่งงานซ้ำ").replace("{code}", response.status), response.status);
         }
         var returned = response.headers.get("X-Qwen-Recovery-Offset");
         if (returned === null || !/^\d+$/.test(returned) || Number(returned) !== op.offset) {
