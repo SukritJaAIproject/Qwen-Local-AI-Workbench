@@ -32,6 +32,22 @@ SERVE_SLUGS = ("demo", "ocpp-research", "thai-docs")
 FAST = "Qwen3-4B-Instruct-2507-Q4_K_M"
 MODELS = [FAST, "Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL", "Qwen3.8-27B-UD-Q4_K_M", "gpt-oss-20b-MXFP4"]
 
+# Synthetic reply for the message-queue screenshot (continues the "Weekly charger uptime report" demo chat).
+DEMO_REPLY = """Here is the table with a week-over-week column, from `attachments/charger-faults-week39.csv` and last week's report.
+
+| Station | Uptime W38 | Uptime W39 | Change |
+|---|---:|---:|---:|
+| CP-01 | 99.5% | 99.7% | +0.2 |
+| CP-02 | 99.4% | 99.3% | -0.1 |
+| CP-03 | 98.0% | 96.1% | **-1.9** |
+| CP-04 | 98.6% | 98.4% | -0.2 |
+| CP-05 | 95.9% | 91.8% | **-4.1** |
+
+Two stations got worse. **CP-05** lost 4.1 points to the stuck contactor (14 faults), and **CP-03** lost 1.9 points
+to over-temperature trips in the afternoon. CP-01 improved slightly and the other two are within normal variation.
+
+I will keep this table in `outputs/weekly-report-w39.md` and continue with the next request."""
+
 os.environ["QWEN_GPU_SIMULATE"] = str(WORK / "gpu" / "sim.json")
 os.environ["QWEN_GPU_PROFILE"] = str(WORK / "gpu" / "gpu-profile.json")
 os.environ["QWEN_GPU_CHOICE"] = str(WORK / "gpu" / "gpu-choice.json")
@@ -89,9 +105,54 @@ class Up(BaseHTTPRequestHandler):
 
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
-        if n:
-            self.rfile.read(n)
+        body = self.rfile.read(n) if n else b""
+        if urlparse(self.path).path.endswith("/chat/completions"):
+            self._demo_reply(body)
+            return
         self._send(403, {"error": "demo: no generation"})
+
+    def _demo_reply(self, body):
+        """A canned reply, streamed slowly (about 25 s) so the chat is visibly "working" for the
+        message-queue screenshot. No model is involved; the text is synthetic like the rest of the demo."""
+        try:
+            doc = json.loads(body.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            doc = {}
+        model = (doc.get("model") if isinstance(doc, dict) else None) or MODELS[2]
+        base = {"id": "demo-reply", "object": "chat.completion.chunk", "created": int(time.time()), "model": model}
+        if not (isinstance(doc, dict) and doc.get("stream")):
+            self._send(200, dict(base, object="chat.completion",
+                                 choices=[{"index": 0, "finish_reason": "stop",
+                                           "message": {"role": "assistant", "content": DEMO_REPLY}}],
+                                 usage={"prompt_tokens": 1842, "completion_tokens": 190, "total_tokens": 2032}))
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        self.end_headers()
+
+        def chunk(delta, finish=None, extra=None):
+            d = dict(base, choices=[{"index": 0, "delta": delta, "finish_reason": finish}])
+            if extra:
+                d.update(extra)
+            self.wfile.write(("data: " + json.dumps(d, ensure_ascii=False) + "\n\n").encode("utf-8"))
+            self.wfile.flush()
+
+        pieces = [p for p in DEMO_REPLY.replace("\n", " \n").split(" ") if p != ""]
+        try:
+            chunk({"role": "assistant", "content": ""})
+            for i, p in enumerate(pieces):
+                chunk({"content": p + ("" if p.endswith("\n") else " ")})
+                time.sleep(0.22)
+            chunk({}, "stop", {"timings": {"prompt_n": 1842, "prompt_ms": 2590.0, "predicted_n": len(pieces),
+                                            "predicted_ms": 220.0 * len(pieces)}})
+            self.wfile.write(b"data: [DONE]\n\n")
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass            # the page stopped the reply or navigated away
+        finally:
+            self.close_connection = True
 
 
 def serve(addr, handler):
@@ -118,10 +179,10 @@ def doctor_raw(hub):
     (tmp / "local-services.token").write_text("0" * 64, encoding="utf-8")       # dummy, not a real token
     (tmp / "tests-last.json").write_text(json.dumps({
         "at": (datetime.datetime.now().astimezone() - datetime.timedelta(hours=3)).isoformat(timespec="seconds"),
-        "ran": 1550, "ok": True, "failures": 0, "errors": 0, "skipped": 49, "failed": []}), encoding="utf-8")
+        "ran": 1860, "ok": True, "failures": 0, "errors": 0, "skipped": 54, "failed": []}), encoding="utf-8")
     cfg = {"token_file": str(tmp / "local-services.token"), "brave_key_file": str(tmp / "brave-search.key"),
            "gateway_key_file": str(tmp / "gateway_key.txt"), "tests_file": str(tmp / "tests-last.json"),
-           "llama_dir_build": "b10984", "hub_version": "2026-10-07 02:13"}
+           "llama_dir_build": "b10984", "hub_version": "2026-11-07 23:29"}
     row = mod._row
     projects = json.loads((WORK / "projects.json").read_text(encoding="utf-8"))
     res = {
@@ -130,7 +191,7 @@ def doctor_raw(hub):
                       loaded=[{"id": FAST, "state": "loaded"}, {"id": MODELS[2], "state": "loaded"}],
                       build="b10984", max_instances=2),
         "mcp_local": row("mcp_local", "เครื่องมือในเครื่อง (MCP)", "Local tools (MCP)", 8792, "ok", 24),
-        "mcp_web": row("mcp_web", "ค้นเว็บ (MCP)", "Web search (MCP)", 8791, "ok", 17, provider="builtin"),
+        "mcp_web": row("mcp_web", "ค้นเว็บ (MCP)", "Web search (MCP)", 8791, "ok", 17, provider="ddgs"),
         "embed": row("embed", "ค้นตามความหมาย (embedding)", "Semantic search (embedding)", 8093, "ok", 6),
         "stt": row("stt", "พูดแทนพิมพ์ (STT)", "Speech-to-text (STT)", 8795, "ok", 14, detail="ready", device="gpu"),
         "scheduler": row("scheduler", "ตัวตั้งเวลา (scheduler)", "Scheduler", None, "ok", None, heartbeat_age_s=420,
@@ -150,8 +211,10 @@ def doctor_raw(hub):
                    "commit_free_gb": 31.3},
         "disks": [{"drive": "C:", "present": True, "free_gb": 118.6, "total_gb": 474.1},
                   {"drive": "D:", "present": True, "free_gb": 763.0, "total_gb": 931.5}],
-        "docker": {"usable": False, "reason_th": "ยังไม่ได้ติดตั้ง Docker Desktop",
-                   "reason_en": "Docker Desktop is not installed"},
+        # same shape as hub_doctor.docker_status() when the optional Python sandbox is left off
+        "docker": {"usable": False, "off": True,
+                   "reason_th": "ปิด Python sandbox ไว้ · โค้ด Python รันบนเครื่องหลังผู้ใช้กดอนุญาต",
+                   "reason_en": "the Python sandbox is off · Python code runs on this PC after you approve it"},
     }
     rep = mod.Doctor(cfg)._build(res, [])
     rep["took_ms"], rep["cached"] = 214, False

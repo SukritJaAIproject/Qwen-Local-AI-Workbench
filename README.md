@@ -84,13 +84,13 @@ in the chat.
 
 ## Screenshots
 
-All but the last screenshot come from a demo hub with synthetic projects, chats and numbers
-(see [`projects/tools/demo`](projects/tools/demo/README.md)). The last one is from an earlier test run on the
-author's machine. The pictures were taken for v1.0; the browser panel, message queue and Bypass permissions
-switch added in v1.1 are not pictured yet.
+All but one screenshot come from a demo hub with synthetic projects, chats and numbers
+(see [`projects/tools/demo`](projects/tools/demo/README.md)); the confirmation card is from an earlier test run on
+the author's machine. Taken with v1.1.0.
 
 | | |
 |---|---|
+| ![Chat with the built-in browser panel open on a public web page](docs/screenshots/13-browser-panel-en-dark.png) **Built-in browser panel** — an isolated Edge profile per project beside the chat; you and the model work in the same visible tab, and it only reaches public addresses. | ![A reply streaming with two messages waiting in the queue](docs/screenshots/14-message-queue-en-light.png) **Message queue** — Enter queues the next message while a reply is still streaming; each item can be interjected, edited or removed. The Auto Continue and Bypass permissions switches sit in the composer. |
 | ![Start screen with greeting, project pill and quick-start chips](docs/screenshots/02-start-en-light.png) **Start screen** — projects and recent chats in the sidebar, quick-start chips, Fast (4B) and Plan-first toggles. | ![HTML dashboard from a code block opened in the side panel](docs/screenshots/03-artifact-panel-en-light.png) **Artifacts panel** — HTML, SVG, Mermaid, Markdown, CSV and images open beside the chat in a sandboxed frame. |
 | ![Project panel with instructions and project memory](docs/screenshots/04-project-panel-memory-en-dark.png) **Project panel** — instructions applied to every chat, and project memory (decisions, requirements, facts, to-dos). | ![Project panel with knowledge files, generated files and research jobs](docs/screenshots/05-project-files-research-en-dark.png) **Knowledge, outputs, research** — project files, automatic file search, files the model made, background research jobs. |
 | ![Usage dashboard: tokens per day stacked by model](docs/screenshots/06-usage-dashboard-en-light.png) **Usage dashboard** — tokens per day by model, cache reuse, model time; only numbers are logged, never messages. | ![Reply speed per model over 30 days, jumping when the RTX 4090 was attached](docs/screenshots/07-usage-speed-en-light.png) **Reply speed per model** — demo data modeled on the measured speeds before and after attaching the RTX 4090 eGPU. |

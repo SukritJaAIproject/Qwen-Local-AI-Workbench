@@ -23,6 +23,8 @@ PICK = [
     ("raw/09-chat-th-dark.png", "11-chat-th-dark.png"),
     # captured during the security acceptance run (synthetic print(1+1) request); skipped when absent
     (r"C:\LLM\projects\tools\shots\e2e-s3-02-a-card2-token-only-server-review.jpg", "12-confirm-card-th.png"),
+    ("raw/12-browser-panel-en-dark.png", "13-browser-panel-en-dark.png"),
+    ("raw/13-message-queue-en-light.png", "14-message-queue-en-light.png"),
 ]
 
 
