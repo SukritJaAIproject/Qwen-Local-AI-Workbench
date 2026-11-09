@@ -33,6 +33,7 @@ This project grew on one Windows 11 laptop, so a few things are unusual (see *Ro
 
 - Keep each pull request to one change, and say what you changed and how you tested it.
 - Add or update tests in `tests/` when you change behaviour.
+- `README.md` is the reference. `README.th.md`, `README.ja.md` and `README.zh-CN.md` are shorter summaries in Thai, Japanese and Simplified Chinese: if you change the requirements, the quick start or the security notes, update them too, or say in the pull request that they need it.
 - The local MCP server's tools that run code, write files or reach the network go through `mcp-local/guard.py` and the two-step confirmation; the built-in browser panel and llama.cpp's built-in agent tools have their own gates (see *Security notes* in the README). Don't weaken these checks. If your change touches them, explain why in the pull request.
 - Never commit secrets, tokens, models, chats or personal files. `secrets/`, the model folders and user data are kept out of git on purpose.
 

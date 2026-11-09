@@ -99,6 +99,7 @@ tests/test_gpumon_*.py
 # (docs/DESIGN.md is the published copy of projects/tools/DESIGN.md)
 projects/tools/DESIGN.md
 /[A-Z]*-*.md
+!/README.zh-CN.md
 /[A-Z]*-*.txt
 /*-STATUS.txt
 /*-REPORT.md
