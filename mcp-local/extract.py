@@ -60,6 +60,7 @@ try:                                     # defusedxml ปฏิเสธ DTD/ent
 except Exception:                        # noqa: BLE001 — ไม่มีก็ยังปลอดภัยเพราะเราสแกน DOCTYPE ก่อนเสมอ
     _SafeET = None
 import xml.etree.ElementTree as _ET
+from i18n_tools import TR, ui_lang  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # ------------------------------------------------------------------ เพดาน
 MAX_FILE_BYTES = 100 * 1024 * 1024        # PDF/Office ใหญ่กว่านี้ไม่ใช่เอกสารที่คนอ่าน น่าจะเป็นไฟล์ผิดชนิด
@@ -186,8 +187,8 @@ def broken_thai_warning(units) -> str:
                 example = t[a:b]
     if not count:
         return ""
-    return ("%s: พบอักษรแปลกปนในคำไทย %d ตำแหน่ง (เช่น \"%s\") — มักเป็นวรรณยุกต์/สระที่ไฟล์เก็บรหัสผิด "
-            "ให้อ่านตามบริบท และบอกผู้ใช้ถ้าต้องยกข้อความตรงตัว" % (BROKEN_TEXT_TAG, count, example))
+    return (TR("%s: พบอักษรแปลกปนในคำไทย %d ตำแหน่ง (เช่น \"%s\") — มักเป็นวรรณยุกต์/สระที่ไฟล์เก็บรหัสผิด "
+            "ให้อ่านตามบริบท และบอกผู้ใช้ถ้าต้องยกข้อความตรงตัว") % (BROKEN_TEXT_TAG, count, example))
 
 
 def clean_text(text: str) -> str:
@@ -227,7 +228,7 @@ def md_table(header: list, rows: list) -> str:
     head = [_cell(h) for h in header][:width]
     head += [""] * (width - len(head))
     if not any(head):
-        head = ["คอลัมน์ %d" % (i + 1) for i in range(width)]
+        head = [TR("คอลัมน์ %d") % (i + 1) for i in range(width)]
     out = ["| " + " | ".join(head) + " |", "|" + "---|" * width]
     for r in rows:
         cells = [_cell(v) for v in list(r)[:width]]
@@ -280,13 +281,13 @@ def parse_pages(spec, total: int) -> list[int]:
         elif part.isdigit():
             a = b = int(part)
         else:
-            raise ExtractError("pages=%r อ่านไม่ออก ใช้รูป 3 หรือ 1-5 หรือ 2,4,6-8" % spec)
+            raise ExtractError(TR("pages=%r อ่านไม่ออก ใช้รูป 3 หรือ 1-5 หรือ 2,4,6-8") % spec)
         a, b = max(1, a), min(total, b)
         out.update(range(a, b + 1))
         if len(out) > PDF_MAX_PAGES:
             break
     if not out:
-        raise ExtractError("pages=%r อยู่นอกช่วง ไฟล์นี้มี %d หน้า/สไลด์" % (spec, total))
+        raise ExtractError(TR("pages=%r อยู่นอกช่วง ไฟล์นี้มี %d หน้า/สไลด์") % (spec, total))
     return sorted(out)
 
 
@@ -319,27 +320,27 @@ def check_zip(path: str, clock: _Clock | None = None) -> zipfile.ZipFile:
     try:
         zf = zipfile.ZipFile(path)
     except (zipfile.BadZipFile, OSError) as exc:
-        raise ExtractError("ไฟล์นี้ไม่ใช่เอกสาร Office ที่สมบูรณ์ (zip เสีย): %s" % exc) from exc
+        raise ExtractError(TR("ไฟล์นี้ไม่ใช่เอกสาร Office ที่สมบูรณ์ (zip เสีย): %s") % exc) from exc
     try:
         infos = zf.infolist()
         if len(infos) > ZIP_MAX_ENTRIES:
-            raise ExtractError("ไฟล์มีส่วนประกอบ %d ชิ้น มากผิดปกติ (สูงสุด %d) ไม่อ่านเพื่อความปลอดภัย"
+            raise ExtractError(TR("ไฟล์มีส่วนประกอบ %d ชิ้น มากผิดปกติ (สูงสุด %d) ไม่อ่านเพื่อความปลอดภัย")
                                % (len(infos), ZIP_MAX_ENTRIES))
         total = 0
         for info in infos:
             total += info.file_size
             if total > ZIP_MAX_TOTAL:
-                raise ExtractError("ไฟล์คลายออกมาแล้วใหญ่เกิน %d MB (น่าจะเป็น zip bomb) ไม่อ่าน"
+                raise ExtractError(TR("ไฟล์คลายออกมาแล้วใหญ่เกิน %d MB (น่าจะเป็น zip bomb) ไม่อ่าน")
                                    % (ZIP_MAX_TOTAL // (1024 * 1024)))
             if (info.file_size > ZIP_RATIO_MIN and info.compress_size > 0
                     and info.file_size / info.compress_size > ZIP_MAX_RATIO):
-                raise ExtractError("ส่วน %s ถูกบีบอัดมากผิดปกติ (%d เท่า) น่าจะเป็น zip bomb ไม่อ่าน"
+                raise ExtractError(TR("ส่วน %s ถูกบีบอัดมากผิดปกติ (%d เท่า) น่าจะเป็น zip bomb ไม่อ่าน")
                                    % (info.filename[:80], info.file_size // info.compress_size))
         for info in infos:
             if not info.filename.lower().endswith(_XML_SUFFIX):
                 continue
             if clock is not None and clock.over():
-                raise ExtractError("ตรวจความปลอดภัยของไฟล์ใช้เวลาเกินกำหนด ลองไฟล์ที่เล็กลง")
+                raise ExtractError(TR("ตรวจความปลอดภัยของไฟล์ใช้เวลาเกินกำหนด ลองไฟล์ที่เล็กลง"))
             with zf.open(info) as fh:
                 def _chunks(fh=fh):
                     while True:
@@ -348,21 +349,21 @@ def check_zip(path: str, clock: _Clock | None = None) -> zipfile.ZipFile:
                             return
                         yield c
                 if _xml_has_dtd(_chunks()):
-                    raise ExtractError("ไฟล์มี DTD/ENTITY ใน %s ซึ่งเอกสารปกติไม่มี (รูปแบบโจมตี XXE) "
-                                       "ไม่อ่านเพื่อความปลอดภัย" % info.filename[:80])
+                    raise ExtractError(TR("ไฟล์มี DTD/ENTITY ใน %s ซึ่งเอกสารปกติไม่มี (รูปแบบโจมตี XXE) "
+                                       "ไม่อ่านเพื่อความปลอดภัย") % info.filename[:80])
         return zf
     except ExtractError:
         zf.close()
         raise
     except (zipfile.BadZipFile, OSError, RuntimeError, EOFError) as exc:
         zf.close()
-        raise ExtractError("อ่านโครงสร้างไฟล์ไม่ได้: %s" % exc) from exc
+        raise ExtractError(TR("อ่านโครงสร้างไฟล์ไม่ได้: %s") % exc) from exc
 
 
 def _xml(data: bytes):
     """parse XML ที่ผ่าน check_zip แล้ว — ใช้ defusedxml ถ้ามี (ปฏิเสธ DTD ซ้ำอีกชั้น)"""
     if _xml_has_dtd([data]):
-        raise ExtractError("พบ DTD/ENTITY ใน XML ไม่อ่านเพื่อความปลอดภัย")
+        raise ExtractError(TR("พบ DTD/ENTITY ใน XML ไม่อ่านเพื่อความปลอดภัย"))
     if _SafeET is not None:
         return _SafeET.fromstring(data)
     return _ET.fromstring(data)
@@ -381,7 +382,7 @@ def _fitz():
             import fitz as fz            # type: ignore
         return fz
     except Exception as exc:             # noqa: BLE001
-        raise ExtractError("เครื่องนี้ไม่มี PyMuPDF จึงอ่าน PDF ไม่ได้ (%s)" % exc) from exc
+        raise ExtractError(TR("เครื่องนี้ไม่มี PyMuPDF จึงอ่าน PDF ไม่ได้ (%s)") % exc) from exc
 
 
 # Word "บันทึกเป็น PDF" วาด ำ เป็นสอง glyph (นิคหิต + า) แล้ว map glyph นิคหิตเป็น "ช่องว่าง" กว้างศูนย์ใน ToUnicode
@@ -778,15 +779,15 @@ def _pdf(path: str, pages, clock: _Clock, res: Result, ocr: "OcrOpts | None" = N
     try:
         doc = fz.open(path)
     except Exception as exc:             # noqa: BLE001 — PDF เสียมีได้หลายแบบ
-        raise ExtractError("เปิด PDF ไม่ได้ (ไฟล์เสียหรือไม่ใช่ PDF): %s" % exc) from exc
+        raise ExtractError(TR("เปิด PDF ไม่ได้ (ไฟล์เสียหรือไม่ใช่ PDF): %s") % exc) from exc
     try:
         if doc.needs_pass and not doc.authenticate(""):
-            raise ExtractError("PDF นี้ตั้งรหัสผ่านไว้ อ่านไม่ได้ (ให้ผู้ใช้ปลดรหัสเองก่อน)")
+            raise ExtractError(TR("PDF นี้ตั้งรหัสผ่านไว้ อ่านไม่ได้ (ให้ผู้ใช้ปลดรหัสเองก่อน)"))
         res.total = doc.page_count
         wanted = parse_pages(pages, res.total)
         if len(wanted) > PDF_MAX_PAGES:
             wanted = wanted[:PDF_MAX_PAGES]
-            res.notes.append("อ่านได้สูงสุด %d หน้าต่อครั้ง" % PDF_MAX_PAGES)
+            res.notes.append(TR("อ่านได้สูงสุด %d หน้าต่อครั้ง") % PDF_MAX_PAGES)
         empty = 0
         aa_fonts: set = set()            # ฟอนต์ PowerPoint ที่สระอากลายเป็น ำ (ดู _pdf_page_text)
         pending: list = []               # (ลำดับหน่วย, เลขหน้า) ที่มี ำ — อ่านด้วยความรู้เรื่องฟอนต์ที่อาจยังไม่ครบ
@@ -797,7 +798,7 @@ def _pdf(path: str, pages, clock: _Clock, res: Result, ocr: "OcrOpts | None" = N
             try:
                 text, fixed = _pdf_layer(doc[n - 1], aa_fonts)
             except Exception as exc:     # noqa: BLE001 — หน้าเดียวพัง ไม่ล้มทั้งไฟล์
-                return "(อ่านหน้านี้ไม่ได้: %s)" % type(exc).__name__
+                return TR("(อ่านหน้านี้ไม่ได้: %s)") % type(exc).__name__
             if fixed:
                 repaired[n] = fixed
             else:
@@ -806,7 +807,7 @@ def _pdf(path: str, pages, clock: _Clock, res: Result, ocr: "OcrOpts | None" = N
 
         for n in wanted:
             if clock.over():
-                res.notes.append("หมดเวลาที่หน้า %d — ขอส่วนที่เหลือด้วย pages=%d-" % (n, n))
+                res.notes.append(TR("หมดเวลาที่หน้า %d — ขอส่วนที่เหลือด้วย pages=%d-") % (n, n))
                 break
             known = len(aa_fonts)
             text = read(n)
@@ -817,14 +818,14 @@ def _pdf(path: str, pages, clock: _Clock, res: Result, ocr: "OcrOpts | None" = N
                 pending.append((len(res.units), n))
             if not text:
                 empty += 1
-            res.units.append(Unit(loc="หน้า %d" % n, text=text))
+            res.units.append(Unit(loc=TR("หน้า %d") % n, text=text))
         for i, n in stale:
             if clock.over():
                 break
             res.units[i].text = read(n)
         if repaired:
-            res.notes.append("ชั้นข้อความ PDF เก็บรหัสวรรณยุกต์/สระไทยผิด %d ตำแหน่ง (หน้า %s) — ถอดกลับจากตาราง "
-                             "glyph ของฟอนต์ในไฟล์แล้ว ข้อความตรงต้นฉบับ" % (sum(repaired.values()),
+            res.notes.append(TR("ชั้นข้อความ PDF เก็บรหัสวรรณยุกต์/สระไทยผิด %d ตำแหน่ง (หน้า %s) — ถอดกลับจากตาราง "
+                             "glyph ของฟอนต์ในไฟล์แล้ว ข้อความตรงต้นฉบับ") % (sum(repaired.values()),
                                                                       page_ranges(repaired)))
         warn = broken_thai_warning(res.units)      # fixer: เตือนก่อนเนื้อหา ไม่ใช่ส่งคำเพี้ยนไปเงียบๆ
         # docs2: คำเตือนคิดจาก "ชั้นข้อความ" (หลังซ่อมตรงตัวแล้ว) ก่อน OCR — ข้อเท็จจริงเรื่องไฟล์ไม่เปลี่ยน แล้วบอก
@@ -836,14 +837,14 @@ def _pdf(path: str, pages, clock: _Clock, res: Result, ocr: "OcrOpts | None" = N
         if warn:
             again = [n for n in info.get("done", []) if "หน้า %d" % n in broken]
             if again:
-                warn += " — หน้า %s อ่านใหม่ด้วย OCR แล้ว" % page_ranges(again)
+                warn += TR(" — หน้า %s อ่านใหม่ด้วย OCR แล้ว") % page_ranges(again)
             left = sum(len(_ODD_AFTER_THAI_RE.findall(u.text or "")) for u in res.units if not u.ocr)
             if info.get("patched") and not left:
                 # ซ่อมเฉพาะจุดครบทุกตัว: ข้อความที่โมเดลเห็นไม่มีตัวเพี้ยนแล้ว — แจ้งเป็นหมายเหตุ ไม่ติดป้าย "เสีย"
                 # (kb ใช้ป้ายนี้เตือนในผลค้น ซึ่งจะผิดถ้าข้อความที่เก็บไว้ถูกแล้ว)
                 warn = ""
             elif info.get("patched"):
-                warn += " — ซ่อมด้วย OCR แล้ว %d ตำแหน่ง เหลือ %d ตำแหน่งที่ OCR ก็อ่านไม่ชัด" % (
+                warn += TR(" — ซ่อมด้วย OCR แล้ว %d ตำแหน่ง เหลือ %d ตำแหน่งที่ OCR ก็อ่านไม่ชัด") % (
                     sum(k for _n, k in info["patched"]) + int(info.get("inferred") or 0), left)
         if warn:
             res.warnings.append(warn)
@@ -852,9 +853,9 @@ def _pdf(path: str, pages, clock: _Clock, res: Result, ocr: "OcrOpts | None" = N
         if empty and empty == len(res.units) and not res.ocr.get("pending"):
             why = res.ocr.get("unavailable") or ""
             if why:
-                res.notes.append("ไม่พบข้อความในหน้าที่อ่าน — น่าจะเป็นภาพสแกน แต่ใช้ OCR ไม่ได้: %s" % why)
+                res.notes.append(TR("ไม่พบข้อความในหน้าที่อ่าน — น่าจะเป็นภาพสแกน แต่ใช้ OCR ไม่ได้: %s") % why)
             elif not res.ocr.get("failed"):
-                res.notes.append("ไม่พบข้อความในหน้าที่อ่าน (หน้าว่าง ไม่มีทั้งชั้นข้อความและภาพ)")
+                res.notes.append(TR("ไม่พบข้อความในหน้าที่อ่าน (หน้าว่าง ไม่มีทั้งชั้นข้อความและภาพ)"))
     finally:
         doc.close()
 
@@ -960,18 +961,18 @@ def _docx(path: str, clock: _Clock, res: Result) -> None:
     try:
         import docx                      # python-docx: parser ตั้ง resolve_entities=False อยู่แล้ว
     except Exception as exc:             # noqa: BLE001
-        raise ExtractError("เครื่องนี้ไม่มี python-docx จึงอ่าน DOCX ไม่ได้ (%s)" % exc) from exc
+        raise ExtractError(TR("เครื่องนี้ไม่มี python-docx จึงอ่าน DOCX ไม่ได้ (%s)") % exc) from exc
     try:
         doc = docx.Document(path)
     except Exception as exc:             # noqa: BLE001
-        raise ExtractError("เปิด DOCX ไม่ได้: %s" % exc) from exc
+        raise ExtractError(TR("เปิด DOCX ไม่ได้: %s") % exc) from exc
     styles_by_id = {}
     for st in doc.styles.element.findall(_W + "style"):
         nm = st.find(_W + "name")
         styles_by_id[st.get(_W + "styleId") or ""] = (nm.get(_W + "val") if nm is not None else "")
     numfmt = _docx_numfmt(doc)
     # แบ่งหน่วยตามหัวข้อ: kb ใช้ชื่อหัวข้อเป็นตำแหน่งอ้างอิง (DOCX ไม่มีเลขหน้าที่แน่นอน)
-    loc, buf, count = "ต้นเอกสาร", [], 0
+    loc, buf, count = TR("ต้นเอกสาร"), [], 0
 
     def flush():
         text = "\n\n".join(b for b in buf if b).strip()
@@ -982,14 +983,14 @@ def _docx(path: str, clock: _Clock, res: Result) -> None:
         nonlocal loc, buf, count
         for el in parent.iterchildren():
             if clock.over():
-                res.notes.append("หมดเวลา อ่านได้ถึงหัวข้อ %s" % loc)
+                res.notes.append(TR("หมดเวลา อ่านได้ถึงหัวข้อ %s") % loc)
                 return False
             tag = el.tag
             if tag == _W + "p":
                 line, level = _docx_para(el, styles_by_id, numfmt)
                 if level and level <= 3:
                     flush()
-                    loc, buf = "หัวข้อ: " + line.lstrip("# ")[:60], []
+                    loc, buf = TR("หัวข้อ: ") + line.lstrip("# ")[:60], []
                 if line:
                     buf.append(line)
             elif tag == _W + "tbl":
@@ -1039,11 +1040,11 @@ def _sheet_unit(name: str, rows_iter, clock: _Clock, cap: int, res: Result) -> U
             if extra > 200000:
                 break
         if clock.over():
-            res.notes.append("หมดเวลาระหว่างอ่านชีต %s" % name)
+            res.notes.append(TR("หมดเวลาระหว่างอ่านชีต %s") % name)
             break
     header = header or []
-    text = md_table(header, rows) if (header or rows) else "(ชีตว่าง)"
-    return Unit(loc="ชีต %s" % name, text=text, header=[_cell(h) for h in header],
+    text = md_table(header, rows) if (header or rows) else TR("(ชีตว่าง)")
+    return Unit(loc=TR("ชีต %s") % name, text=text, header=[_cell(h) for h in header],
                 rows=rows, more_rows=extra)
 
 
@@ -1053,13 +1054,13 @@ def _xlsx(path: str, sheet, clock: _Clock, res: Result, cap: int) -> None:
     try:
         import openpyxl
     except Exception as exc:             # noqa: BLE001
-        raise ExtractError("เครื่องนี้ไม่มี openpyxl จึงอ่าน XLSX ไม่ได้ (%s)" % exc) from exc
+        raise ExtractError(TR("เครื่องนี้ไม่มี openpyxl จึงอ่าน XLSX ไม่ได้ (%s)") % exc) from exc
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")      # คำเตือน data validation/extension ไม่ใช่เรื่องของผู้ใช้
             wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     except Exception as exc:             # noqa: BLE001
-        raise ExtractError("เปิด XLSX ไม่ได้: %s" % exc) from exc
+        raise ExtractError(TR("เปิด XLSX ไม่ได้: %s") % exc) from exc
     try:
         names = list(wb.sheetnames)
         res.total = len(names)
@@ -1073,15 +1074,15 @@ def _xlsx(path: str, sheet, clock: _Clock, res: Result, cap: int) -> None:
             else:
                 low = [n for n in names if n.lower() == want.lower()]
                 if not low:
-                    raise ExtractError("ไม่พบชีต %r — ชีตที่มี: %s" % (want, ", ".join(names)))
+                    raise ExtractError(TR("ไม่พบชีต %r — ชีตที่มี: %s") % (want, ", ".join(names)))
                 chosen = low
         for name in chosen:
             if clock.over():
-                res.notes.append("หมดเวลา ยังไม่ได้อ่านชีต %s" % name)
+                res.notes.append(TR("หมดเวลา ยังไม่ได้อ่านชีต %s") % name)
                 break
             ws = wb[name]
             if not hasattr(ws, "iter_rows"):
-                res.units.append(Unit(loc="ชีต %s" % name, text="(ชีตกราฟ ไม่มีตาราง)"))
+                res.units.append(Unit(loc=TR("ชีต %s") % name, text=TR("(ชีตกราฟ ไม่มีตาราง)")))
                 continue
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -1095,7 +1096,7 @@ def _csv(path: str, clock: _Clock, res: Result, cap: int) -> None:
         data = fh.read(MAX_TEXT_BYTES + 1)
     if len(data) > MAX_TEXT_BYTES:
         data = data[:MAX_TEXT_BYTES]
-        res.notes.append("ไฟล์ใหญ่ อ่านแค่ %d MB แรก" % (MAX_TEXT_BYTES // (1024 * 1024)))
+        res.notes.append(TR("ไฟล์ใหญ่ อ่านแค่ %d MB แรก") % (MAX_TEXT_BYTES // (1024 * 1024)))
     text = decode_bytes(data)
     sample = text[:8192]
     delim = "\t" if path.lower().endswith(".tsv") else ","
@@ -1191,7 +1192,7 @@ def _pptx(path: str, pages, clock: _Clock, res: Result) -> None:
         try:
             pres = _xml(zf.read("ppt/presentation.xml"))
         except KeyError as exc:
-            raise ExtractError("ไฟล์นี้ไม่ใช่ PPTX ที่สมบูรณ์ (ไม่มี presentation.xml)") from exc
+            raise ExtractError(TR("ไฟล์นี้ไม่ใช่ PPTX ที่สมบูรณ์ (ไม่มี presentation.xml)")) from exc
         rels = _rels(zf, "ppt/presentation.xml")
         order = []
         lst = pres.find(_P + "sldIdLst")
@@ -1202,7 +1203,7 @@ def _pptx(path: str, pages, clock: _Clock, res: Result) -> None:
         res.total = len(order)
         for n in parse_pages(pages, res.total):
             if clock.over():
-                res.notes.append("หมดเวลาที่สไลด์ %d — ขอส่วนที่เหลือด้วย pages=%d-" % (n, n))
+                res.notes.append(TR("หมดเวลาที่สไลด์ %d — ขอส่วนที่เหลือด้วย pages=%d-") % (n, n))
                 break
             part = order[n - 1]
             try:
@@ -1225,8 +1226,8 @@ def _pptx(path: str, pages, clock: _Clock, res: Result) -> None:
                         if ph is not None and ph.get("type") == "body":
                             notes += [t for _l, t in _a_paras(sh)]
                     if notes:
-                        lines.append("> โน้ตผู้บรรยาย: " + " ".join(notes).replace("\n", " "))
-            res.units.append(Unit(loc="สไลด์ %d" % n, text="\n".join(lines).strip()))
+                        lines.append(TR("> โน้ตผู้บรรยาย: ") + " ".join(notes).replace("\n", " "))
+            res.units.append(Unit(loc=TR("สไลด์ %d") % n, text="\n".join(lines).strip()))
     finally:
         zf.close()
 
@@ -1264,7 +1265,7 @@ def _read_text_file(path: str, res: Result) -> str:
         data = fh.read(MAX_TEXT_BYTES + 1)
     if len(data) > MAX_TEXT_BYTES:
         data = data[:MAX_TEXT_BYTES]
-        res.notes.append("ไฟล์ใหญ่ อ่านแค่ %d MB แรก (ใช้ local_read action=\"grep\" ค้นส่วนอื่น)"
+        res.notes.append(TR("ไฟล์ใหญ่ อ่านแค่ %d MB แรก (ใช้ local_read action=\"grep\" ค้นส่วนอื่น)")
                          % (MAX_TEXT_BYTES // (1024 * 1024)))
     return decode_bytes(data)
 
@@ -1281,7 +1282,7 @@ def _text(path: str, res: Result, html: bool) -> None:
         text = re.sub(r"[ \t]+", " ", "".join(parser.out))
         text = re.sub(r"\n\s*\n+", "\n\n", text)
     res.total = 1
-    res.units.append(Unit(loc="ทั้งไฟล์", text=clean_text(text).strip()))
+    res.units.append(Unit(loc=TR("ทั้งไฟล์"), text=clean_text(text).strip()))
 
 
 # ======================================================================= OCR
@@ -1311,7 +1312,12 @@ def _text(path: str, res: Result, html: bool) -> None:
 #      ส่งให้ GDI/Ghostscript ในโปรเซสที่ถือ token
 TESSERACT_EXE = r"C:\LLM\tools\tesseract\tesseract.exe"
 TESSDATA_DIR = r"C:\LLM\tools\tesseract\tessdata"
-OCR_LANGS = "tha+eng"
+OCR_LANGS = os.environ.get("QWEN_OCR_LANGS") or "tha+eng"     # ชุดพื้นฐานของเครื่องนี้ (ต้องมีไฟล์ครบ — ดู ocr_status)
+# 2026-11: ภาษาของหน้าจอ -> ชุดข้อมูลของ Tesseract ที่ "เพิ่ม" ต่อท้ายชุดพื้นฐานเมื่อมีไฟล์ .traineddata (tessdata_best:
+# jpn, chi_sim) — ผู้ใช้ที่ตั้ง UI เป็นญี่ปุ่น/จีนมักอ่านเอกสารภาษาตัวเอง ส่วนหน้าจอไทย/อังกฤษได้ tha+eng เท่าเดิม
+# (ทุกภาษาใน -l ถูกลองพร้อมกัน ภาษาที่ไม่ตรงลดความแม่นเล็กน้อย จึงไม่เปิดทุกชุดตลอดเวลา) แคชต่อหน้าจำชุดภาษาที่ใช้
+# (ระเบียน "langs") — ชุดต่างกัน = OCR ใหม่  ไม่มีไฟล์ = ข้ามเงียบๆ (Doctor แนะนำให้ติดตั้ง)
+OCR_UI_PACKS = {"ja": "jpn", "zh": "chi_sim"}
 # "2" (docs2 fixer): ระเบียนแคชมี HMAC + คำที่ไม่แน่ใจ/บรรทัดขยะที่ตัดทิ้ง — แคชรุ่น "1" ไม่มีลายเซ็น ถูกข้ามแล้ว OCR ใหม่
 OCR_VERSION = "2"                        # เปลี่ยนวิธี OCR/รูปแบบแคช = เพิ่มเลขนี้ (แคชเก่าถูกข้ามเอง)
 OCR_DPI = 300                            # ความละเอียดที่โมเดล LSTM ของ Tesseract ถูกฝึกมาให้อ่านดีที่สุด
@@ -1358,16 +1364,29 @@ class OcrOpts:
     for_index: bool = False              # kb: ไม่ตัดหน่วยทิ้ง แต่บอกหน้าที่ค้างไว้ใน Result.ocr["pending"]
 
 
+def ocr_pack_installed(pack: str) -> bool:
+    """มีไฟล์ <pack>.traineddata ใน tessdata ไหม (jpn, chi_sim, ...)"""
+    return bool(pack) and os.path.isfile(os.path.join(TESSDATA_DIR, pack + ".traineddata"))
+
+
+def ocr_langs() -> str:
+    """ชุดภาษาของ tesseract สำหรับคำขอนี้: OCR_LANGS + ชุดข้อมูลของภาษาหน้าจอ (ja -> jpn, zh -> chi_sim) เมื่อติดตั้งไว้"""
+    pack = OCR_UI_PACKS.get(ui_lang())
+    if pack and pack not in OCR_LANGS.split("+") and ocr_pack_installed(pack):
+        return OCR_LANGS + "+" + pack
+    return OCR_LANGS
+
+
 def ocr_status() -> str:
     """"" = พร้อมใช้ ไม่งั้นคือเหตุผลที่ใช้ไม่ได้ (ภาษาไทย ส่งให้โมเดล/ผู้ใช้ได้เลย)"""
     if not os.path.isfile(TESSERACT_EXE):
-        return "ไม่พบโปรแกรม Tesseract ที่ %s" % TESSERACT_EXE
+        return TR("ไม่พบโปรแกรม Tesseract ที่ %s") % TESSERACT_EXE
     for lang in OCR_LANGS.split("+"):
         if not os.path.isfile(os.path.join(TESSDATA_DIR, lang + ".traineddata")):
-            return "ไม่มีข้อมูลภาษา %s ของ Tesseract" % lang
+            return TR("ไม่มีข้อมูลภาษา %s ของ Tesseract") % lang
     for cfg in ("txt", "tsv"):
         if not os.path.isfile(os.path.join(TESSDATA_DIR, "configs", cfg)):
-            return "ไม่มีไฟล์ค่าตั้ง configs\\%s ของ Tesseract" % cfg
+            return TR("ไม่มีไฟล์ค่าตั้ง configs\\%s ของ Tesseract") % cfg
     return ""
 
 
@@ -1495,7 +1514,7 @@ def _parse_tess(out: str) -> dict:
 def _tesseract(png: bytes, psm: int, sauvola: bool, timeout: float) -> dict:
     # thresholding_method: 0 = Otsu (สแกนแสงเรียบ อ่านดีสุด), 2 = Sauvola (รูปถ่ายแสงไม่เท่ากัน) — วัดจริงกับ
     # fixture: สแกน Otsu 0.97 / Sauvola 0.95, รูปถ่าย Otsu 0.89 / Sauvola 0.97 (อัตราตัวอักษรถูก)
-    cmd = [TESSERACT_EXE, "stdin", "stdout", "--tessdata-dir", TESSDATA_DIR, "-l", OCR_LANGS,
+    cmd = [TESSERACT_EXE, "stdin", "stdout", "--tessdata-dir", TESSDATA_DIR, "-l", ocr_langs(),
            "--oem", "1", "--psm", str(int(psm)), "--dpi", str(OCR_DPI),
            "-c", "thresholding_method=%d" % (2 if sauvola else 0), "txt", "tsv"]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
@@ -1503,12 +1522,12 @@ def _tesseract(png: bytes, psm: int, sauvola: bool, timeout: float) -> dict:
         proc = subprocess.run(cmd, input=png, capture_output=True, timeout=max(1.0, timeout), shell=False,
                               env=_ocr_env(), cwd=TESSDATA_DIR, creationflags=flags)
     except subprocess.TimeoutExpired as exc:          # run() ฆ่าโปรเซสลูกให้แล้วก่อนโยนข้อผิดพลาดนี้
-        raise _OcrFail("หมดเวลา %d วินาที" % int(timeout)) from exc
+        raise _OcrFail(TR("หมดเวลา %d วินาที") % int(timeout)) from exc
     except OSError as exc:
-        raise _OcrFail("เรียก Tesseract ไม่ได้: %s" % exc) from exc
+        raise _OcrFail(TR("เรียก Tesseract ไม่ได้: %s") % exc) from exc
     if proc.returncode != 0:
         err = proc.stderr.decode("utf-8", "replace").strip().splitlines()
-        raise _OcrFail("Tesseract ล้ม (รหัส %d%s)" % (proc.returncode, (": " + err[-1][:120]) if err else ""))
+        raise _OcrFail(TR("Tesseract ล้ม (รหัส %d%s)") % (proc.returncode, (": " + err[-1][:120]) if err else ""))
     return _parse_tess(proc.stdout.decode("utf-8", "replace"))
 
 
@@ -1518,6 +1537,7 @@ def _ocr_png(png: bytes, photo: bool, deadline: float) -> dict:
     -> psm 6 (ข้อความก้อนเดียว — ภาพครอปย่อหน้าเดียว/บรรทัดเดียวที่ psm 3 หาบรรทัดไม่เจอ)"""
     t0 = time.monotonic()
     best = None
+    langs = ocr_langs()                      # ชุดภาษาที่หน้านี้ใช้ (จำลงแคช — ชุดต่างกันทีหลัง = OCR ใหม่)
     for step in range(3):
         if step == 0:
             psm, sau = 3, photo
@@ -1531,7 +1551,7 @@ def _ocr_png(png: bytes, photo: bool, deadline: float) -> dict:
         if best is not None and left < 5:
             break
         if best is None and left < 1:
-            raise _OcrFail("หมดเวลา")
+            raise _OcrFail(TR("หมดเวลา"))
         try:
             got = _tesseract(png, psm, sau, min(OCR_RUN_TIMEOUT, max(3.0, left)))
         except _OcrFail:
@@ -1544,6 +1564,7 @@ def _ocr_png(png: bytes, photo: bool, deadline: float) -> dict:
         if best["conf"] >= OCR_GOOD_CONF and best["words"] >= 3:
             break
     best["secs"] = round(time.monotonic() - t0, 2)
+    best["langs"] = langs
     return best
 
 
@@ -1582,7 +1603,7 @@ def _prep_image(im) -> tuple[bytes, bool]:
     g = im.convert("L")
     w, h = g.size
     if not w or not h:
-        raise _OcrFail("ภาพว่าง")
+        raise _OcrFail(TR("ภาพว่าง"))
     long = max(w, h)
     scale = 1.0
     if long > IMAGE_LONG_MAX:
@@ -1656,7 +1677,7 @@ class _Renderer:
                                          stderr=subprocess.DEVNULL, shell=False, env=_child_env(),
                                          cwd=tempfile.gettempdir(), creationflags=flags)
         except OSError as exc:
-            self.broken = "เปิดโปรเซสเรนเดอร์หน้าไม่ได้ (%s)" % type(exc).__name__
+            self.broken = TR("เปิดโปรเซสเรนเดอร์หน้าไม่ได้ (%s)") % type(exc).__name__
             raise _OcrFail(self.broken) from exc
 
     def _kill(self) -> None:
@@ -1686,7 +1707,7 @@ class _Renderer:
             if head.startswith(b"PIX "):
                 w, h, stride, size = (int(x) for x in head.split()[1:5])
                 if size != stride * h or size > 4 * OCR_RENDER_MAX_PIXELS or w <= 0 or h <= 0:
-                    raise _OcrFail("ผลเรนเดอร์ผิดรูป")
+                    raise _OcrFail(TR("ผลเรนเดอร์ผิดรูป"))
                 data = self.proc.stdout.read(size)
                 if len(data) == size:
                     return w, h, stride, data
@@ -1694,15 +1715,15 @@ class _Renderer:
         finally:
             timer.cancel()
         if head.startswith(b"ERR "):
-            raise _OcrFail("เรนเดอร์หน้าไม่ได้ (%s)" % head[4:].decode("ascii", "replace").strip()[:40])
+            raise _OcrFail(TR("เรนเดอร์หน้าไม่ได้ (%s)") % head[4:].decode("ascii", "replace").strip()[:40])
         # โปรเซสลูกตาย/ถูกฆ่า: เริ่มใหม่ในคำขอถัดไป
         self.close()
         if self._timed_out:
             self.kills += 1
             if self.kills >= RENDER_KILLS_MAX:
-                self.broken = "เรนเดอร์หน้าเกินเวลา %d ครั้ง — ไฟล์นี้วาดนานผิดปกติ ข้ามหน้าที่เหลือ" % self.kills
-            raise _OcrFail("เรนเดอร์หน้าเกิน %d วินาที (หน้าซับซ้อนผิดปกติ) — ข้ามหน้านี้" % int(timeout))
-        raise _OcrFail("โปรเซสเรนเดอร์หน้าหยุดทำงาน")
+                self.broken = TR("เรนเดอร์หน้าเกินเวลา %d ครั้ง — ไฟล์นี้วาดนานผิดปกติ ข้ามหน้าที่เหลือ") % self.kills
+            raise _OcrFail(TR("เรนเดอร์หน้าเกิน %d วินาที (หน้าซับซ้อนผิดปกติ) — ข้ามหน้านี้") % int(timeout))
+        raise _OcrFail(TR("โปรเซสเรนเดอร์หน้าหยุดทำงาน"))
 
     def close(self) -> None:
         p, self.proc = self.proc, None
@@ -1739,7 +1760,7 @@ def _page_png(rend: _Renderer, page, n: int) -> tuple[bytes, bool]:
     from PIL import Image
     r = page.rect
     if r.width <= 0 or r.height <= 0:
-        raise _OcrFail("ขนาดหน้าไม่ถูกต้อง")
+        raise _OcrFail(TR("ขนาดหน้าไม่ถูกต้อง"))
     zoom = OCR_DPI / 72.0
     pixels = r.width * zoom * r.height * zoom
     if pixels > OCR_RENDER_MAX_PIXELS:
@@ -1950,28 +1971,28 @@ def ocr_block(n: int, rec: dict) -> str:
     (ทั้งหมดอยู่ในบรรทัดป้ายบรรทัดเดียว — kb ถอดป้ายนี้ออกก่อนทำดัชนี คำพวกนี้จึงไม่ถูกเก็บซ้ำเป็นเนื้อหา)"""
     text = rec.get("text") or ""
     if not text:
-        return "[OCR หน้า %d · ไม่พบข้อความในภาพ]" % n
+        return TR("[OCR หน้า %d · ไม่พบข้อความในภาพ]") % n
     conf = float(rec.get("conf") or 0.0)
     if conf >= 85:
-        level = "สูง"
+        level = TR("สูง")
         if _CODE_RE.search(text):
-            level += " · ตรวจรหัส/ตัวเลขกับต้นฉบับก่อนยกไปใช้"
+            level += TR(" · ตรวจรหัส/ตัวเลขกับต้นฉบับก่อนยกไปใช้")
     elif conf >= 70:
-        level = "ปานกลาง: ตรวจตัวเลข/ชื่อสำคัญกับต้นฉบับ"
+        level = TR("ปานกลาง: ตรวจตัวเลข/ชื่อสำคัญกับต้นฉบับ")
     else:
-        level = "ต่ำ: อาจอ่านผิดหลายคำ ยกตัวเลข/ชื่อต้องบอกผู้ใช้ว่ามาจาก OCR"
+        level = TR("ต่ำ: อาจอ่านผิดหลายคำ ยกตัวเลข/ชื่อต้องบอกผู้ใช้ว่ามาจาก OCR")
     extra = ""
     unsure = [str(w).replace("]", "").replace("[", "").replace("\n", " ")[:24]
               for w in (rec.get("unsure") or []) if str(w).strip()][:OCR_UNSURE_MAX]
     if unsure:
-        extra += " · ไม่แน่ใจ: " + ", ".join(unsure)
+        extra += TR(" · ไม่แน่ใจ: ") + ", ".join(unsure)
     try:
         dropped = int(rec.get("dropped") or 0)
     except (TypeError, ValueError):
         dropped = 0
     if dropped:
-        extra += " · ตัดเศษที่อ่านไม่ออก %d บรรทัด" % dropped
-    return "[OCR หน้า %d · ความมั่นใจ %d%% (%s)%s]\n%s" % (n, int(round(conf)), level, extra, text)
+        extra += TR(" · ตัดเศษที่อ่านไม่ออก %d บรรทัด") % dropped
+    return TR("[OCR หน้า %d · ความมั่นใจ %d%% (%s)%s]\n%s") % (n, int(round(conf)), level, extra, text)
 
 
 # --------------------------------------------------------------- แคช OCR
@@ -2145,6 +2166,10 @@ class _OcrRun:
         rec = _cache_read(self.cache, self.sha(), n)
         if rec is None or (rec.get("error") and int(rec.get("tries") or 1) < 2):
             return None
+        # 2026-11: ระเบียนที่ OCR ด้วยชุดภาษาอื่น (หน้าจอเพิ่ง/เคยเป็นญี่ปุ่น-จีน) = OCR ใหม่ด้วยชุดของตอนนี้
+        # ระเบียนรุ่นก่อนไม่มี "langs" = tha+eng (ชุดเดียวที่เคยมี); หน้าว่าง/หน้าที่ล้มไม่ขึ้นกับภาษา
+        if not rec.get("blank") and not rec.get("error") and (rec.get("langs") or "tha+eng") != ocr_langs():
+            return None
         if not rec.get("blank"):
             self.hits += 1
         return rec
@@ -2157,9 +2182,9 @@ class _OcrRun:
 
     def blocked(self) -> str:
         if self.ran >= max(0, int(self.opts.max_pages)):
-            return "ครบ %d หน้าต่อครั้ง" % self.opts.max_pages
+            return TR("ครบ %d หน้าต่อครั้ง") % self.opts.max_pages
         if time.monotonic() >= self.deadline - 1.0:
-            return "หมดเวลา OCR ของรอบนี้"
+            return TR("หมดเวลา OCR ของรอบนี้")
         return ""
 
     def run(self, n: int, make_png) -> dict:
@@ -2171,7 +2196,7 @@ class _OcrRun:
         except _OcrFail as exc:
             rec = {"text": "", "conf": 0.0, "words": 0, "error": str(exc)[:200]}
         except Exception as exc:         # noqa: BLE001 — ภาพเสีย/หน่วยความจำไม่พอ: หน้าเดียวพัง ไม่ล้มทั้งไฟล์
-            rec = {"text": "", "conf": 0.0, "words": 0, "error": "อ่านภาพไม่ได้ (%s)" % type(exc).__name__}
+            rec = {"text": "", "conf": 0.0, "words": 0, "error": TR("อ่านภาพไม่ได้ (%s)") % type(exc).__name__}
         self.ran += 1
         self.secs += time.monotonic() - t0
         rec["v"] = OCR_VERSION
@@ -2188,29 +2213,29 @@ class _OcrRun:
                    "ran": self.ran, "cached": self.hits, "secs": round(self.secs, 1),
                    "unavailable": unavailable if (unavailable and self.pending) else ""}
         if self.done:
-            extra = " (จากแคช %d หน้า)" % self.hits if self.hits else ""
-            res.notes.append("อ่านด้วย OCR (Tesseract %s) %d หน้า%s — ข้อความจาก OCR อาจผิดบางคำ "
-                             "ตัวเลข/ชื่อเฉพาะที่สำคัญให้เทียบกับต้นฉบับ" % (OCR_LANGS, len(self.done), extra))
+            extra = TR(" (จากแคช %d หน้า)") % self.hits if self.hits else ""
+            res.notes.append(TR("อ่านด้วย OCR (Tesseract %s) %d หน้า%s — ข้อความจาก OCR อาจผิดบางคำ "
+                             "ตัวเลข/ชื่อเฉพาะที่สำคัญให้เทียบกับต้นฉบับ") % (ocr_langs(), len(self.done), extra))
         for n, why in self.failed[:5]:
-            res.notes.append("OCR หน้า %d ไม่สำเร็จ: %s" % (n, why))
+            res.notes.append(TR("OCR หน้า %d ไม่สำเร็จ: %s") % (n, why))
         if self.regarbled:
-            res.notes.append("หน้า %s ชั้นข้อความเสียมาก (อ่านเป็นข้อความไม่ได้) จึงใช้ข้อความจาก OCR ทั้งหน้า"
+            res.notes.append(TR("หน้า %s ชั้นข้อความเสียมาก (อ่านเป็นข้อความไม่ได้) จึงใช้ข้อความจาก OCR ทั้งหน้า")
                              % page_ranges(self.regarbled))
         if self.patched:
-            res.notes.append("ชั้นข้อความ PDF เสียบางตัว — ซ่อมเฉพาะตัวที่เสียจากภาพด้วย OCR %d ตำแหน่ง (หน้า %s) "
-                             "ส่วนอื่นเป็นชั้นข้อความเดิมตรงตัว (รหัส/ตัวเลขไม่ถูกแตะ)"
+            res.notes.append(TR("ชั้นข้อความ PDF เสียบางตัว — ซ่อมเฉพาะตัวที่เสียจากภาพด้วย OCR %d ตำแหน่ง (หน้า %s) "
+                             "ส่วนอื่นเป็นชั้นข้อความเดิมตรงตัว (รหัส/ตัวเลขไม่ถูกแตะ)")
                              % (sum(k for _n, k in self.patched), page_ranges(n for n, _k in self.patched)))
         if self.unpatched:
-            res.notes.append("หน้า %s ยังมีอักษรไทยเพี้ยนบางตัว (ยังไม่ได้ซ่อมด้วย OCR ในรอบนี้%s) — ข้อความครบ "
-                             "อ่านตามบริบท" % (page_ranges(self.unpatched),
+            res.notes.append(TR("หน้า %s ยังมีอักษรไทยเพี้ยนบางตัว (ยังไม่ได้ซ่อมด้วย OCR ในรอบนี้%s) — ข้อความครบ "
+                             "อ่านตามบริบท") % (page_ranges(self.unpatched),
                                                ": " + unavailable if unavailable else ""))
         if unavailable and self.pending:
-            res.notes.append("มี %d หน้าที่ต้องใช้ OCR (หน้า %s) แต่ใช้ OCR ไม่ได้: %s"
+            res.notes.append(TR("มี %d หน้าที่ต้องใช้ OCR (หน้า %s) แต่ใช้ OCR ไม่ได้: %s")
                              % (len(self.pending), page_ranges(self.pending), unavailable))
         elif self.pending and not self.opts.for_index:
             first = min(self.pending)
-            res.notes.append("ยังไม่ได้ OCR ตั้งแต่หน้า %d (%s) — อ่านต่อด้วย pages=\"%d-\" "
-                             "(หน้าที่ OCR แล้วถูกจำไว้ ไม่ต้องรอซ้ำ)" % (first, self.stop, first))
+            res.notes.append(TR("ยังไม่ได้ OCR ตั้งแต่หน้า %d (%s) — อ่านต่อด้วย pages=\"%d-\" "
+                             "(หน้าที่ OCR แล้วถูกจำไว้ ไม่ต้องรอซ้ำ)") % (first, self.stop, first))
 
 
 def _ink_or_blank(run: "_OcrRun", rend: _Renderer, doc, n: int) -> bool:
@@ -2251,7 +2276,7 @@ def _pdf_ocr(doc, path: str, res: Result, opts: OcrOpts) -> dict:
                     continue
                 block, by_goal = run.blocked(), False
                 if not block and opts.goal and sum(len(u.text or "") for u in res.units[:i]) >= opts.goal:
-                    block, by_goal = "ข้อความครบ max_chars แล้ว", True
+                    block, by_goal = TR("ข้อความครบ max_chars แล้ว"), True
                 if block:
                     if why == "patch" and not opts.for_index:
                         if not by_goal:  # หน้าที่เลยส่วนที่แสดงไปแล้วไม่ต้องบอก (ผู้ใช้ไม่เห็นอยู่ดี)
@@ -2304,7 +2329,7 @@ def _pdf_ocr(doc, path: str, res: Result, opts: OcrOpts) -> dict:
                 if m:
                     pages.append(int(m.group(1)))
         if more:
-            res.notes.append("อักษรเพี้ยนที่เหลือ %d ตำแหน่ง (หน้า %s) ซ่อมตามรหัสเดียวกันที่ OCR อ่านได้ชัดในไฟล์นี้"
+            res.notes.append(TR("อักษรเพี้ยนที่เหลือ %d ตำแหน่ง (หน้า %s) ซ่อมตามรหัสเดียวกันที่ OCR อ่านได้ชัดในไฟล์นี้")
                              % (more, page_ranges(pages) or "-"))
             run.patched.extend((n, 0) for n in pages if n not in {p for p, _k in run.patched})
             left = {int(m.group(1)) for u in res.units
@@ -2325,17 +2350,17 @@ def _open_image(path: str):
     try:
         from PIL import Image
     except Exception as exc:             # noqa: BLE001
-        raise ExtractError("เครื่องนี้ไม่มี Pillow จึงอ่านไฟล์ภาพไม่ได้ (%s)" % exc) from exc
+        raise ExtractError(TR("เครื่องนี้ไม่มี Pillow จึงอ่านไฟล์ภาพไม่ได้ (%s)") % exc) from exc
     try:
         im = Image.open(path, formats=list(_IMAGE_FORMATS))
     except Image.DecompressionBombError as exc:
-        raise ExtractError("ภาพใหญ่ผิดปกติ (เกินเพดานพิกเซล) ไม่อ่านเพื่อความปลอดภัย") from exc
+        raise ExtractError(TR("ภาพใหญ่ผิดปกติ (เกินเพดานพิกเซล) ไม่อ่านเพื่อความปลอดภัย")) from exc
     except Exception as exc:             # noqa: BLE001 — ไฟล์เสีย/นามสกุลภาพแต่ไส้ไม่ใช่ภาพ/ชนิดนอกสัญญา
-        raise ExtractError("เปิดไฟล์ภาพไม่ได้ (ไฟล์เสีย ไม่ใช่ภาพ หรือเป็นชนิดที่ไม่รองรับ — รองรับ PNG/JPEG/TIFF/BMP/"
-                           "WEBP: %s)" % type(exc).__name__) from exc
+        raise ExtractError(TR("เปิดไฟล์ภาพไม่ได้ (ไฟล์เสีย ไม่ใช่ภาพ หรือเป็นชนิดที่ไม่รองรับ — รองรับ PNG/JPEG/TIFF/BMP/"
+                           "WEBP: %s)") % type(exc).__name__) from exc
     if (getattr(im, "format", "") or "") not in _IMAGE_FORMATS + ("MPO",):   # MPO = JPEG หลายภาพของกล้อง
         im.close()
-        raise ExtractError("เปิดไฟล์ภาพไม่ได้ (ชนิด %s ไม่รองรับ)" % (getattr(im, "format", "") or "?"))
+        raise ExtractError(TR("เปิดไฟล์ภาพไม่ได้ (ชนิด %s ไม่รองรับ)") % (getattr(im, "format", "") or "?"))
     return im
 
 
@@ -2348,7 +2373,7 @@ def _frame_png(im, n: int) -> tuple[bytes, bool]:
         im.draft("L", (IMAGE_LONG_MAX, IMAGE_LONG_MAX))    # ถอด JPEG ใหญ่ที่ 1/2-1/8 ขนาดเลย (เร็ว + ประหยัดแรม)
     w, h = im.size
     if w * h > IMAGE_MAX_PIXELS:
-        raise _OcrFail("ภาพใหญ่เกิน %d ล้านพิกเซล" % (IMAGE_MAX_PIXELS // 1_000_000))
+        raise _OcrFail(TR("ภาพใหญ่เกิน %d ล้านพิกเซล") % (IMAGE_MAX_PIXELS // 1_000_000))
     frame = im.copy()
     if n == 1:
         try:
@@ -2366,7 +2391,7 @@ def _image(path: str, pages, res: Result, opts: OcrOpts) -> None:
         frames = max(1, int(getattr(im, "n_frames", 1) or 1))
         res.total = min(frames, IMAGE_MAX_FRAMES)
         if frames > IMAGE_MAX_FRAMES:
-            res.notes.append("ภาพมี %d เฟรม อ่านได้ %d เฟรมแรก" % (frames, IMAGE_MAX_FRAMES))
+            res.notes.append(TR("ภาพมี %d เฟรม อ่านได้ %d เฟรมแรก") % (frames, IMAGE_MAX_FRAMES))
         wanted = parse_pages(pages, res.total)
         run = _OcrRun(path, opts)
         for pos, n in enumerate(wanted):
@@ -2374,7 +2399,7 @@ def _image(path: str, pages, res: Result, opts: OcrOpts) -> None:
             if rec is None:
                 block = unavailable or run.blocked()
                 if not block and opts.goal and sum(len(u.text or "") for u in res.units) >= opts.goal:
-                    block = "ข้อความครบ max_chars แล้ว"
+                    block = TR("ข้อความครบ max_chars แล้ว")
                 if block:
                     run.stop = block
                     if unavailable or opts.for_index:
@@ -2385,16 +2410,16 @@ def _image(path: str, pages, res: Result, opts: OcrOpts) -> None:
                 rec = run.run(n, lambda n=n: _frame_png(im, n))
             if rec.get("error"):
                 run.failed.append((n, rec["error"]))
-                res.units.append(Unit(loc="หน้า %d" % n, text="[OCR หน้า %d · อ่านไม่สำเร็จ: %s]" % (n, rec["error"]),
+                res.units.append(Unit(loc=TR("หน้า %d") % n, text=TR("[OCR หน้า %d · อ่านไม่สำเร็จ: %s]") % (n, rec["error"]),
                                       ocr={"failed": True}))      # kb ไม่เก็บป้ายความล้มเหลวเป็นเนื้อหา
                 continue
-            res.units.append(Unit(loc="หน้า %d" % n, text=ocr_block(n, rec),
+            res.units.append(Unit(loc=TR("หน้า %d") % n, text=ocr_block(n, rec),
                                   ocr={"conf": rec.get("conf", 0.0), "why": "image"}))
             run.done.append(n)
     finally:
         im.close()
     if unavailable and not run.done:
-        raise ExtractError("ไฟล์ภาพต้องอ่านด้วย OCR แต่ใช้ OCR ไม่ได้: %s" % unavailable)
+        raise ExtractError(TR("ไฟล์ภาพต้องอ่านด้วย OCR แต่ใช้ OCR ไม่ได้: %s") % unavailable)
     run.report(res, unavailable)
 
 
@@ -2409,7 +2434,7 @@ def ocr_prefetch(path: str, cache_dir: str, budget: float = 30.0, max_pages: int
     opts = OcrOpts(budget=budget, max_pages=max_pages, cache_dir=cache_dir, for_index=True)
     run = _OcrRun(path, opts)
     if not run.cache:
-        out["error"] = "ไม่มีที่เก็บแคช OCR"
+        out["error"] = TR("ไม่มีที่เก็บแคช OCR")
         return out
     try:
         kind = kind_of(path)
@@ -2419,7 +2444,7 @@ def ocr_prefetch(path: str, cache_dir: str, budget: float = 30.0, max_pages: int
             rend = _Renderer(path)
             try:
                 if doc.needs_pass and not doc.authenticate(""):
-                    out["error"] = "PDF ตั้งรหัสผ่าน"
+                    out["error"] = TR("PDF ตั้งรหัสผ่าน")
                     return out
                 aa: set = set()
                 items = []
@@ -2482,18 +2507,18 @@ def kind_of(path: str) -> str:
     if ext in IMAGE_EXTS:                                  # docs2: อ่านด้วย OCR
         return "image"
     if ext in _LEGACY:
-        raise ExtractError("ไฟล์ %s เป็นรูปแบบเก่า อ่านไม่ได้ในเครื่องนี้ — ให้ผู้ใช้เปิดแล้ว Save As เป็น %s ก่อน"
+        raise ExtractError(TR("ไฟล์ %s เป็นรูปแบบเก่า อ่านไม่ได้ในเครื่องนี้ — ให้ผู้ใช้เปิดแล้ว Save As เป็น %s ก่อน")
                            % (ext, _LEGACY[ext]))
     # นามสกุลแปลก/ไม่มีนามสกุล (log ของตู้ชาร์จบางรุ่น): ดูเนื้อไฟล์เอง
     try:
         with open(path, "rb") as fh:
             head = fh.read(8192)
     except OSError as exc:
-        raise ExtractError("เปิดไฟล์ไม่ได้: %s" % exc) from exc
+        raise ExtractError(TR("เปิดไฟล์ไม่ได้: %s") % exc) from exc
     if head.startswith(b"%PDF-"):
         return "pdf"
     if _looks_binary(head):
-        raise ExtractError("ไฟล์นี้เป็นไบนารีชนิดที่ไม่รองรับ (รองรับ PDF, DOCX, XLSX, PPTX, CSV และไฟล์ข้อความ)")
+        raise ExtractError(TR("ไฟล์นี้เป็นไบนารีชนิดที่ไม่รองรับ (รองรับ PDF, DOCX, XLSX, PPTX, CSV และไฟล์ข้อความ)"))
     return "text"
 
 
@@ -2511,12 +2536,12 @@ def extract_units(path: str, pages=None, sheet=None, time_budget: float | None =
     try:
         st = os.stat(path)
     except OSError as exc:
-        raise ExtractError("ไม่พบไฟล์หรือเปิดไม่ได้: %s" % exc) from exc
+        raise ExtractError(TR("ไม่พบไฟล์หรือเปิดไม่ได้: %s") % exc) from exc
     if not os.path.isfile(path):
-        raise ExtractError("path นี้ไม่ใช่ไฟล์ (ถ้าเป็นโฟลเดอร์ใช้ action=\"list\")")
+        raise ExtractError(TR("path นี้ไม่ใช่ไฟล์ (ถ้าเป็นโฟลเดอร์ใช้ action=\"list\")"))
     kind = kind_of(path)
     if kind not in ("text", "html", "csv") and st.st_size > MAX_FILE_BYTES:
-        raise ExtractError("ไฟล์ใหญ่ %.1f MB เกินเพดาน %d MB" % (st.st_size / 1048576,
+        raise ExtractError(TR("ไฟล์ใหญ่ %.1f MB เกินเพดาน %d MB") % (st.st_size / 1048576,
                                                              MAX_FILE_BYTES // 1048576))
     res = Result(kind=kind)
     cap = SHEET_ROWS_INDEX if for_index else SHEET_ROWS_VIEW
@@ -2550,7 +2575,7 @@ def render(res: Result, display: str, max_chars: int = DEFAULT_MAX_CHARS) -> str
     except (TypeError, ValueError):
         max_chars = DEFAULT_MAX_CHARS
     max_chars = max(500, min(max_chars or DEFAULT_MAX_CHARS, HARD_MAX_CHARS))
-    head = "ไฟล์: %s · %s" % (display, _KIND_LABEL.get(res.kind, res.kind))
+    head = TR("ไฟล์: %s · %s") % (display, _KIND_LABEL.get(res.kind, res.kind))
     if res.kind in _TOTAL_LABEL and res.total:
         head += " · %d %s" % (res.total, _TOTAL_LABEL[res.kind])
     body, used, cut_at = [], 0, None
@@ -2560,11 +2585,11 @@ def render(res: Result, display: str, max_chars: int = DEFAULT_MAX_CHARS) -> str
         elif res.kind in ("xlsx", "csv"):
             label = "## %s" % u.loc
             if u.rows or u.more_rows:
-                label += " (%d แถวข้อมูล%s)" % (len(u.rows) + u.more_rows,
-                                               ", แสดง %d แถวแรก" % len(u.rows) if u.more_rows else "")
+                label += TR(" (%d แถวข้อมูล%s)") % (len(u.rows) + u.more_rows,
+                                               TR(", แสดง %d แถวแรก") % len(u.rows) if u.more_rows else "")
         else:
             label = ""
-        text = u.text or "(ไม่มีข้อความ)"
+        text = u.text or TR("(ไม่มีข้อความ)")
         block = (label + "\n" + text) if label else text
         if used + len(block) > max_chars:
             room = max_chars - used
@@ -2580,21 +2605,21 @@ def render(res: Result, display: str, max_chars: int = DEFAULT_MAX_CHARS) -> str
         if res.kind in _PAGED:
             num = re.search(r"\d+", u.loc)
             nxt = num.group(0) if num else ""
-            tail.append("ตัดที่ %s ตัวอักษร — อ่านต่อด้วย pages=\"%s-\" (หรือเพิ่ม max_chars ได้ถึง %s)"
+            tail.append(TR("ตัดที่ %s ตัวอักษร — อ่านต่อด้วย pages=\"%s-\" (หรือเพิ่ม max_chars ได้ถึง %s)")
                         % (format(max_chars, ","), nxt, format(HARD_MAX_CHARS, ",")))
         elif res.kind == "xlsx":
-            tail.append("ตัดที่ %s ตัวอักษร — ระบุ sheet=\"ชื่อชีต\" เพื่ออ่านทีละชีต หรือใช้ action=\"kb\" ค้นเฉพาะเรื่อง"
+            tail.append(TR("ตัดที่ %s ตัวอักษร — ระบุ sheet=\"ชื่อชีต\" เพื่ออ่านทีละชีต หรือใช้ action=\"kb\" ค้นเฉพาะเรื่อง")
                         % format(max_chars, ","))
         else:
-            tail.append("ตัดที่ %s ตัวอักษร — เพิ่ม max_chars ได้ถึง %s หรือใช้ action=\"kb\"/\"grep\" ค้นเฉพาะส่วน"
+            tail.append(TR("ตัดที่ %s ตัวอักษร — เพิ่ม max_chars ได้ถึง %s หรือใช้ action=\"kb\"/\"grep\" ค้นเฉพาะส่วน")
                         % (format(max_chars, ","), format(HARD_MAX_CHARS, ",")))
     parts = [BANNER, head]
-    parts.extend("[คำเตือน] " + w for w in res.warnings)
+    parts.extend(TR("[คำเตือน] ") + w for w in res.warnings)
     parts.append("")
-    parts.append("\n\n".join(body) if body else "(ไม่มีข้อความในไฟล์)")
+    parts.append("\n\n".join(body) if body else TR("(ไม่มีข้อความในไฟล์)"))
     if tail:
         parts.append("")
-        parts.extend("[หมายเหตุ] " + t for t in tail)
+        parts.extend(TR("[หมายเหตุ] ") + t for t in tail)
     parts.append(END_MARK)
     return "\n".join(parts)
 

@@ -7,8 +7,8 @@
 [![Python](https://img.shields.io/badge/python-3.13-blue)](#requirements)
 
 A fully local, privacy-first AI workbench for Windows, built around **llama.cpp** and **Qwen** models.
-It wraps the llama.cpp server and its built-in WebUI with a clean, chat-first interface in **Thai and English**,
-per-project workspaces, guarded tools over MCP, a built-in browser, document and knowledge features, voice
+It wraps the llama.cpp server and its built-in WebUI with a clean, chat-first interface in **Thai, English,
+Japanese and Simplified Chinese**, per-project workspaces, guarded tools over MCP, a built-in browser, document and knowledge features, voice
 input, usage and health dashboards, and automatic GPU placement across the internal GPU and a Thunderbolt eGPU.
 
 Models, chats, files, embeddings, OCR and speech-to-text all run on `127.0.0.1`. Data leaves the machine only
@@ -17,10 +17,26 @@ deep-research job. The web-search tools are enabled in every project by default,
 in the chat.
 
 > **ภาษาไทย:** Qwen Local AI Workbench คือชุดเครื่องมือ AI ที่ทำงานบนเครื่องของคุณทั้งหมด (Windows 11 + GPU NVIDIA)
-> สร้างบน llama.cpp และโมเดล Qwen มีหน้าแชตภาษาไทย/อังกฤษ แยกพื้นที่ทำงานเป็นโปรเจกต์ เครื่องมืออ่านและสร้างเอกสาร
-> ค้นข้อมูลในไฟล์ พิมพ์ด้วยเสียง เบราว์เซอร์ในตัว และการจัดวางโมเดลลง GPU อัตโนมัติ ข้อมูลไม่ออกจากเครื่อง
-> ยกเว้นตอนใช้เครื่องมือค้นเว็บ วิธีติดตั้งอยู่ที่ [Quick start](#quick-start) (ภาษาอังกฤษ) ส่วนหน้าจอสลับไทย/อังกฤษได้ด้วย
-> `Alt+Shift+L`
+> สร้างบน llama.cpp และโมเดล Qwen มีหน้าแชตภาษาไทย อังกฤษ ญี่ปุ่น และจีนตัวย่อ แยกพื้นที่ทำงานเป็นโปรเจกต์
+> เครื่องมืออ่านและสร้างเอกสาร ค้นข้อมูลในไฟล์ พิมพ์ด้วยเสียง เบราว์เซอร์ในตัว และการจัดวางโมเดลลง GPU อัตโนมัติ
+> ข้อมูลไม่ออกจากเครื่อง ยกเว้นตอนใช้เครื่องมือค้นเว็บ วิธีติดตั้งอยู่ที่ [Quick start](#quick-start) (ภาษาอังกฤษ)
+> ส่วนหน้าจอสลับภาษาได้จากปุ่ม ไทย | EN | 日本語 | 中文 หรือกด `Alt+Shift+L` แล้วข้อความจากเครื่องมือ
+> (คำอธิบายเครื่องมือ ผลลัพธ์ ข้อผิดพลาด หน้ายืนยัน) จะตามภาษาที่เลือกด้วย ส่วนรายงานวิจัยเชิงลึกเขียนตามภาษาของคำถาม
+
+> **日本語:** Qwen Local AI Workbench は、Windows 11 と NVIDIA GPU の PC だけで動くローカル AI ワークベンチです。
+> llama.cpp と Qwen モデルをベースに、日本語・英語・タイ語・簡体字中国語のチャット画面、プロジェクトごとの
+> ワークスペース、承認付きのローカルツール (MCP)、文書の読み取りと作成、ファイル検索、音声入力、内蔵ブラウザー、
+> GPU への自動配置を備えています。データはウェブ検索系のツールを使うとき以外 PC の外に出ません。インストール手順は
+> [Quick start](#quick-start)（英語）をご覧ください。ไทย | EN | 日本語 | 中文 ボタンか `Alt+Shift+L` で日本語に切り替えると、
+> ツールの説明・結果・確認画面、音声入力の言語判定、OCR（`jpn` データを追加した場合）も日本語に対応します。
+> [画面例（日本語）](docs/screenshots/15-chat-ja-dark.png)
+
+> **简体中文:** Qwen Local AI Workbench 是一套完全在本机运行的 AI 工作台（Windows 11 + NVIDIA GPU），基于 llama.cpp
+> 和 Qwen 模型，提供中文、英文、日文和泰文聊天界面、按项目划分的工作区、需确认的本机工具 (MCP)、文档读取与生成、
+> 文件检索、语音输入、内置浏览器以及 GPU 自动分配。除使用联网搜索类工具外，数据不会离开本机。安装步骤见
+> [Quick start](#quick-start)（英文）。用 ไทย | EN | 日本語 | 中文 按钮或 `Alt+Shift+L` 切换到中文后，工具说明、结果与
+> 确认页面、语音输入的语言识别以及 OCR（添加 `chi_sim` 数据后）也会支持中文。
+> [界面示例（中文）](docs/screenshots/16-chat-zh-light.png)
 
 ![Chat in a project: a summary table and action list built from a project file](docs/screenshots/01-chat-en-dark.png)
 
@@ -60,15 +76,25 @@ in the chat.
   and STT; the remote prompt gateway has its own API key.
 - **Projects.** Each project gets its own port, chat history, instructions, files, memory, default model and
   thinking mode, and its own isolated tool scope.
-- **Bilingual UI.** Thai and English, switchable with one click or `Alt+Shift+L`; the llama.cpp WebUI's own menus
-  are translated too (about 700 strings), while chat content is never touched.
+- **Four UI languages.** Thai, English, Japanese and Simplified Chinese for the shell, the manage page, the Doctor
+  report, API messages and the notes the hub writes for the model; switch with one click (ไทย | EN | 日本語 | 中文)
+  or cycle with `Alt+Shift+L`. The llama.cpp WebUI's own menus, dialogs and toasts are translated on the fly too
+  (about 750 strings per language, plus the message queue, connection recovery, shared-chat and browser-panel
+  scripts), while chat content is never touched. The model is told to answer in the language you write in, and
+  the hub detects Thai, Japanese and Chinese text to keep its own notes in that language. The local tools speak
+  the same language: tool descriptions, server instructions, results, errors and confirmation reviews from
+  `mcp-local` and `mcp-websearch` follow the UI setting (a catalogue of about 1,700 messages, English when a
+  translation is missing), and a deep-research report is written in the language of the question. Dictation and
+  OCR follow it too: a Japanese or Chinese UI adds that language to speech auto-detection, and to OCR once the
+  `jpn` / `chi_sim` Tesseract data is installed (the Doctor page says when it is missing).
 - **Tools you can trust.** The local MCP server's tools (files, shell, Python, Office, media and its isolated
   browser) go through a policy guard, and anything that changes the machine needs a two-step confirmation that
   shows you exactly what will run. Two newer paths have lighter gates: llama.cpp's built-in agent tools (on by
   default; `-Agent:$false` turns them off) and the browser panel. Bypass permissions turns the prompts off per
   project; see [Security notes](#security-notes).
-- **Documents and knowledge.** Read PDF/DOCX/XLSX/PPTX/CSV, OCR scanned Thai and English pages, create DOCX, XLSX,
-  PPTX, PDF, CSV and Markdown files, and search project files by keyword and by meaning.
+- **Documents and knowledge.** Read PDF/DOCX/XLSX/PPTX/CSV, OCR scanned Thai and English pages (Japanese and
+  Simplified Chinese with the optional language data), create DOCX, XLSX, PPTX, PDF, CSV and Markdown files, and
+  search project files by keyword and by meaning.
 - **Deep research** in the background with a cited Markdown/DOCX report.
 - **Built-in browser.** A per-project browser panel beside the chat: you and the model work in the same visible
   tab, and it can only reach public addresses.
@@ -96,6 +122,7 @@ the author's machine. Taken with v1.1.0.
 | ![Usage dashboard: tokens per day stacked by model](docs/screenshots/06-usage-dashboard-en-light.png) **Usage dashboard** — tokens per day by model, cache reuse, model time; only numbers are logged, never messages. | ![Reply speed per model over 30 days, jumping when the RTX 4090 was attached](docs/screenshots/07-usage-speed-en-light.png) **Reply speed per model** — demo data modeled on the measured speeds before and after attaching the RTX 4090 eGPU. |
 | ![Doctor page: overall status, suggested fixes and the services table](docs/screenshots/08-doctor-en-dark.png) **Doctor** — overall status, a suggested fix for each problem, and every service with its status, response time and details. Further down the page (not in the picture): GPUs, memory, disks, model files and the last test run. Keys are reported as present/absent only. | ![Choose GPUs for models dialog with RTX 4090 and RTX 1000 Ada](docs/screenshots/09-gpu-picker-en-dark.png) **GPU picker** — per-model placement with fit/spill hints; saving restarts only the model server. |
 | ![Account menu with GPU plan, services, theme, font, language](docs/screenshots/10-account-menu-en-light.png) **Account menu** — GPU per model, service status, theme, reply font, language, notifications, personalization. | ![Thai interface with a Thai answer and table](docs/screenshots/11-chat-th-dark.png) **Thai interface** — the same chat UI in Thai, with Thai-friendly fonts and line height. |
+| ![Japanese interface with a Japanese answer and table](docs/screenshots/15-chat-ja-dark.png) **Japanese interface** — the chat UI, menus and the hub in Japanese (日本語); tools, dictation and OCR follow the same setting. | ![Simplified Chinese interface with a Chinese answer and table, light theme](docs/screenshots/16-chat-zh-light.png) **Simplified Chinese interface** — the same chat in Chinese (中文), light theme. |
 | ![Allow card showing the server-side review of a Python call](docs/screenshots/12-confirm-card-th.png) **Two-step confirmation** (Thai UI, from an earlier test run with a `print(1+1)` call) — the Allow card shows the exact code the server will run, fetched from the server, not from the model. The one-time code in the picture expired long ago. | |
 
 ## Features
@@ -133,6 +160,11 @@ the author's machine. Taken with v1.1.0.
   built-in mode (Wikipedia + DuckDuckGo instant answers). Searches can be narrowed to domains, recent days or news;
   fetch reads long pages in parts or jumps to a phrase.
 - Every call is checked by `guard.py` and written to an audit log; see [Security notes](#security-notes).
+- Both servers answer in the UI language (`"lang"` in `settings.json`, picked up within two seconds of a switch,
+  no restart): the tool list and its descriptions, the server instructions, tool results, error messages, the
+  `local_read`/`local_do` help text and the REVIEW shown before a confirmed action. The messages are written in
+  Thai in the code and looked up in `mcp-local/i18n_catalog.py` (Thai text → English, Japanese, Simplified
+  Chinese); a message without a translation falls back to English, then to the Thai source, so nothing is lost.
 
 ### Built-in browser
 - A browser panel on the right of each project chat, backed by an isolated Edge profile per project
@@ -182,7 +214,9 @@ the author's machine. Taken with v1.1.0.
 ### Documents and knowledge
 - **Read** PDF, DOCX, XLSX, CSV, PPTX and text into Markdown with page/sheet markers (zip-bomb and XXE safe).
 - **OCR** of scanned PDF pages and images with Tesseract (Thai + English, 300 dpi), with a confidence label per page
-  and a cache.
+  and a cache. With the UI in Japanese or Chinese and `jpn.traineddata` / `chi_sim.traineddata` from
+  [tessdata_best](https://github.com/tesseract-ocr/tessdata_best) in `C:\LLM\tools\tesseract\tessdata`, that language
+  is read as well; pages are read again when the language set changes.
 - **Create** DOCX, XLSX, PPTX, PDF, CSV and Markdown files in the project's `outputs` folder, with download links in
   the chat. Every write keeps a checkpoint and shows a diff; undo is one call away.
 - **Knowledge search** over attachments and outputs: SQLite FTS5 trigram index plus semantic vectors from a local
@@ -203,6 +237,9 @@ the author's machine. Taken with v1.1.0.
 ### Deep research
 - `research` runs in the background: plan, search, pick and read sources, take notes, write a report with
   citations to `outputs` as Markdown and DOCX. Progress, ETA and a Stop button appear in the project panel.
+- The report, its headings, the source list and the progress notes are written in the language of the question
+  (Thai, English, Japanese or Simplified Chinese, detected from the script); a draft that comes back in the wrong
+  language is rewritten.
 
 ### Skills
 - Prompt templates in `skills/<name>/SKILL.md`, served as MCP prompts: type `/` in the composer, pick a skill, fill
@@ -222,7 +259,9 @@ the author's machine. Taken with v1.1.0.
 ### Voice
 - **Dictation:** the microphone button records in the browser and the hub forwards the clip to a local
   faster-whisper (large-v3-turbo) service. It uses the GPU when at least 1.5 GB of VRAM is free, otherwise CPU int8,
-  and gives the VRAM back two seconds after each clip. Auto language detection is limited to Thai and English.
+  and gives the VRAM back two seconds after each clip. Auto language detection covers Thai and English, plus
+  Japanese or Chinese when the UI is set to that language; the UI language is also the fallback for short, unclear
+  clips.
 - **Transcribe files** (audio/video in the project) through the `transcribe` tool; results are cached and indexed.
 - **Read aloud** any answer with the browser's speech engine, switching between Thai and English voices.
 
@@ -359,7 +398,7 @@ Other measurements from the same machine:
 | Models | GGUF files in `C:\LLM\models` | **`Qwen3.8-27B-UD-Q4_K_M.gguf` is required** (the launcher exits without it); the others are optional. Not included; see [THIRD_PARTY.md](THIRD_PARTY.md). Embedding model expected at `D:\LLM\models-embed\Qwen3-Embedding-0.6B-Q8_0.gguf` |
 | Anaconda | optional | Python tool kernel and Office bridge: `%USERPROFILE%\anaconda3\python.exe` by default (jupyter_client, ipykernel, pandas, matplotlib, plotly, pywin32, psutil); point `QWEN_PY_KERNEL_PYTHON` / `QWEN_OFFICE_PYTHON` at another interpreter if yours lives elsewhere |
 | faster-whisper | optional | Voice input: conda env named `flexxfast` under `%USERPROFILE%\anaconda3\envs` with faster-whisper 1.2, CTranslate2, PyAV; model large-v3-turbo in the Hugging Face cache (or set `QWEN_STT_HF_HUB`) |
-| Tesseract | optional | OCR: Tesseract 5.4 in `C:\LLM\tools\tesseract` with `tessdata_best` tha + eng |
+| Tesseract | optional | OCR: Tesseract 5.4 in `C:\LLM\tools\tesseract` with `tessdata_best` tha + eng (+ jpn / chi_sim for a Japanese / Chinese UI) |
 | Microsoft Office | optional | Office bridge (Excel, Word, PowerPoint via COM) |
 | FFmpeg | optional | Media tools; on `PATH`, in `C:\LLM\tools\ffmpeg\bin`, or set `MCP_LOCAL_FFMPEG` / `MCP_LOCAL_FFPROBE` |
 | Microsoft Edge | included with Windows | Headless screenshot harness, the isolated browser tool and the built-in browser panel |
@@ -400,8 +439,8 @@ Other measurements from the same machine:
    On first start the launcher creates `C:\LLM\secrets\local-services.token`, plans the GPUs, starts the MCP
    servers, embedding, STT, the model router, the hub, the scheduler and the gateway, then opens
    `http://127.0.0.1:8100`. A fresh install has no projects yet: create one on that page, then open it to chat on
-   its own port. The UI starts in Thai unless you copied `settings.example.json`; switch with the ไทย | EN toggle
-   or `Alt+Shift+L`. Use `-Unattended` for scripted starts (no prompts, no browser; exit code 0 = ready).
+   its own port. The UI starts in Thai unless you copied `settings.example.json`; switch with the
+   ไทย | EN | 日本語 | 中文 buttons or cycle with `Alt+Shift+L` (`"lang"` in `settings.json` takes `th`, `en`, `ja` or `zh`). Use `-Unattended` for scripted starts (no prompts, no browser; exit code 0 = ready).
 6. Check that everything is up: open **Doctor** (`http://127.0.0.1:8100/?manage=1#doctor`, or the account menu).
    Every service should be green; each problem comes with a suggested fix.
 7. Stop everything with `powershell -NoProfile -ExecutionPolicy Bypass -File C:\LLM\stop-qwen38.ps1`. It stops the
@@ -470,7 +509,8 @@ C:\LLM
 ├── .github\                  tests workflow (GitHub Actions on Windows), issue and pull-request templates
 ├── projects\
 │   ├── hub.py                project hub: API + manage page (8100), per-project proxies (8101-8179)
-│   ├── hub_i18n_parts.py     shell and manage-page templates, Thai/English strings (hot-reloaded)
+│   ├── hub_i18n.py           language registry (th/en/ja/zh), fallback rules, API message catalogue
+│   ├── hub_i18n_parts.py     shell and manage-page templates, UI strings in four languages (hot-reloaded)
 │   ├── hub_compact.py        automatic conversation compaction
 │   ├── hub_usage.py          usage log and aggregation
 │   ├── hub_doctor.py         health report for the Doctor page
@@ -488,6 +528,7 @@ C:\LLM
 │                             Office helper, Jupyter kernel runner, document extractor, skills loader,
 │                             Docker sandbox backend (python_sandbox.py, image in python-sandbox\),
 │                             Creative Studio video tool (tools_creative.py),
+│                             i18n_tools.py + i18n_catalog.py (tool messages in th/en/ja/zh),
 │                             config.example.json (tool permission overrides)
 ├── mcp-websearch\            MCP web search and fetch (general_search.py: DDGS provider)
 ├── stt\                      speech-to-text service and benchmark

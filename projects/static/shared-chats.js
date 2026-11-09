@@ -5,8 +5,125 @@
   var status = {total: 0, enabled: true}, failed = false, pill = null, dialog = null;
   try { seen = JSON.parse(localStorage.getItem("qwen-shared-seen-v1") || "{}"); } catch (e) {}
   if (!seen || typeof seen !== "object" || Array.isArray(seen)) seen = {};
-  function th() { return window.qwenEnhance && window.qwenEnhance.lang() === "th"; }
-  function label(en, thai) { return th() ? thai : en; }
+  function uiLang() { try { return window.qwenEnhance && window.qwenEnhance.lang() || document.documentElement.lang || "en"; } catch (e) { return "en"; } }
+  function th() { return uiLang() === "th"; }
+  // 2026-11 ญี่ปุ่น/จีนตัวย่อ ตามข้อความอังกฤษ — คีย์ที่ไม่มีได้อังกฤษ
+  var JZ = {
+      "Shared context: retry": [
+          "共有コンテキスト: 再試行",
+          "共享上下文：重试"
+      ],
+      "Shared context": [
+          "共有コンテキスト",
+          "共享上下文"
+      ],
+      "Reference other chats in this project automatically, or search them": [
+          "このプロジェクトの他のチャットを自動で参照、または検索",
+          "自动引用此项目中的其他对话，或搜索它们"
+      ],
+      "Chats in this project": [
+          "このプロジェクトのチャット",
+          "此项目中的对话"
+      ],
+      "Close": [
+          "閉じる",
+          "关闭"
+      ],
+      "Use shared project context automatically": [
+          "プロジェクトの共有コンテキストを自動で使う",
+          "自动使用项目共享上下文"
+      ],
+      "Chat messages stay separate. Qwen uses relevant excerpts and can search for details, with links to the source chats.": [
+          "チャットのメッセージは別々のままです。Qwen は関連する抜粋を使い、詳細を検索できます。元のチャットへのリンク付きです。",
+          "各对话的消息保持独立。Qwen 使用相关摘录并可搜索细节，并附上来源对话的链接。"
+      ],
+      "Search project chats": [
+          "プロジェクトのチャットを検索",
+          "搜索项目对话"
+      ],
+      "Search": [
+          "検索",
+          "搜索"
+      ],
+      "Saved chats": [
+          "保存されたチャット",
+          "已保存的对话"
+      ],
+      "Back to chats": [
+          "チャット一覧へ戻る",
+          "返回对话列表"
+      ],
+      "Open source chat": [
+          "元のチャットを開く",
+          "打开来源对话"
+      ],
+      "Saved history version": [
+          "保存された履歴のバージョン",
+          "已保存的历史版本"
+      ],
+      "Latest saved history": [
+          "最新の保存履歴",
+          "最新保存的历史"
+      ],
+      " messages": [
+          " 件のメッセージ",
+          " 条消息"
+      ],
+      " · alternate copy": [
+          " · 別のコピー",
+          " · 另一份副本"
+      ],
+      "This saved version contains text. Attachments and reasoning may be available in another saved version.": [
+          "この保存版にはテキストが含まれます。添付ファイルや思考は別の保存版にある場合があります。",
+          "此保存版本包含文本。附件和思考内容可能在另一个保存版本中。"
+      ],
+      "Restore as a new chat": [
+          "新しいチャットとして復元",
+          "恢复为新对话"
+      ],
+      "Restore chat to this browser": [
+          "このブラウザーにチャットを復元",
+          "将对话恢复到此浏览器"
+      ],
+      "Restoring…": [
+          "復元中…",
+          "正在恢复…"
+      ],
+      "Could not restore. Retry": [
+          "復元できませんでした。再試行",
+          "无法恢复。重试"
+      ],
+      "More messages": [
+          "さらにメッセージを読む",
+          "更多消息"
+      ],
+      "Could not read this chat. Please retry.": [
+          "このチャットを読み取れませんでした。もう一度お試しください。",
+          "无法读取此对话。请重试。"
+      ],
+      "Loading…": [
+          "読み込み中…",
+          "正在加载…"
+      ],
+      " · archived": [
+          " · アーカイブ済み",
+          " · 已归档"
+      ],
+      "No shared chats found. Open each project in your usual browser once to synchronize existing chats.": [
+          "共有チャットが見つかりません。既存のチャットを同期するには、普段使うブラウザーで各プロジェクトを一度開いてください。",
+          "未找到共享对话。请在你常用的浏览器中把每个项目打开一次，以同步现有对话。"
+      ],
+      "Synchronization is unavailable. Please retry.": [
+          "同期を利用できません。もう一度お試しください。",
+          "同步不可用。请重试。"
+      ]
+  };
+  function label(en, thai) {
+    var l = uiLang();
+    if (l === "th") return thai;
+    var x = (l === "ja" || l === "zh") && Object.prototype.hasOwnProperty.call(JZ, en) ? JZ[en] : null;
+    return x ? x[l === "ja" ? 0 : 1] : en;
+  }
   function api(path, options) {
     return originalFetch.call(window, "/_qwen/chats" + path, options || {}).then(function (r) {
       if (!r.ok) throw new Error("Shared chat request failed (" + r.status + ")");

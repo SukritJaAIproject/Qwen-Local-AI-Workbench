@@ -55,6 +55,30 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+
+def _load_i18n():
+    """โหลด mcp-local/i18n_tools.py จาก path ตรงๆ (ไม่แก้ sys.path กันชื่อโมดูลของ mcp-local มาทับของ hub)"""
+    import importlib.util
+    mod = sys.modules.get("i18n_tools")
+    if mod is None:
+        path = Path(__file__).resolve().parent.parent / "mcp-local" / "i18n_tools.py"
+        spec = importlib.util.spec_from_file_location("i18n_tools", str(path))
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["i18n_tools"] = mod
+        try:
+            spec.loader.exec_module(mod)
+        except BaseException:
+            sys.modules.pop("i18n_tools", None)
+            raise
+    return mod
+
+
+try:  # 2026-11: ข้อความของเครื่องมือเบราว์เซอร์ตามภาษาของหน้าจอ — แคตตาล็อกอยู่กับ mcp-local
+    TR = _load_i18n().TR
+except Exception:  # noqa: BLE001 — ไม่มีโมดูล = ข้อความไทยตามเดิม
+    def TR(text):
+        return text
+
 # ---------------------------------------------------------------------------- ค่าคงที่
 PROFILE_ROOT = Path(os.environ.get("QWEN_BROWSER_PROFILE_ROOT") or r"C:\LLM\browser-profile")
 PANEL_DIR = "_panel"                 # แยกจากโปรไฟล์ของ tools_browser.py (C:\LLM\browser-profile\<slug>) — คนละอินสแตนซ์
@@ -90,6 +114,7 @@ GUIDANCE = (
     "the user to do that in the panel (browser_tabs action=window opens a real window for signing in), then continue.")
 
 PROJECT_DIRS = None                  # hub ตั้งให้: slug -> (โฟลเดอร์ attachments, โฟลเดอร์ outputs) ของโปรเจกต์
+UI_LOCALE = None                     # hub ตั้งให้: () -> BCP 47 ของภาษา UI (th-TH/en-GB/ja-JP/zh-CN) — ภาษาของเมนู/หน้าเว็บใน Edge
 DOWNLOAD_MAX = int(os.environ.get("QWEN_BROWSER_DOWNLOAD_MAX_MB") or 500) * 1024 * 1024
 DOWNLOAD_BURST = 20                  # ดาวน์โหลดได้ไม่เกินกี่ไฟล์ต่อ 10 นาที (กันหน้าเว็บยิงไฟล์ใส่รัวๆ)
 DOWNLOAD_TMP = ".browser-downloading"
@@ -131,7 +156,7 @@ def check_upload_path(slug, raw):
     รับ path เต็ม หรือชื่อสัมพัทธ์กับ attachments/outputs ของโปรเจกต์ ("outputs/รายงาน.pdf")"""
     s = str(raw or "").strip().strip('"').strip("'")
     if not s:
-        raise ValueError("ไม่มี path ของไฟล์")
+        raise ValueError(TR("ไม่มี path ของไฟล์"))
     p = Path(os.path.expanduser(s))
     cands = []
     if p.is_absolute():
@@ -156,14 +181,14 @@ def check_upload_path(slug, raw):
             real = r
             break
     if real is None:
-        raise ValueError("ไม่พบไฟล์ %s (ใช้ path เต็ม หรือ attachments/ชื่อไฟล์ / outputs/ชื่อไฟล์)" % s)
+        raise ValueError(TR("ไม่พบไฟล์ %s (ใช้ path เต็ม หรือ attachments/ชื่อไฟล์ / outputs/ชื่อไฟล์)") % s)
     low = _norm(real)
     name = os.path.basename(real)
     parts = [x for x in low.split("/") if x]
     if (any(x.startswith(".") for x in parts) or any(m in low for m in _SECRET_DIRS)
             or _SECRET_NAME.match(name)):
-        raise ValueError("ไฟล์ %s อยู่ในตำแหน่งหรือเป็นชนิดที่ห้ามอัปโหลด (คีย์ รหัสผ่าน ข้อมูลล็อกอิน โปรไฟล์เบราว์เซอร์ "
-                         "ไฟล์ซ่อน)" % name)
+        raise ValueError(TR("ไฟล์ %s อยู่ในตำแหน่งหรือเป็นชนิดที่ห้ามอัปโหลด (คีย์ รหัสผ่าน ข้อมูลล็อกอิน โปรไฟล์เบราว์เซอร์ "
+                         "ไฟล์ซ่อน)") % name)
     for root in upload_roots(slug):
         try:
             r = _norm(root).rstrip("/")
@@ -171,8 +196,8 @@ def check_upload_path(slug, raw):
             continue
         if r and low.startswith(r + "/"):
             return real
-    raise ValueError("อัปโหลดได้เฉพาะไฟล์ใน attachments/outputs ของโปรเจกต์นี้ หรือ Desktop / Documents / Downloads / "
-                     "Pictures / Videos / Music / OneDrive ของผู้ใช้ (ไม่รับ %s)" % real)
+    raise ValueError(TR("อัปโหลดได้เฉพาะไฟล์ใน attachments/outputs ของโปรเจกต์นี้ หรือ Desktop / Documents / Downloads / "
+                     "Pictures / Videos / Music / OneDrive ของผู้ใช้ (ไม่รับ %s)") % real)
 
 
 def safe_download_name(name, fallback="download"):
@@ -361,7 +386,7 @@ def _dns_ascii(name):
         name = name.encode("idna").decode("ascii")      # UnicodeError เป็น ValueError อยู่แล้ว
     labels = name.split(".")
     if not name or len(name) > 253 or any(not 0 < len(l) < 64 for l in labels):
-        raise ValueError("ชื่อโดเมนไม่ถูกต้อง")
+        raise ValueError(TR("ชื่อโดเมนไม่ถูกต้อง"))
     return name
 
 
@@ -396,26 +421,26 @@ def _dns_name(msg, off):
     labels, end, jumps, size = [], None, 0, 0
     while True:
         if off >= len(msg):
-            raise ValueError("ชื่อขาด")
+            raise ValueError(TR("ชื่อขาด"))
         n = msg[off]
         if n & 0xC0 == 0xC0:
             if off + 1 >= len(msg):
-                raise ValueError("ตัวชี้ขาด")
+                raise ValueError(TR("ตัวชี้ขาด"))
             if end is None:
                 end = off + 2
             off = ((n & 0x3F) << 8) | msg[off + 1]
             jumps += 1
             if jumps > 32:
-                raise ValueError("ตัวชี้วนซ้ำ")
+                raise ValueError(TR("ตัวชี้วนซ้ำ"))
             continue
         if n & 0xC0:
-            raise ValueError("ป้ายชื่อผิดแบบ")
+            raise ValueError(TR("ป้ายชื่อผิดแบบ"))
         off += 1
         if n == 0:
             break
         size += n + 1
         if off + n > len(msg) or size > 255:
-            raise ValueError("ชื่อยาวเกิน")
+            raise ValueError(TR("ชื่อยาวเกิน"))
         labels.append(msg[off:off + n].decode("latin-1").lower())
         off += n
     return ".".join(labels), (off if end is None else end)
@@ -425,23 +450,23 @@ def _dns_parse(msg, qid, name, qtype):
     """คำตอบ DNS → (rcode, [(เจ้าของ, ชนิด, ttl, ข้อมูล)], ถูกตัดไหม)  ไม่ใช่คำตอบของคำถามนี้ = ValueError
     ตรวจ id + คำถามต้องตรง (กันแพ็กเก็ตปลอม/หลงมา) — เก็บเฉพาะ A / AAAA / CNAME ของคลาส IN"""
     if len(msg) < 12:
-        raise ValueError("สั้นเกิน")
+        raise ValueError(TR("สั้นเกิน"))
     rid, flags, qd, an, _ns, _ar = struct.unpack(">HHHHHH", msg[:12])
     if rid != qid or not flags & 0x8000 or (flags >> 11) & 0xF or qd != 1:
-        raise ValueError("ไม่ใช่คำตอบของคำถามนี้")
+        raise ValueError(TR("ไม่ใช่คำตอบของคำถามนี้"))
     qn, off = _dns_name(msg, 12)
     if off + 4 > len(msg) or qn != name or struct.unpack(">HH", msg[off:off + 4]) != (qtype, 1):
-        raise ValueError("คำถามไม่ตรง")
+        raise ValueError(TR("คำถามไม่ตรง"))
     off += 4
     records = []
     for _ in range(an):
         owner, off = _dns_name(msg, off)
         if off + 10 > len(msg):
-            raise ValueError("เรคคอร์ดขาด")
+            raise ValueError(TR("เรคคอร์ดขาด"))
         rtype, rclass, ttl, rdlen = struct.unpack(">HHIH", msg[off:off + 10])
         off += 10
         if off + rdlen > len(msg):
-            raise ValueError("ข้อมูลเรคคอร์ดขาด")
+            raise ValueError(TR("ข้อมูลเรคคอร์ดขาด"))
         start, off = off, off + rdlen
         if rclass != 1:
             continue
@@ -684,14 +709,14 @@ def _first_public(host, infos):
         if ip_public(sockaddr[0]):
             return family, sockaddr
         blocked = sockaddr[0]
-    raise ValueError("%s ชี้ไปที่อยู่ในเครื่อง/วงแลน (%s) ซึ่งถูกบล็อกในเบราว์เซอร์ของ Qwen" % (host, blocked))
+    raise ValueError(TR("%s ชี้ไปที่อยู่ในเครื่อง/วงแลน (%s) ซึ่งถูกบล็อกในเบราว์เซอร์ของ Qwen") % (host, blocked))
 
 
 def _public_sockaddr(host, port, ips):
     """ที่อยู่จาก DNS สาธารณะ → (family, sockaddr) ตัวแรกที่เป็นที่อยู่สาธารณะ (IPv4 ก่อน)"""
     good = [ip for ip in ips if ip_public(ip)]
     if not good:
-        raise ValueError("%s ชี้ไปที่อยู่ในเครื่อง/วงแลน (%s) ซึ่งถูกบล็อกในเบราว์เซอร์ของ Qwen"
+        raise ValueError(TR("%s ชี้ไปที่อยู่ในเครื่อง/วงแลน (%s) ซึ่งถูกบล็อกในเบราว์เซอร์ของ Qwen")
                          % (host, ips[0] if ips else None))
     ip = ([a for a in good if ":" not in a] or good)[0]
     with _dns_lock:
@@ -704,15 +729,15 @@ def resolve_public(host, port):
     DNS ของเครื่องตอบไม่ได้ = ถาม DNS สาธารณะแทน (ดูหัวข้อ "DNS สำรอง" ด้านบน)"""
     host = (host or "").strip().strip("[]")
     if not host:
-        raise ValueError("ไม่มีชื่อโฮสต์")
+        raise ValueError(TR("ไม่มีชื่อโฮสต์"))
     lowered = host.lower().rstrip(".")
     if lowered == "localhost" or lowered.endswith(_LOCAL_SUFFIXES):
-        raise ValueError("ที่อยู่ในเครื่อง/วงแลน (%s) ถูกบล็อกในเบราว์เซอร์ของ Qwen" % host)
+        raise ValueError(TR("ที่อยู่ในเครื่อง/วงแลน (%s) ถูกบล็อกในเบราว์เซอร์ของ Qwen") % host)
     if not _fallback_ok(lowered):
         try:
             infos = _system_lookup(host, port)
         except socket.gaierror as exc:
-            raise ValueError("หาที่อยู่ของ %s ไม่เจอ (%s)" % (host, exc.strerror or exc)) from None
+            raise ValueError(TR("หาที่อยู่ของ %s ไม่เจอ (%s)") % (host, exc.strerror or exc)) from None
         return _first_public(host, infos)
     started = time.time()
     bad = _system_dns_bad()
@@ -728,27 +753,27 @@ def resolve_public(host, port):
         err = job.error
         if _is_name_error(err):
             if _system_dns_healthy():
-                raise ValueError("หาที่อยู่ของ %s ไม่เจอ (ไม่มีชื่อนี้)" % host)
-            why = "ตอบว่า \"ไม่มีชื่อนี้\" แม้แต่กับชื่อที่มีอยู่จริง (%s)" % err.errno
+                raise ValueError(TR("หาที่อยู่ของ %s ไม่เจอ (ไม่มีชื่อนี้)") % host)
+            why = TR("ตอบว่า \"ไม่มีชื่อนี้\" แม้แต่กับชื่อที่มีอยู่จริง (%s)") % err.errno
         elif isinstance(err, socket.gaierror):
-            why = "ตอบไม่ได้ (%s, %s)" % (err.strerror or "getaddrinfo failed", err.errno)
+            why = TR("ตอบไม่ได้ (%s, %s)") % (err.strerror or "getaddrinfo failed", err.errno)
         else:
-            why = "ตอบไม่ได้ (%s)" % (getattr(err, "strerror", None) or err)
+            why = TR("ตอบไม่ได้ (%s)") % (getattr(err, "strerror", None) or err)
     else:
-        why = "ไม่ตอบภายใน %.2g วินาที" % wait
+        why = TR("ไม่ตอบภายใน %.2g วินาที") % wait
     _mark_system_bad(why)
     status, ips = public_lookup(lowered)
     if status == "ok":
         return _public_sockaddr(host, port, ips)
     if status in ("nx", "none"):
-        raise ValueError("หาที่อยู่ของ %s ไม่เจอ (ไม่มีชื่อนี้ — ตรวจกับ DNS สาธารณะแล้ว)" % host)
+        raise ValueError(TR("หาที่อยู่ของ %s ไม่เจอ (ไม่มีชื่อนี้ — ตรวจกับ DNS สาธารณะแล้ว)") % host)
     if job.wait(SYS_DNS_MAX - (time.time() - started)) and job.infos is not None:
         return _first_public(host, job.infos)           # DNS สาธารณะไม่ได้คำตอบ แต่เครื่องตอบมาทีหลัง (แค่ช้า)
     if status == "servfail":
-        raise ValueError("หาที่อยู่ของ %s ไม่ได้ — DNS ของเครื่อง%s และ DNS สาธารณะก็หาชื่อนี้ไม่ได้ "
-                         "(เซิร์ฟเวอร์ชื่อของเว็บนี้อาจมีปัญหา)" % (host, why))
-    raise ValueError("หาที่อยู่ของ %s ไม่ได้ — DNS ของเครื่อง%s และติดต่อ DNS สาธารณะ (%s) ไม่ได้ "
-                     "อินเทอร์เน็ตอาจหลุดอยู่" % (host, why, " / ".join(ip for ip, _p in DNS_SERVERS[:2]) or "DoH"))
+        raise ValueError(TR("หาที่อยู่ของ %s ไม่ได้ — DNS ของเครื่อง%s และ DNS สาธารณะก็หาชื่อนี้ไม่ได้ "
+                         "(เซิร์ฟเวอร์ชื่อของเว็บนี้อาจมีปัญหา)") % (host, why))
+    raise ValueError(TR("หาที่อยู่ของ %s ไม่ได้ — DNS ของเครื่อง%s และติดต่อ DNS สาธารณะ (%s) ไม่ได้ "
+                     "อินเทอร์เน็ตอาจหลุดอยู่") % (host, why, " / ".join(ip for ip, _p in DNS_SERVERS[:2]) or "DoH"))
 
 
 def normalize_url(url):
@@ -756,30 +781,30 @@ def normalize_url(url):
     เติม https:// ให้เมื่อไม่มีสคีม  ไม่รับสคีมอื่นทั้งหมด (file:, edge:, javascript:, data: ...)"""
     raw = str(url or "").strip()
     if not raw:
-        raise ValueError("ไม่มี URL")
+        raise ValueError(TR("ไม่มี URL"))
     if raw == "about:blank":
         return raw
     if not re.match(r"^[A-Za-z][A-Za-z0-9+.\-]*://", raw):
         if re.match(r"^[A-Za-z][A-Za-z0-9+.\-]*:", raw) and not re.match(r"^[^/:]+:\d+(?:/|$)", raw):
-            raise ValueError("เปิดได้เฉพาะเว็บ http/https เท่านั้น")
+            raise ValueError(TR("เปิดได้เฉพาะเว็บ http/https เท่านั้น"))
         raw = "https://" + raw
     parts = urllib.parse.urlsplit(raw)
     if parts.scheme.lower() not in ALLOWED_SCHEMES:
-        raise ValueError("เปิดได้เฉพาะเว็บ http/https เท่านั้น")
+        raise ValueError(TR("เปิดได้เฉพาะเว็บ http/https เท่านั้น"))
     if not parts.hostname:
-        raise ValueError("URL ไม่มีชื่อโฮสต์")
+        raise ValueError(TR("URL ไม่มีชื่อโฮสต์"))
     if parts.username or parts.password:
-        raise ValueError("ไม่รับ URL ที่ฝังชื่อผู้ใช้/รหัสผ่าน")
+        raise ValueError(TR("ไม่รับ URL ที่ฝังชื่อผู้ใช้/รหัสผ่าน"))
     host = parts.hostname
     try:
         literal = ipaddress.ip_address(host.strip("[]"))
     except ValueError:
         literal = None
     if literal is not None and not ip_public(str(literal)):
-        raise ValueError("ที่อยู่ในเครื่อง/วงแลน (%s) ถูกบล็อกในเบราว์เซอร์ของ Qwen" % host)
+        raise ValueError(TR("ที่อยู่ในเครื่อง/วงแลน (%s) ถูกบล็อกในเบราว์เซอร์ของ Qwen") % host)
     lowered = host.lower().rstrip(".")
     if lowered == "localhost" or lowered.endswith(_LOCAL_SUFFIXES):
-        raise ValueError("ที่อยู่ในเครื่อง/วงแลน (%s) ถูกบล็อกในเบราว์เซอร์ของ Qwen" % host)
+        raise ValueError(TR("ที่อยู่ในเครื่อง/วงแลน (%s) ถูกบล็อกในเบราว์เซอร์ของ Qwen") % host)
     return urllib.parse.urlunsplit((parts.scheme.lower(), parts.netloc, parts.path or "/", parts.query, parts.fragment))
 
 
@@ -1156,6 +1181,19 @@ class CdpClient:
 
 
 # ---------------------------------------------------------------------------- หาโปรแกรมเบราว์เซอร์
+def _ui_locale():
+    """ภาษาของเบราว์เซอร์ตามภาษา UI ที่ hub บอก (ไม่มี/พัง = th เหมือนเดิม) — เว็บจะเสิร์ฟหน้าเป็นภาษาเดียวกับผู้ใช้"""
+    fn = UI_LOCALE
+    if callable(fn):
+        try:
+            v = str(fn() or "")
+            if re.fullmatch(r"[a-z]{2}(-[A-Z]{2})?", v):
+                return v
+        except Exception:                       # noqa: BLE001 — ค่าเสริม ห้ามทำให้เบราว์เซอร์เปิดไม่ได้
+            pass
+    return "th"
+
+
 def find_browser():
     override = (os.environ.get("QWEN_BROWSER_EXE") or "").strip().strip('"')
     if override and os.path.isfile(override):
@@ -1164,18 +1202,18 @@ def find_browser():
         path = os.path.expandvars(pattern)
         if "%" not in path and os.path.isfile(path):
             return path
-    raise ValueError("ไม่พบ Microsoft Edge หรือ Google Chrome บนเครื่องนี้")
+    raise ValueError(TR("ไม่พบ Microsoft Edge หรือ Google Chrome บนเครื่องนี้"))
 
 
 def _assert_isolated(path):
     norm = os.path.normcase(os.path.realpath(str(path)))
     root = os.path.normcase(os.path.realpath(str(PROFILE_ROOT)))
     if not norm.startswith(root + os.sep):
-        raise ValueError("โปรไฟล์ของเบราว์เซอร์ในตัวต้องอยู่ใต้ %s" % PROFILE_ROOT)
+        raise ValueError(TR("โปรไฟล์ของเบราว์เซอร์ในตัวต้องอยู่ใต้ %s") % PROFILE_ROOT)
     low = norm.replace("/", "\\") if os.sep == "\\" else norm
     for marker in _REAL_PROFILE_MARKERS:
         if marker in low:
-            raise ValueError("ปฏิเสธ: path นี้เป็นโปรไฟล์จริงของเบราว์เซอร์")
+            raise ValueError(TR("ปฏิเสธ: path นี้เป็นโปรไฟล์จริงของเบราว์เซอร์"))
     return norm
 
 
@@ -1205,11 +1243,11 @@ def key_event(spec):
     """"Enter" / "ctrl+a" / "shift+Tab" → (key, code, keyCode, text, modifiers)"""
     parts = [p for p in re.split(r"\s*\+\s*", str(spec or "").strip()) if p]
     if not parts:
-        raise ValueError("ไม่มีชื่อปุ่ม")
+        raise ValueError(TR("ไม่มีชื่อปุ่ม"))
     mods = 0
     for p in parts[:-1]:
         if p.lower() not in _MODS:
-            raise ValueError("ไม่รู้จักปุ่ม %s" % p)
+            raise ValueError(TR("ไม่รู้จักปุ่ม %s") % p)
         mods |= _MODS[p.lower()]
     name = parts[-1]
     hit = _KEYS.get(name.lower())
@@ -1225,7 +1263,7 @@ def key_event(spec):
             key, code, vk = ch, "", 0
         text = ch
     else:
-        raise ValueError("ไม่รู้จักปุ่ม %s" % name)
+        raise ValueError(TR("ไม่รู้จักปุ่ม %s") % name)
     if mods & (1 | 2 | 4):
         text = ""
     return key, code, vk, text, mods
@@ -1481,7 +1519,7 @@ class PanelBrowser:
     def _c(self):
         c = self.cdp
         if c is None or c.closed:
-            raise CdpError("เบราว์เซอร์ถูกปิดไปแล้ว")
+            raise CdpError(TR("เบราว์เซอร์ถูกปิดไปแล้ว"))
         return c
 
     def touch(self):
@@ -1549,7 +1587,7 @@ class PanelBrowser:
         except (ValueError, OSError, CdpError) as exc:
             with self.lock:
                 self.error = str(exc)
-            raise ValueError("เปิดเบราว์เซอร์ไม่สำเร็จ: %s" % exc) from None
+            raise ValueError(TR("เปิดเบราว์เซอร์ไม่สำเร็จ: %s") % exc) from None
         finally:
             with self.lock:
                 self.starting = False
@@ -1628,7 +1666,7 @@ class PanelBrowser:
                     "--no-first-run", "--no-default-browser-check", "--disable-sync",
                     "--proxy-server=http://127.0.0.1:%d" % proxy_port(), "--proxy-bypass-list=<-loopback>",
                     "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-                    "--window-size=%d,%d" % DEFAULT_VIEW, "--lang=th"]
+                    "--window-size=%d,%d" % DEFAULT_VIEW, "--lang=" + _ui_locale()]
             if headful:
                 args.append("--window-position=80,60")
             else:
@@ -1653,10 +1691,10 @@ class PanelBrowser:
                     except (OSError, ValueError, urllib.error.URLError):
                         pass
                 if self.proc.poll() is not None:
-                    raise ValueError("โปรแกรมเบราว์เซอร์ปิดตัวเองทันที (exit %s)" % self.proc.returncode)
+                    raise ValueError(TR("โปรแกรมเบราว์เซอร์ปิดตัวเองทันที (exit %s)") % self.proc.returncode)
                 time.sleep(0.25)
             else:
-                raise ValueError("เบราว์เซอร์ไม่ตอบภายใน %d วินาที" % LAUNCH_TIMEOUT)
+                raise ValueError(TR("เบราว์เซอร์ไม่ตอบภายใน %d วินาที") % LAUNCH_TIMEOUT)
         agent = str(info.get("User-Agent") or info.get("Browser") or "")
         cdp = CdpClient(info["webSocketDebuggerUrl"], self._on_event)
         with self.lock:
@@ -1821,7 +1859,7 @@ class PanelBrowser:
                 if c is not None:
                     c.post("Page.handleJavaScriptDialog", {"accept": True}, session_id)
                 with self.lock:
-                    self.notice = ("หน้าเว็บแจ้งว่า: " + msg) if msg and kind == "alert" else ""
+                    self.notice = (TR("หน้าเว็บแจ้งว่า: ") + msg) if msg and kind == "alert" else ""
                     self.notice_link = ""
                     self.notice_at = time.time()
             else:
@@ -1895,9 +1933,9 @@ class PanelBrowser:
             self.downloads[guid] = d
             for old in sorted(self.downloads.values(), key=lambda x: x["at"])[:-50]:
                 self.downloads.pop(old["guid"], None)
-            refuse = "" if self.download_dir else "ไม่มีโฟลเดอร์สำหรับเก็บไฟล์"
+            refuse = "" if self.download_dir else TR("ไม่มีโฟลเดอร์สำหรับเก็บไฟล์")
             if len(recent) >= DOWNLOAD_BURST:
-                refuse = "หน้าเว็บสั่งดาวน์โหลดถี่เกินไป (เกิน %d ไฟล์ใน 10 นาที)" % DOWNLOAD_BURST
+                refuse = TR("หน้าเว็บสั่งดาวน์โหลดถี่เกินไป (เกิน %d ไฟล์ใน 10 นาที)") % DOWNLOAD_BURST
             if refuse:
                 d["state"], d["error"] = "canceled", refuse
         if refuse and self.cdp is not None:
@@ -1916,14 +1954,14 @@ class PanelBrowser:
             cancel = finish = False
             if d["state"] == "inProgress":
                 if state == "inProgress" and max(d["received"], d["total"]) > DOWNLOAD_MAX:
-                    d["state"], d["error"] = "canceled", "ไฟล์ใหญ่เกิน %d MB" % (DOWNLOAD_MAX // (1024 * 1024))
+                    d["state"], d["error"] = "canceled", TR("ไฟล์ใหญ่เกิน %d MB") % (DOWNLOAD_MAX // (1024 * 1024))
                     cancel = True
                 elif state == "completed":
                     d["state"] = "saving"
                     finish = True
                 elif state == "canceled":
                     d["state"] = "canceled"
-                    d["error"] = d["error"] or "ยกเลิกแล้ว"
+                    d["error"] = d["error"] or TR("ยกเลิกแล้ว")
         if cancel and self.cdp is not None:
             self.cdp.post("Browser.cancelDownload", {"guid": guid})
         if finish:
@@ -1948,11 +1986,11 @@ class PanelBrowser:
                 time.sleep(0.25)
         with self.lock:
             if dest is None:
-                d["state"], d["error"] = "failed", "ย้ายไฟล์ไม่สำเร็จ"
+                d["state"], d["error"] = "failed", TR("ย้ายไฟล์ไม่สำเร็จ")
             else:
                 d["state"], d["path"], d["name"] = "completed", str(dest), dest.name
                 d["received"] = d["total"] = max(d["received"], d["total"], dest.stat().st_size if dest.exists() else 0)
-                self.notice = "ดาวน์โหลดแล้ว: %s (%s) — อยู่ในไฟล์ของโปรเจกต์ (outputs)" % (dest.name, _human(d["total"]))
+                self.notice = TR("ดาวน์โหลดแล้ว: %s (%s) — อยู่ในไฟล์ของโปรเจกต์ (outputs)") % (dest.name, _human(d["total"]))
                 self.notice_link = "/_qwen/out/" + urllib.parse.quote(dest.name, safe="")
                 self.notice_at = time.time()
         self._wake()
@@ -2030,10 +2068,10 @@ class PanelBrowser:
 
     def activate(self, tid):
         if not self.running():
-            raise ValueError("เบราว์เซอร์ยังไม่เปิด")
+            raise ValueError(TR("เบราว์เซอร์ยังไม่เปิด"))
         with self.lock:
             if tid not in self.targets:
-                raise ValueError("ไม่มีแท็บนี้")
+                raise ValueError(TR("ไม่มีแท็บนี้"))
             old = self.active
             if old == tid and self.sessions.get(tid):
                 return self.sessions[tid]                 # แท็บที่เปิดอยู่แล้ว — ไม่ต้องทำอะไร
@@ -2052,7 +2090,7 @@ class PanelBrowser:
 
     def active_session(self):
         if not self.running():
-            raise ValueError("เบราว์เซอร์ยังไม่เปิด")
+            raise ValueError(TR("เบราว์เซอร์ยังไม่เปิด"))
         with self.lock:
             tid = self.active or (self.order[-1] if self.order else None)
         if tid is None:
@@ -2065,7 +2103,7 @@ class PanelBrowser:
                     break
                 time.sleep(0.05)
             if tid is None:
-                raise ValueError("เปิดแท็บใหม่ไม่ได้")
+                raise ValueError(TR("เปิดแท็บใหม่ไม่ได้"))
         if tid != self.active:
             return tid, self.activate(tid)
         return tid, self._session(tid)
@@ -2240,7 +2278,7 @@ class PanelBrowser:
         res = self._c().call("Page.navigate", {"url": target}, sid, timeout=NAV_TIMEOUT)
         if res.get("errorText") and res.get("errorText") != "net::ERR_ABORTED":
             why = block_reason(target, asked)
-            raise ValueError("เปิดหน้าไม่สำเร็จ: %s%s" % (res.get("errorText"), (" — " + why) if why else ""))
+            raise ValueError(TR("เปิดหน้าไม่สำเร็จ: %s%s") % (res.get("errorText"), (" — " + why) if why else ""))
         if wait:
             self.settle(sid)
         return tid
@@ -2300,7 +2338,7 @@ class PanelBrowser:
 
     def mouse(self, kind, x, y, button="left", clicks=1, mods=0, dx=0, dy=0):
         if not self.running():
-            raise ValueError("เบราว์เซอร์ยังไม่เปิด")
+            raise ValueError(TR("เบราว์เซอร์ยังไม่เปิด"))
         tid, sid = self.active_session()
         if kind == "wheel":
             self._c().post("Input.dispatchMouseEvent", {"type": "mouseWheel", "x": x, "y": y, "deltaX": dx, "deltaY": dy,
@@ -2319,7 +2357,7 @@ class PanelBrowser:
 
     def key(self, kind, key, code="", keycode=0, text="", mods=0):
         if not self.running():
-            raise ValueError("เบราว์เซอร์ยังไม่เปิด")
+            raise ValueError(TR("เบราว์เซอร์ยังไม่เปิด"))
         tid, sid = self.active_session()
         typ = {"down": "keyDown" if text else "rawKeyDown", "up": "keyUp"}.get(kind)
         if not typ:
@@ -2345,7 +2383,7 @@ class PanelBrowser:
 
     def insert_text(self, text):
         if not self.running():
-            raise ValueError("เบราว์เซอร์ยังไม่เปิด")
+            raise ValueError(TR("เบราว์เซอร์ยังไม่เปิด"))
         tid, sid = self.active_session()
         self._input("Input.insertText", {"text": str(text)[:20000]}, tid, sid)
 
@@ -2369,8 +2407,8 @@ class PanelBrowser:
         with self.lock:
             d = self.dialogs.get(tid)
         if d:
-            raise ValueError("หน้าเว็บกำลังรอให้ผู้ใช้ตอบกล่อง%s: \"%s\" — ให้ผู้ใช้กดตอบในแผงเบราว์เซอร์ก่อน"
-                             % ("ยืนยัน" if d["type"] == "confirm" else "กรอกค่า", d["message"]))
+            raise ValueError(TR("หน้าเว็บกำลังรอให้ผู้ใช้ตอบกล่อง%s: \"%s\" — ให้ผู้ใช้กดตอบในแผงเบราว์เซอร์ก่อน")
+                             % (TR("ยืนยัน") if d["type"] == "confirm" else TR("กรอกค่า"), d["message"]))
 
     def copy_selection(self):
         tid, sid = self.active_session()
@@ -2384,7 +2422,7 @@ class PanelBrowser:
         r = self._c().call("Runtime.evaluate", {"expression": expression, "returnByValue": True, "awaitPromise": False},
                           sid, timeout=timeout)
         if r.get("exceptionDetails"):
-            raise ValueError("หน้าเว็บยังไม่พร้อม (%s)" % _flat((r["exceptionDetails"].get("exception") or {}).get("description")
+            raise ValueError(TR("หน้าเว็บยังไม่พร้อม (%s)") % _flat((r["exceptionDetails"].get("exception") or {}).get("description")
                                                                or r["exceptionDetails"].get("text"), 120))
         val = r.get("result", {}).get("value")
         return json.loads(val) if isinstance(val, str) else val
@@ -2513,28 +2551,28 @@ class PanelBrowser:
         if ref is None:
             found = self.eval_json(_JS_FIND_FILE.strip())
             if not isinstance(found, dict) or found.get("count") != 1:
-                raise ValueError("หน้านี้มีช่องเลือกไฟล์ %s ช่อง — ระบุ ref (ดูจาก browser_read mode=elements query=file)"
+                raise ValueError(TR("หน้านี้มีช่องเลือกไฟล์ %s ช่อง — ระบุ ref (ดูจาก browser_read mode=elements query=file)")
                                  % (found or {}).get("count", 0))
             ref = int(found["ref"])
         pt = self.eval_json(_JS_POINT % json.dumps(str(ref)))
         if pt.get("error") == "missing":
-            raise ValueError("ไม่พบ [%s] ในหน้านี้แล้ว — เรียก browser_read mode=elements ใหม่" % ref)
+            raise ValueError(TR("ไม่พบ [%s] ในหน้านี้แล้ว — เรียก browser_read mode=elements ใหม่") % ref)
         if pt.get("file"):
             r = c.call("Runtime.evaluate", {"expression": "document.querySelector('[data-qwen-ref=\"%s\"]')" % int(ref)}, sid)
             obj = (r.get("result") or {}).get("objectId")
             if not obj:
-                raise ValueError("อ่านช่องเลือกไฟล์ [%s] ไม่ได้" % ref)
+                raise ValueError(TR("อ่านช่องเลือกไฟล์ [%s] ไม่ได้") % ref)
             c.call("DOM.setFileInputFiles", {"files": list(files), "objectId": obj}, sid)
             return ref, "input"
         if pt.get("error"):
-            raise ValueError("[%s] มองไม่เห็นบนหน้าจอ คลิกไม่ได้" % ref)
+            raise ValueError(TR("[%s] มองไม่เห็นบนหน้าจอ คลิกไม่ได้") % ref)
         self._chooser[0].clear()
         self._chooser[1] = None
         c.call("Page.setInterceptFileChooserDialog", {"enabled": True}, sid)
         try:
             self.click_point(float(pt["x"]), float(pt["y"]))
             if not self._chooser[0].wait(6):
-                raise ValueError("กด [%s] แล้วไม่มีหน้าต่างเลือกไฟล์เปิดขึ้น — หาช่อง file ด้วย browser_read mode=elements query=file" % ref)
+                raise ValueError(TR("กด [%s] แล้วไม่มีหน้าต่างเลือกไฟล์เปิดขึ้น — หาช่อง file ด้วย browser_read mode=elements query=file") % ref)
             _tid, params = self._chooser[1]
             c.call("DOM.setFileInputFiles", {"files": list(files), "backendNodeId": params.get("backendNodeId")}, sid)
         finally:
@@ -2720,7 +2758,7 @@ def _err(s):
 
 def _status_line(b):
     title, url = b.page_info()
-    return "หน้าปัจจุบัน: %s\nURL: %s" % (title or "(ไม่มีชื่อ)", url or "about:blank")
+    return TR("หน้าปัจจุบัน: %s\nURL: %s") % (title or TR("(ไม่มีชื่อ)"), url or "about:blank")
 
 
 def _parse_mods(spec):
@@ -2729,7 +2767,7 @@ def _parse_mods(spec):
         if not p:
             continue
         if p not in _MODS:
-            raise ValueError("ไม่รู้จักปุ่ม %s (ใช้ ctrl, shift, alt, meta)" % p)
+            raise ValueError(TR("ไม่รู้จักปุ่ม %s (ใช้ ctrl, shift, alt, meta)") % p)
         mods |= _MODS[p]
     return mods
 
@@ -2737,9 +2775,9 @@ def _parse_mods(spec):
 def _ref_point(b, ref, scroll=True):
     pt = b.eval_json((_JS_POINT if scroll else _JS_RECT) % json.dumps(str(int(ref))))
     if not isinstance(pt, dict) or pt.get("error") == "missing":
-        raise ValueError("ไม่พบ [%s] ในหน้านี้แล้ว (หน้าอาจเปลี่ยน) — เรียก browser_read mode=elements ใหม่" % ref)
+        raise ValueError(TR("ไม่พบ [%s] ในหน้านี้แล้ว (หน้าอาจเปลี่ยน) — เรียก browser_read mode=elements ใหม่") % ref)
     if pt.get("error"):
-        raise ValueError("[%s] มองไม่เห็นบนหน้าจอ" % ref)
+        raise ValueError(TR("[%s] มองไม่เห็นบนหน้าจอ") % ref)
     return pt
 
 
@@ -2753,12 +2791,12 @@ def _download_lines(items):
     out = []
     for d in items:
         if d["state"] == "completed":
-            out.append("ดาวน์โหลดแล้ว: %s (%s) -> outputs/%s  [%s]" % (d["name"], _human(d["total"]), d["name"], d["path"]))
+            out.append(TR("ดาวน์โหลดแล้ว: %s (%s) -> outputs/%s  [%s]") % (d["name"], _human(d["total"]), d["name"], d["path"]))
         elif d["state"] in ("inProgress", "saving"):
-            out.append("กำลังดาวน์โหลด: %s (%s%s)" % (d["name"], _human(d["received"]),
+            out.append(TR("กำลังดาวน์โหลด: %s (%s%s)") % (d["name"], _human(d["received"]),
                                                      (" / " + _human(d["total"])) if d["total"] else ""))
         else:
-            out.append("ดาวน์โหลดไม่สำเร็จ: %s — %s" % (d["name"], d["error"] or d["state"]))
+            out.append(TR("ดาวน์โหลดไม่สำเร็จ: %s — %s") % (d["name"], d["error"] or d["state"]))
     return out
 
 
@@ -2767,8 +2805,8 @@ def _dialog_line(b):
         d = b.dialogs.get(b.active)
     if not d:
         return ""
-    return "\nหน้าเว็บขึ้นกล่อง%s: \"%s\" — ให้ผู้ใช้กดตอบในแผงเบราว์เซอร์" % (
-        "ยืนยัน" if d["type"] == "confirm" else "กรอกค่า", d["message"])
+    return TR("\nหน้าเว็บขึ้นกล่อง%s: \"%s\" — ให้ผู้ใช้กดตอบในแผงเบราว์เซอร์") % (
+        TR("ยืนยัน") if d["type"] == "confirm" else TR("กรอกค่า"), d["message"])
 
 
 _FILL_ERRORS = {
@@ -2793,20 +2831,20 @@ def call_tool(b, name, args):
             b.ensure()
             if low in ("back", "forward"):
                 moved = b.history(-1 if low == "back" else 1)
-                b.note_model("ย้อนกลับ" if low == "back" else "ไปหน้าถัดไป")
-                return _text(("" if moved else "ไม่มีหน้าให้%s\n" % ("ย้อน" if low == "back" else "ไปต่อ")) + _status_line(b))
+                b.note_model(TR("ย้อนกลับ") if low == "back" else TR("ไปหน้าถัดไป"))
+                return _text(("" if moved else TR("ไม่มีหน้าให้%s\n") % (TR("ย้อน") if low == "back" else TR("ไปต่อ"))) + _status_line(b))
             if low == "reload":
                 b.reload()
-                b.note_model("โหลดหน้าใหม่")
+                b.note_model(TR("โหลดหน้าใหม่"))
                 return _text(_status_line(b))
-            b.note_model("เปิด " + target)
+            b.note_model(TR("เปิด ") + target)
             t0 = time.time()
             if args.get("new_tab"):
                 b.new_tab(target)
             else:
                 b.navigate(target)
-            b.note_model("เปิด " + target)
-            msg = _status_line(b) + "\n" + "ใช้ browser_read เพื่ออ่านเนื้อหา หรือ browser_screenshot เพื่อดูหน้าจอ"
+            b.note_model(TR("เปิด ") + target)
+            msg = _status_line(b) + "\n" + TR("ใช้ browser_read เพื่ออ่านเนื้อหา หรือ browser_screenshot เพื่อดูหน้าจอ")
             dl = b.downloads_since(t0)
             if dl:
                 msg += "\n" + "\n".join(_download_lines(dl))
@@ -2814,17 +2852,17 @@ def call_tool(b, name, args):
         if name == "browser_read":
             b.ensure()
             mode = str(args.get("mode") or "text").lower()
-            b.note_model("อ่านหน้าเว็บ" if mode != "elements" else "ดูปุ่ม/ช่องกรอกในหน้า")
+            b.note_model(TR("อ่านหน้าเว็บ") if mode != "elements" else TR("ดูปุ่ม/ช่องกรอกในหน้า"))
             if mode == "elements":
                 q = str(args.get("query") or "")[:100]
                 doc = b.eval_json(_JS_ELEMENTS % (ELEMENTS_MAX, json.dumps(q)))
                 items = doc.get("items") or []
                 head = "%s\nURL: %s\n%s\n" % (_flat(doc.get("title"), 120), doc.get("url"), DATA_NOTE)
                 if not items:
-                    return _text(head + ("ไม่พบองค์ประกอบที่ตรงกับ \"%s\"" % q if q else "ไม่พบปุ่ม/ลิงก์/ช่องกรอกที่มองเห็นได้"))
+                    return _text(head + (TR("ไม่พบองค์ประกอบที่ตรงกับ \"%s\"") % q if q else TR("ไม่พบปุ่ม/ลิงก์/ช่องกรอกที่มองเห็นได้")))
                 tail = ""
                 if int(doc.get("matched") or 0) > len(items):
-                    tail = "\n(แสดง %d จาก %d รายการ ใช้ query กรองให้แคบลงได้)" % (len(items), int(doc.get("matched") or 0))
+                    tail = TR("\n(แสดง %d จาก %d รายการ ใช้ query กรองให้แคบลงได้)") % (len(items), int(doc.get("matched") or 0))
                 return _text(head + "\n".join(items) + tail)
             start = max(0, int(args.get("start") or 0))
             doc = b.eval_json(_JS_TEXT % (start, TEXT_MAX))
@@ -2832,16 +2870,16 @@ def call_tool(b, name, args):
             total = int(doc.get("length") or 0)
             more = ""
             if start + len(text) < total:
-                more = "\n…(ยังมีต่อ: เรียก browser_read start=%d เพื่ออ่านต่อ)" % (start + len(text))
+                more = TR("\n…(ยังมีต่อ: เรียก browser_read start=%d เพื่ออ่านต่อ)") % (start + len(text))
             pos = ""
             if doc.get("scrollH") and doc.get("viewH"):
-                pos = " · เลื่อนอยู่ที่ %d/%d px" % (doc.get("scrollY") or 0, doc.get("scrollH"))
+                pos = TR(" · เลื่อนอยู่ที่ %d/%d px") % (doc.get("scrollY") or 0, doc.get("scrollH"))
             return _text("%s\nURL: %s%s\n%s\n\n%s%s" % (_flat(doc.get("title"), 120), doc.get("url"), pos, DATA_NOTE,
-                                                       text or "(หน้านี้ไม่มีข้อความที่มองเห็นได้)", more))
+                                                       text or TR("(หน้านี้ไม่มีข้อความที่มองเห็นได้)"), more))
         if name == "browser_click":
             button = str(args.get("button") or "left").lower()
             if button not in ("left", "right", "middle"):
-                return _err("button ต้องเป็น left, right หรือ middle")
+                return _err(TR("button ต้องเป็น left, right หรือ middle"))
             clicks = max(1, min(3, 2 if args.get("double") else int(args.get("clicks") or 1)))
             mods = _parse_mods(args.get("modifiers"))
             b.ensure()
@@ -2853,48 +2891,48 @@ def call_tool(b, name, args):
             elif args.get("x") is not None and args.get("y") is not None:
                 x, y = _shot_point(b, args["x"], args["y"])
                 pt = {}
-                where = "จุด (%d, %d)" % (int(float(args["x"])), int(float(args["y"])))
+                where = TR("จุด (%d, %d)") % (int(float(args["x"])), int(float(args["y"])))
             else:
-                return _err("ต้องระบุ ref หรือ x/y")
+                return _err(TR("ต้องระบุ ref หรือ x/y"))
             before = b.page_info()[1]
             t0 = time.time()
             if args.get("drag_to_ref") is not None or (args.get("drag_to_x") is not None and args.get("drag_to_y") is not None):
                 if args.get("drag_to_ref") is not None:
                     tp = _ref_point(b, args["drag_to_ref"], scroll=False)
                     if not tp.get("inView"):
-                        return _err("[%s] อยู่นอกจอ — เลื่อนให้เห็นทั้งต้นทางและปลายทางก่อน (browser_scroll)" % args["drag_to_ref"])
+                        return _err(TR("[%s] อยู่นอกจอ — เลื่อนให้เห็นทั้งต้นทางและปลายทางก่อน (browser_scroll)") % args["drag_to_ref"])
                     x1, y1 = float(tp["x"]), float(tp["y"])
                     dest = "[%d]" % int(args["drag_to_ref"])
                 else:
                     x1, y1 = _shot_point(b, args["drag_to_x"], args["drag_to_y"])
-                    dest = "จุด (%d, %d)" % (int(float(args["drag_to_x"])), int(float(args["drag_to_y"])))
-                b.note_model("ลาก %s ไป %s" % (where, dest))
+                    dest = TR("จุด (%d, %d)") % (int(float(args["drag_to_x"])), int(float(args["drag_to_y"])))
+                b.note_model(TR("ลาก %s ไป %s") % (where, dest))
                 how = b.drag(x, y, x1, y1)
-                msg = "ลาก %s ไปวางที่ %s แล้ว%s" % (where, dest, " (drag-and-drop ของหน้าเว็บ)" if how == "html5" else "")
+                msg = TR("ลาก %s ไปวางที่ %s แล้ว%s") % (where, dest, TR(" (drag-and-drop ของหน้าเว็บ)") if how == "html5" else "")
             elif args.get("hover"):
-                b.note_model("ชี้เมาส์ที่ " + where)
+                b.note_model(TR("ชี้เมาส์ที่ ") + where)
                 b.hover(x, y, mods)
                 time.sleep(0.5)
-                msg = "ชี้เมาส์ค้างที่ %s แล้ว (เมนู/คำอธิบายที่โผล่ขึ้นมา ดูด้วย browser_read หรือ browser_screenshot)" % where
+                msg = TR("ชี้เมาส์ค้างที่ %s แล้ว (เมนู/คำอธิบายที่โผล่ขึ้นมา ดูด้วย browser_read หรือ browser_screenshot)") % where
             else:
-                kind = {1: "คลิก", 2: "ดับเบิลคลิก", 3: "คลิกสามครั้ง"}[clicks]
+                kind = {1: TR("คลิก"), 2: TR("ดับเบิลคลิก"), 3: TR("คลิกสามครั้ง")}[clicks]
                 if button != "left":
-                    kind = {"right": "คลิกขวา", "middle": "คลิกปุ่มกลาง"}[button] + ("" if clicks == 1 else " %d ครั้ง" % clicks)
+                    kind = {"right": TR("คลิกขวา"), "middle": TR("คลิกปุ่มกลาง")}[button] + ("" if clicks == 1 else TR(" %d ครั้ง") % clicks)
                 b.note_model("%s %s" % (kind, where))
                 b.click_point(x, y, clicks, button, mods)
-                msg = "%s %s แล้ว" % (kind, where)
+                msg = TR("%s %s แล้ว") % (kind, where)
                 if pt.get("covered"):
-                    msg += " (มีองค์ประกอบอื่นบังอยู่ — ถ้าผลไม่เป็นตามคาด ใช้ browser_screenshot ดู)"
+                    msg += TR(" (มีองค์ประกอบอื่นบังอยู่ — ถ้าผลไม่เป็นตามคาด ใช้ browser_screenshot ดู)")
             tid, sid = b.active_session()
             time.sleep(0.3)
             b.settle(sid, timeout=8, quiet=0.3)
             after = b.page_info()[1]
             if after != before:
-                msg += "\nหน้าเปลี่ยนเป็น: " + after
+                msg += TR("\nหน้าเปลี่ยนเป็น: ") + after
             msg += _dialog_line(b)
             dl = b.downloads_since(t0)
             if dl:
-                msg += "\n" + "\n".join(_download_lines(dl)) + "\n(รอให้เสร็จด้วย browser_wait download=true)"
+                msg += "\n" + "\n".join(_download_lines(dl)) + TR("\n(รอให้เสร็จด้วย browser_wait download=true)")
             return _text(msg + "\n" + _status_line(b))
         if name == "browser_type":
             b.ensure()
@@ -2904,16 +2942,16 @@ def call_tool(b, name, args):
                 ref = int(args.get("ref"))
                 pt = b.eval_json(_JS_POINT % json.dumps(str(ref)))
                 if not isinstance(pt, dict) or pt.get("error") == "missing":
-                    return _err("ไม่พบช่อง [%d] ในหน้านี้ — เรียก browser_read mode=elements ใหม่" % ref)
+                    return _err(TR("ไม่พบช่อง [%d] ในหน้านี้ — เรียก browser_read mode=elements ใหม่") % ref)
                 if pt.get("file"):
-                    return _err("[%d] เป็นช่องเลือกไฟล์ — ใช้ browser_upload" % ref)
+                    return _err(TR("[%d] เป็นช่องเลือกไฟล์ — ใช้ browser_upload") % ref)
                 if pt.get("secret") and (text or args.get("clear")):
                     return _err(SECRET_MSG)
                 if pt.get("error"):
-                    return _err("ช่อง [%d] มองไม่เห็นบนหน้าจอ" % ref)
+                    return _err(TR("ช่อง [%d] มองไม่เห็นบนหน้าจอ") % ref)
                 b.click_point(float(pt["x"]), float(pt["y"]))
                 time.sleep(0.1)
-                done.append("คลิกช่อง [%d]" % ref)
+                done.append(TR("คลิกช่อง [%d]") % ref)
             elif text:
                 info = b.eval_json(_JS_FOCUS_INFO.strip())
                 if isinstance(info, dict) and info.get("secret"):
@@ -2922,35 +2960,35 @@ def call_tool(b, name, args):
                 b.eval_json("JSON.stringify(%s)" % _JS_CLEAR_FOCUSED.strip())
                 b.press("Backspace")
             if text:
-                b.note_model("พิมพ์ข้อความ")
+                b.note_model(TR("พิมพ์ข้อความ"))
                 b.insert_text(str(text))
-                done.append("พิมพ์ %d ตัวอักษร" % len(str(text)))
+                done.append(TR("พิมพ์ %d ตัวอักษร") % len(str(text)))
             if args.get("key"):
                 b.press(str(args["key"]))
-                done.append("กด %s" % args["key"])
+                done.append(TR("กด %s") % args["key"])
             if args.get("submit"):
                 b.press("Enter")
-                done.append("กด Enter")
+                done.append(TR("กด Enter"))
             if not done:
-                return _err("ต้องระบุ text, key หรือ submit")
+                return _err(TR("ต้องระบุ text, key หรือ submit"))
             if args.get("submit") or str(args.get("key") or "").lower() == "enter":
                 tid, sid = b.active_session()
                 time.sleep(0.3)
                 b.settle(sid, timeout=10, quiet=0.3)
-            b.note_model("พิมพ์/กดปุ่มในหน้าเว็บ")
+            b.note_model(TR("พิมพ์/กดปุ่มในหน้าเว็บ"))
             return _text(", ".join(done) + _dialog_line(b) + "\n" + _status_line(b))
         if name == "browser_fill":
             fields = args.get("fields")
             if isinstance(fields, dict):
                 fields = [fields]
             if not isinstance(fields, list) or not fields:
-                return _err("ต้องระบุ fields=[{ref, value}]")
+                return _err(TR("ต้องระบุ fields=[{ref, value}]"))
             b.ensure()
-            b.note_model("กรอกฟอร์ม %d ช่อง" % len(fields))
+            b.note_model(TR("กรอกฟอร์ม %d ช่อง") % len(fields))
             lines, bad, last_ref = [], 0, None
             for f in fields[:40]:
                 if not isinstance(f, dict) or f.get("ref") is None:
-                    lines.append("ข้าม: ไม่มี ref")
+                    lines.append(TR("ข้าม: ไม่มี ref"))
                     bad += 1
                     continue
                 ref = int(f["ref"])
@@ -2965,18 +3003,18 @@ def call_tool(b, name, args):
                 if res.get("ok"):
                     last_ref = ref
                     if res.get("kind") == "radio":
-                        lines.append("[%d] เลือก \"%s\" แล้ว" % (ref, res.get("label") or val))
+                        lines.append(TR("[%d] เลือก \"%s\" แล้ว") % (ref, res.get("label") or val))
                     elif res.get("kind") in ("checkbox", "switch"):
-                        lines.append("[%d] %s" % (ref, "ติ๊กแล้ว" if res.get("checked") else "เอาติ๊กออกแล้ว"))
+                        lines.append("[%d] %s" % (ref, TR("ติ๊กแล้ว") if res.get("checked") else TR("เอาติ๊กออกแล้ว")))
                     else:
                         lines.append("[%d] = \"%s\"" % (ref, res.get("value", "")))
                     continue
                 bad += 1
                 e = res.get("error")
                 if e == "option":
-                    lines.append("[%d] ไม่มีตัวเลือก \"%s\" — ตัวเลือกที่มี: %s" % (ref, val, " | ".join(res.get("options") or [])))
+                    lines.append(TR("[%d] ไม่มีตัวเลือก \"%s\" — ตัวเลือกที่มี: %s") % (ref, val, " | ".join(res.get("options") or [])))
                 elif e == "unsupported":
-                    lines.append("[%d] ช่องแบบนี้ (%s) กรอกตรงไม่ได้ — ใช้ browser_click แล้ว browser_type แทน"
+                    lines.append(TR("[%d] ช่องแบบนี้ (%s) กรอกตรงไม่ได้ — ใช้ browser_click แล้ว browser_type แทน")
                                  % (ref, res.get("role") or res.get("tag") or "?"))
                 else:
                     lines.append("[%d] %s" % (ref, _FILL_ERRORS.get(e, "กรอกไม่สำเร็จ (%s)" % e)))
@@ -2985,7 +3023,7 @@ def call_tool(b, name, args):
                 tid, sid = b.active_session()
                 time.sleep(0.3)
                 b.settle(sid, timeout=10, quiet=0.3)
-                lines.append("กด Enter แล้ว")
+                lines.append(TR("กด Enter แล้ว"))
             out = _text("\n".join(lines) + _dialog_line(b) + "\n" + _status_line(b))
             if bad and bad == len(fields):
                 out["isError"] = True
@@ -3000,31 +3038,31 @@ def call_tool(b, name, args):
                 v = b.view
                 b.mouse("wheel", v["w"] / 2, v["h"] / 2, dx=0, dy=(1 if direction == "down" else -1) * v["h"] * 0.85 * amount)
                 time.sleep(0.35)
-            b.note_model("เลื่อนหน้า")
+            b.note_model(TR("เลื่อนหน้า"))
             pos = b.eval_json("JSON.stringify({y: Math.round(scrollY), h: Math.round(document.documentElement.scrollHeight), v: innerHeight})")
-            return _text("เลื่อนแล้ว: อยู่ที่ %d จาก %d px (เห็นทีละ %d px)" % (pos.get("y", 0), pos.get("h", 0), pos.get("v", 0)))
+            return _text(TR("เลื่อนแล้ว: อยู่ที่ %d จาก %d px (เห็นทีละ %d px)") % (pos.get("y", 0), pos.get("h", 0), pos.get("v", 0)))
         if name == "browser_wait":
             b.ensure()
             if args.get("download"):
                 timeout = max(1.0, min(600.0, float(args.get("timeout") or 60)))
-                b.note_model("รอดาวน์โหลด")
+                b.note_model(TR("รอดาวน์โหลด"))
                 ok = b.wait_downloads(timeout)
-                lines = _download_lines(b.downloads_since(time.time() - 3600)[-10:]) or ["ไม่มีการดาวน์โหลด"]
-                return _text(("ดาวน์โหลดเสร็จหมดแล้ว" if ok else "ยังดาวน์โหลดไม่เสร็จภายใน %d วินาที" % timeout) + "\n" + "\n".join(lines))
+                lines = _download_lines(b.downloads_since(time.time() - 3600)[-10:]) or [TR("ไม่มีการดาวน์โหลด")]
+                return _text((TR("ดาวน์โหลดเสร็จหมดแล้ว") if ok else TR("ยังดาวน์โหลดไม่เสร็จภายใน %d วินาที") % timeout) + "\n" + "\n".join(lines))
             timeout = max(1.0, min(60.0, float(args.get("timeout") or 15)))
             if args.get("text") or args.get("gone"):
                 present = bool(args.get("text"))
                 want = str(args.get("text") or args.get("gone"))[:200]
-                b.note_model(("รอข้อความ \"%s\"" if present else "รอให้ \"%s\" หายไป") % want)
+                b.note_model((TR("รอข้อความ \"%s\"") if present else TR("รอให้ \"%s\" หายไป")) % want)
                 ok, secs = b.wait_text(want, present, timeout)
                 if ok:
-                    msg = ("พบ \"%s\" แล้ว" if present else "\"%s\" หายไปแล้ว") % want
+                    msg = (TR("พบ \"%s\" แล้ว") if present else TR("\"%s\" หายไปแล้ว")) % want
                 else:
-                    msg = ("ไม่พบ \"%s\" ภายใน %d วินาที" if present else "\"%s\" ยังอยู่หลังรอ %d วินาที") % (want, timeout)
-                return _text("%s (รอ %.1f วินาที)%s\n%s" % (msg, secs, _dialog_line(b), _status_line(b)))
+                    msg = (TR("ไม่พบ \"%s\" ภายใน %d วินาที") if present else TR("\"%s\" ยังอยู่หลังรอ %d วินาที")) % (want, timeout)
+                return _text(TR("%s (รอ %.1f วินาที)%s\n%s") % (msg, secs, _dialog_line(b), _status_line(b)))
             secs = max(0.0, min(30.0, float(args.get("seconds") or 2)))
             time.sleep(secs)
-            return _text("รอ %.1f วินาทีแล้ว%s\n%s" % (secs, _dialog_line(b), _status_line(b)))
+            return _text(TR("รอ %.1f วินาทีแล้ว%s\n%s") % (secs, _dialog_line(b), _status_line(b)))
         if name == "browser_screenshot":
             b.ensure()
             clip, what = None, ""
@@ -3035,111 +3073,111 @@ def call_tool(b, name, args):
                 pad = 8.0
                 clip = (float(rect["left"]) - pad, float(rect["top"]) - pad,
                         float(rect["width"]) + 2 * pad, float(rect["height"]) + 2 * pad)
-                what = "ภาพขยายของ [%d]" % ref
+                what = TR("ภาพขยายของ [%d]") % ref
             elif args.get("region") is not None:
                 reg = args.get("region")
                 if not isinstance(reg, list) or len(reg) < 4:
-                    return _err("region ต้องเป็น [x0, y0, x1, y1] (พิกเซลของภาพหน้าจอปกติล่าสุด)")
+                    return _err(TR("region ต้องเป็น [x0, y0, x1, y1] (พิกเซลของภาพหน้าจอปกติล่าสุด)"))
                 x0, y0, x1, y1 = (float(v) for v in reg[:4])
                 with b.lock:
                     sc = b.shot_scale.get(b.active, 1.0)
                 clip = (min(x0, x1) * sc, min(y0, y1) * sc, abs(x1 - x0) * sc, abs(y1 - y0) * sc)
-                what = "ภาพขยายของพื้นที่ (%d, %d)-(%d, %d)" % (x0, y0, x1, y1)
-            b.note_model("ถ่ายภาพหน้าจอ" + (" (ขยาย)" if clip else ""))
+                what = TR("ภาพขยายของพื้นที่ (%d, %d)-(%d, %d)") % (x0, y0, x1, y1)
+            b.note_model(TR("ถ่ายภาพหน้าจอ") + (TR(" (ขยาย)") if clip else ""))
             data, pw, ph, cw, chh = b.screenshot(clip=clip)
             title, url = b.page_info()
             if clip:
-                head = "%s %dx%d px (พิกัดสำหรับ browser_click ยังใช้ของภาพหน้าจอปกติ)" % (what, pw, ph)
+                head = TR("%s %dx%d px (พิกัดสำหรับ browser_click ยังใช้ของภาพหน้าจอปกติ)") % (what, pw, ph)
             else:
-                head = "ภาพหน้าจอ %dx%d px" % (pw, ph)
+                head = TR("ภาพหน้าจอ %dx%d px") % (pw, ph)
             return {"content": [
-                {"type": "text", "text": "%s ของ %s (%s) — %s" % (head, title or "หน้าเว็บ", url, DATA_NOTE)},
+                {"type": "text", "text": TR("%s ของ %s (%s) — %s") % (head, title or TR("หน้าเว็บ"), url, DATA_NOTE)},
                 {"type": "image", "data": data, "mimeType": "image/jpeg"}]}
         if name == "browser_upload":
             paths = args.get("paths") or args.get("path") or args.get("files") or args.get("file")
             if isinstance(paths, str):
                 paths = [paths]
             if not isinstance(paths, list) or not paths:
-                return _err("ต้องระบุ paths (path ของไฟล์ที่จะอัปโหลด)")
+                return _err(TR("ต้องระบุ paths (path ของไฟล์ที่จะอัปโหลด)"))
             if len(paths) > UPLOAD_MAX_FILES:
-                return _err("อัปโหลดได้ครั้งละไม่เกิน %d ไฟล์" % UPLOAD_MAX_FILES)
+                return _err(TR("อัปโหลดได้ครั้งละไม่เกิน %d ไฟล์") % UPLOAD_MAX_FILES)
             files = [check_upload_path(b.slug, p) for p in paths]     # ตรวจก่อนเปิดเบราว์เซอร์
             b.ensure()
-            b.note_model("แนบไฟล์ " + ", ".join(os.path.basename(f) for f in files))
+            b.note_model(TR("แนบไฟล์ ") + ", ".join(os.path.basename(f) for f in files))
             ref = args.get("ref")
             ref, _how = b.upload(int(ref) if ref is not None else None, files)
             time.sleep(0.5)
             names = ", ".join("%s (%s)" % (os.path.basename(f), _human(os.path.getsize(f))) for f in files)
-            return _text("แนบไฟล์ในช่อง [%s] แล้ว: %s\n(ถ้าหน้าเว็บต้องกดปุ่มส่ง/อัปโหลดต่อ ใช้ browser_click)%s\n%s"
+            return _text(TR("แนบไฟล์ในช่อง [%s] แล้ว: %s\n(ถ้าหน้าเว็บต้องกดปุ่มส่ง/อัปโหลดต่อ ใช้ browser_click)%s\n%s")
                          % (ref, names, _dialog_line(b), _status_line(b)))
         if name == "browser_evaluate":
             expr = str(args.get("expression") or args.get("code") or args.get("script") or "").strip()
             if not expr:
-                return _err("ต้องระบุ expression (โค้ด JavaScript)")
+                return _err(TR("ต้องระบุ expression (โค้ด JavaScript)"))
             if len(expr) > 20000:
-                return _err("สคริปต์ยาวเกิน 20,000 ตัวอักษร")
+                return _err(TR("สคริปต์ยาวเกิน 20,000 ตัวอักษร"))
             b.ensure()
-            b.note_model("รันสคริปต์ในหน้าเว็บ")
+            b.note_model(TR("รันสคริปต์ในหน้าเว็บ"))
             ok, out = b.evaluate(expr)
             if not ok:
-                return _err("สคริปต์ผิดพลาด: " + out)
-            return _text("%s\nผลลัพธ์:\n%s" % (DATA_NOTE, out))
+                return _err(TR("สคริปต์ผิดพลาด: ") + out)
+            return _text(TR("%s\nผลลัพธ์:\n%s") % (DATA_NOTE, out))
         if name == "browser_tabs":
             action = str(args.get("action") or "list").lower()
             if action == "close_browser":
                 if b.running():
-                    b.note_model("ปิดเบราว์เซอร์")
+                    b.note_model(TR("ปิดเบราว์เซอร์"))
                     b.shutdown()
-                return _text("ปิดเบราว์เซอร์แล้ว (ล็อกอินที่บันทึกไว้ยังอยู่ — เปิดใหม่ด้วย browser_navigate)")
+                return _text(TR("ปิดเบราว์เซอร์แล้ว (ล็อกอินที่บันทึกไว้ยังอยู่ — เปิดใหม่ด้วย browser_navigate)"))
             if action in ("window", "panel"):
                 want = action == "window"
-                b.note_model("เปิดเป็นหน้าต่างจริง" if want else "กลับมาที่แผง")
+                b.note_model(TR("เปิดเป็นหน้าต่างจริง") if want else TR("กลับมาที่แผง"))
                 b.ensure(want)
                 b.refresh_titles(0)
                 if want:
-                    msg = ("เปิดเบราว์เซอร์เป็นหน้าต่างจริงบนจอของผู้ใช้แล้ว (แท็บเดิมเปิดต่อให้) — บอกผู้ใช้ว่าต้องทำอะไรใน"
-                           "หน้าต่างนั้น เช่น ล็อกอิน แล้วรอผู้ใช้ตอบก่อนทำต่อ ใช้ action=panel เพื่อกลับเข้าแผงเมื่อเสร็จ")
+                    msg = (TR("เปิดเบราว์เซอร์เป็นหน้าต่างจริงบนจอของผู้ใช้แล้ว (แท็บเดิมเปิดต่อให้) — บอกผู้ใช้ว่าต้องทำอะไรใน"
+                           "หน้าต่างนั้น เช่น ล็อกอิน แล้วรอผู้ใช้ตอบก่อนทำต่อ ใช้ action=panel เพื่อกลับเข้าแผงเมื่อเสร็จ"))
                 else:
-                    msg = "กลับมาแสดงในแผงข้างแชตแล้ว (แท็บเดิมเปิดต่อให้)"
+                    msg = TR("กลับมาแสดงในแผงข้างแชตแล้ว (แท็บเดิมเปิดต่อให้)")
                 return _text(msg + "\n" + _status_line(b))
             if action == "new":
                 url = str(args.get("url") or "").strip()
                 target = normalize_url(url) if url else None
                 b.ensure()
-                b.note_model("เปิดแท็บใหม่" + (" " + target if target else ""))
+                b.note_model(TR("เปิดแท็บใหม่") + (" " + target if target else ""))
                 b.new_tab(target)
             elif not b.running():
-                return _text("เบราว์เซอร์ยังไม่ได้เปิด — ใช้ browser_navigate เพื่อเปิดหน้าเว็บ")
+                return _text(TR("เบราว์เซอร์ยังไม่ได้เปิด — ใช้ browser_navigate เพื่อเปิดหน้าเว็บ"))
             b.refresh_titles(0)
             st = b.state()
             tabs = st["tabs"]
             if action in ("switch", "close"):
                 idx = args.get("index")
                 if idx is None or not (0 <= int(idx) < len(tabs)):
-                    return _err("index ไม่ถูกต้อง (มี %d แท็บ: 0-%d)" % (len(tabs), len(tabs) - 1))
+                    return _err(TR("index ไม่ถูกต้อง (มี %d แท็บ: 0-%d)") % (len(tabs), len(tabs) - 1))
                 tid = tabs[int(idx)]["id"]
                 if action == "switch":
                     b.activate(tid)
-                    b.note_model("สลับแท็บ")
+                    b.note_model(TR("สลับแท็บ"))
                 else:
                     b.close_tab(tid)
-                    b.note_model("ปิดแท็บ")
+                    b.note_model(TR("ปิดแท็บ"))
                     time.sleep(0.3)
                 b.refresh_titles(0)
                 st = b.state()
                 tabs = st["tabs"]
             elif action not in ("list", "new", "downloads"):
-                return _err("action ต้องเป็น list, switch, close, new, window, panel หรือ close_browser")
-            lines = ["%d%s %s — %s" % (i, " *" if t["active"] else "", t["title"] or "(ไม่มีชื่อ)", t["url"]) for i, t in enumerate(tabs)]
-            out = "เบราว์เซอร์ (แสดง%s) — แท็บ (* = แท็บที่เปิดอยู่):\n%s" % (
-                "เป็นหน้าต่างจริง" if st["headful"] else "ในแผงข้างแชต", "\n".join(lines))
+                return _err(TR("action ต้องเป็น list, switch, close, new, window, panel หรือ close_browser"))
+            lines = ["%d%s %s — %s" % (i, " *" if t["active"] else "", t["title"] or TR("(ไม่มีชื่อ)"), t["url"]) for i, t in enumerate(tabs)]
+            out = TR("เบราว์เซอร์ (แสดง%s) — แท็บ (* = แท็บที่เปิดอยู่):\n%s") % (
+                TR("เป็นหน้าต่างจริง") if st["headful"] else TR("ในแผงข้างแชต"), "\n".join(lines))
             dl = _download_lines(b.downloads_since(time.time() - 3600)[-8:])
             if dl:
-                out += "\nดาวน์โหลดล่าสุด:\n" + "\n".join(dl)
+                out += TR("\nดาวน์โหลดล่าสุด:\n") + "\n".join(dl)
             return _text(out)
         return _err("unknown tool: %s" % name)
     except (ValueError, CdpError, KeyError, TypeError) as exc:
-        return _err("ทำไม่สำเร็จ: %s" % exc)
+        return _err(TR("ทำไม่สำเร็จ: %s") % exc)
 
 
 def rpc(b, doc):
@@ -3157,7 +3195,7 @@ def rpc(b, doc):
         ver = (doc.get("params") or {}).get("protocolVersion") or "2025-06-18"
         result = {"protocolVersion": ver, "capabilities": {"tools": {"listChanged": False}},
                   "serverInfo": {"name": "qwen-browser", "version": "1"},
-                  "instructions": "เบราว์เซอร์ในตัวที่ผู้ใช้เห็นในแผงทางขวา " + _TAB_NOTE}
+                  "instructions": TR("เบราว์เซอร์ในตัวที่ผู้ใช้เห็นในแผงทางขวา ") + _TAB_NOTE}
     elif method == "ping":
         result = {}
     elif method == "tools/list":
@@ -3344,4 +3382,4 @@ def http(slug, method, sub, query, body):
     except ValueError as exc:
         return j(400, {"error": str(exc), "state": b.state()})
     except CdpError as exc:
-        return j(502, {"error": "เบราว์เซอร์ไม่ตอบ: %s" % exc, "state": b.state()})
+        return j(502, {"error": TR("เบราว์เซอร์ไม่ตอบ: %s") % exc, "state": b.state()})

@@ -77,6 +77,17 @@ def _load_by_path(name: str, path: Path):
 
 secrets_util = sys.modules.get("secrets_util") or _load_by_path(
     "secrets_util", HERE.parent / "secrets_util.py")
+try:  # 2026-11: ข้อความตามภาษาของหน้าจอ — แคตตาล็อกอยู่กับเครื่องมือในเครื่อง (mcp-local) โหลดจาก path ก่อน netguard ซึ่งใช้ TR
+    _i18n = sys.modules.get("i18n_tools") or _load_by_path("i18n_tools", HERE.parent / "mcp-local" / "i18n_tools.py")
+    TR, localize_tools = _i18n.TR, _i18n.localize_tools
+except Exception:  # noqa: BLE001 — ไม่มีโมดูล = ข้อความไทยตามเดิม
+    def TR(text):
+        return text
+
+    def localize_tools(tools, lang=None):
+        return tools
+
+
 netguard = sys.modules.get("netguard") or _load_by_path(
     "netguard", HERE.parent / "mcp-local" / "netguard.py")
 # Isolated pinned dependencies; other Python environments are not modified.
@@ -194,8 +205,8 @@ def html_to_text(html):
 # ---------------------------------------------------------------- providers
 def _fmt(hits, query, note=""):
     if not hits:
-        return "ไม่พบผลลัพธ์สำหรับ: %s%s" % (query, ("\n" + note) if note else "")
-    lines = ["ผลการค้นหา %d รายการสำหรับ: %s" % (len(hits), query), ""]
+        return TR("ไม่พบผลลัพธ์สำหรับ: %s%s") % (query, ("\n" + note) if note else "")
+    lines = [TR("ผลการค้นหา %d รายการสำหรับ: %s") % (len(hits), query), ""]
     for i, (title, url, snip) in enumerate(hits, 1):
         entry = "%d. %s" % (i, title)
         if url:
@@ -302,18 +313,18 @@ def web_search(query, max_results=6, domains=None, recency_days=None,
         return _fmt(hits, query, note)
     fn = PROVIDERS.get(name)
     if not fn:
-        raise ValueError("config.json ระบุ provider ที่ไม่รู้จัก: %s (รองรับ: %s)" % (
+        raise ValueError(TR("config.json ระบุ provider ที่ไม่รู้จัก: %s (รองรับ: %s)") % (
             name, ", ".join(PROVIDERS)))
     try:
         hits = fn(cfg, request["query"], n)
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 403):
-            return "ผู้ให้บริการ %s ปฏิเสธ (HTTP %d) — ตรวจ api_key ใน config.json" % (name, exc.code)
+            return TR("ผู้ให้บริการ %s ปฏิเสธ (HTTP %d) — ตรวจ api_key ใน config.json") % (name, exc.code)
         if exc.code == 429:
-            return "ผู้ให้บริการ %s จำกัดอัตราการเรียก (HTTP 429) ลองใหม่อีกครั้งภายหลัง" % name
-        return "ผู้ให้บริการ %s ตอบผิดพลาด HTTP %d" % (name, exc.code)
+            return TR("ผู้ให้บริการ %s จำกัดอัตราการเรียก (HTTP 429) ลองใหม่อีกครั้งภายหลัง") % name
+        return TR("ผู้ให้บริการ %s ตอบผิดพลาด HTTP %d") % (name, exc.code)
     except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
-        return "ค้นหาผ่าน %s ล้มเหลว: %s: %s" % (name, type(exc).__name__, exc)
+        return TR("ค้นหาผ่าน %s ล้มเหลว: %s: %s") % (name, type(exc).__name__, exc)
     return _fmt(hits, query, BUILTIN_NOTE if name == "builtin" else "")
 
 
@@ -344,7 +355,7 @@ def guarded_get(url, headers=None, timeout=25.0):
 
 def fetch_url(url, max_chars=6000, start_char=0, find=None):
     if not re.match(r"^https?://", url or "", re.IGNORECASE):
-        return "ผิดพลาด: รองรับเฉพาะ URL ที่ขึ้นต้นด้วย http:// หรือ https://"
+        return TR("ผิดพลาด: รองรับเฉพาะ URL ที่ขึ้นต้นด้วย http:// หรือ https://")
     max_chars = max(500, min(int(max_chars or 6000), 40000))
     if not isinstance(start_char, int) or isinstance(start_char, bool) or start_char < 0:
         raise ValueError("start_char must be a nonnegative integer")
@@ -353,23 +364,23 @@ def fetch_url(url, max_chars=6000, start_char=0, find=None):
     try:
         final, body = guarded_get(url, headers={"Accept-Language": "th,en;q=0.9"})
     except netguard.Blocked as exc:
-        return "ปฏิเสธ: %s" % exc
+        return TR("ปฏิเสธ: %s") % exc
     except urllib.error.URLError as exc:
         reason = getattr(exc, "reason", exc)
         if isinstance(exc, urllib.error.HTTPError):
-            return "ผิดพลาด: เซิร์ฟเวอร์ตอบ HTTP %s สำหรับ %s" % (exc.code, url)
-        return "ผิดพลาด: ดึง %s ไม่สำเร็จ: %s" % (url, reason)
+            return TR("ผิดพลาด: เซิร์ฟเวอร์ตอบ HTTP %s สำหรับ %s") % (exc.code, url)
+        return TR("ผิดพลาด: ดึง %s ไม่สำเร็จ: %s") % (url, reason)
     text = html_to_text(body)
     if find:
         pos = text.casefold().find(find.casefold())
         if pos < 0:
-            return "ไม่พบข้อความ %s ในหน้า %s\n%s" % (find, final, DATA_MARKER)
+            return TR("ไม่พบข้อความ %s ในหน้า %s\n%s") % (find, final, DATA_MARKER)
         start_char = max(0, pos - 300)
     clipped = text[start_char:start_char + max_chars]
     suffix = ""
     if start_char or len(text) > max_chars:
-        suffix = "\n\n[แสดงอักขระ %d-%d จากทั้งหมด %d; อ่านต่อด้วย start_char]" % (start_char, min(len(text), start_char + max_chars), len(text))
-    return "เนื้อหาจาก %s\n%s\n\n%s%s" % (final, DATA_MARKER, clipped, suffix)
+        suffix = TR("\n\n[แสดงอักขระ %d-%d จากทั้งหมด %d; อ่านต่อด้วย start_char]") % (start_char, min(len(text), start_char + max_chars), len(text))
+    return TR("เนื้อหาจาก %s\n%s\n\n%s%s") % (final, DATA_MARKER, clipped, suffix)
 
 
 TOOLS = [
@@ -429,13 +440,13 @@ def handle_rpc(msg):
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {"name": "qwen38-websearch", "version": "1.3.1"},
-            "instructions": "ใช้ web_search เพื่อค้นข้อมูลบนอินเทอร์เน็ต และ fetch_url เพื่ออ่านเนื้อหาของลิงก์"}}
+            "instructions": TR("ใช้ web_search เพื่อค้นข้อมูลบนอินเทอร์เน็ต และ fetch_url เพื่ออ่านเนื้อหาของลิงก์")}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":
         return {"jsonrpc": "2.0", "id": mid, "result": {}}
     if method == "tools/list":
-        return {"jsonrpc": "2.0", "id": mid, "result": {"tools": TOOLS}}
+        return {"jsonrpc": "2.0", "id": mid, "result": {"tools": localize_tools(TOOLS)}}
     if method == "tools/call":
         name = params.get("name")
         args = params.get("arguments") or {}
@@ -443,13 +454,13 @@ def handle_rpc(msg):
         fn = IMPL.get(name)
         if not fn:
             return {"jsonrpc": "2.0", "id": mid,
-                    "error": {"code": -32601, "message": "ไม่รู้จักเครื่องมือ: %s" % name}}
+                    "error": {"code": -32601, "message": TR("ไม่รู้จักเครื่องมือ: %s") % name}}
         t0 = time.time()
         try:
             text = secrets_util.scrub(str(fn(**args)))   # token ของเครื่องต้องไม่ถึงโมเดล
             ok = True
         except Exception as exc:  # คืน error ให้โมเดลอ่าน ดีกว่าปล่อยให้ทั้ง request ล้ม
-            text = "เครื่องมือ %s ล้มเหลว: %s: %s" % (name, type(exc).__name__, exc)
+            text = TR("เครื่องมือ %s ล้มเหลว: %s: %s") % (name, type(exc).__name__, exc)
             ok = False
         text = secrets_util.scrub(text)
         if name == "fetch_url" and text.startswith(("ผิดพลาด:", "ปฏิเสธ:")):
@@ -461,7 +472,7 @@ def handle_rpc(msg):
     if mid is None:
         return None
     return {"jsonrpc": "2.0", "id": mid,
-            "error": {"code": -32601, "message": "ไม่รองรับเมธอด: %s" % method}}
+            "error": {"code": -32601, "message": TR("ไม่รองรับเมธอด: %s") % method}}
 
 
 _DENY_LOG = {"window": 0.0, "count": 0}

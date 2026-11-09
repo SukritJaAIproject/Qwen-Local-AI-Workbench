@@ -246,7 +246,8 @@ switch). Also project rename/delete, and a link to manage all projects.
 6. Project instructions (system prompt): edit → PATCH system_prompt → GET /_qwen/project →
    write `systemMessage` into `LlamaUi.config` → reload iframe (only if not streaming).
 7. Default model per project: PATCH model; iframe src carries `?model=`.
-8. Language th/en (PATCH /api/settings then reload); every visible string of ours translated.
+8. Language th/en/ja/zh (PATCH /api/settings then reload); every visible string of ours translated
+   (2026-11: Japanese and Simplified Chinese added — see `hub_i18n.py` for the registry and fallback rules).
 9. Model health status (poll hub /api/projects every ~10s).
 10. Chat navigation: new chat, open chat from Recents, search chats, rename/delete chat.
     Rename/delete = write IndexedDB (`conversations` record; for delete also all `messages`
@@ -326,15 +327,50 @@ Built by a workflow (2 builders → 3 independent verifiers → 2 fixers → acc
 Backup before this round: `C:\LLM\projects\backup\llm-20260929-111524`.
 
 ### 10a. Language switch (SHELL + PAGE, hub_i18n_parts.py)
-- Segmented pill `.lsw` "ไทย | EN" in the chat header (`#langSw`, before the Project button) and the
-  manage-page header (`#lang`). 28px pill, inset 0.5px `--qw-border-strong`; pressed = `--qw-bg-active`
+- Segmented pill `.lsw` "ไทย | EN | 日本語 | 中文" in the chat header (`#langSw`, before the Project button)
+  and the manage-page header (`#lang`). 28px pill, inset 0.5px `--qw-border-strong`; pressed = `--qw-bg-active`
   + `--qw-shadow-sm` + `--qw-border` hairline; hover = 55% mix of `--qw-bg-hover`; focus = `--qw-focus-ring`.
-  Below 640px the pressed button is `display:none` → one compact pill naming the other language.
+  640-900px the buttons get tighter padding. Below 640px only the button of the **next** language in the cycle
+  (`data-next`, set by `paintLang()` and by the pre-paint script) is shown → one compact pill; all four are in the
+  account menu's language row.
 - A11y: `role=group` + aria-label in the page language (`lang_group`); buttons `aria-pressed`;
-  ไทย `lang=th`, EN `lang=en aria-label="English"`. `paintLang()` puts `data-tip` and
-  `aria-keyshortcuts="Alt+Shift+L"` only on the non-pressed button. Tooltips are in the **page**
-  language (fix round changed this; no Thai text in English mode except the ไทย label). PAGE uses a CSS
-  `::after` tooltip (it has no `#tip`).
+  each button carries its own `lang=` (ไทย/EN/日本語/中文, EN also `aria-label="English"`). `paintLang()` puts
+  `data-tip` on every non-pressed button and `aria-keyshortcuts="Alt+Shift+L"` on the next-language button only.
+  Tooltips are in the **page** language (no Thai text outside Thai mode except the ไทย label). PAGE uses a CSS
+  `::after` tooltip (it has no `#tip`). `Alt+Shift+L` cycles th → en → ja → zh → th (`nextLang()`).
+- Fallback: `hub._merge_strings()` builds every language on top of English (then Thai), so a key that is not
+  translated yet shows English, never a bare key. API replies keep their `error_th/error_en` pairs; `hub_i18n.
+  localize_fields()` adds `error_ja/error_zh` from `API_TEXTS` in `_json()`, and `srvMsg()` reads
+  `error_<LANG> || error_en || error_th`. CJK fonts come from `tokens.css` (`html[lang="ja"|"zh"]` override the
+  font variables with the system's Yu Gothic UI / Microsoft YaHei UI stacks). The WebUI layer
+  (`webui-enhance.js`) keeps one English-keyed dictionary per language (`WORDS = {th: TH, ja: JA, zh: ZH}`), one
+  table of whole-text regex rules with a function per language (`RULES`), and per-language `B2B`/`B3`/`STR`/`FRAG`/
+  title words; `hasDict(l)` decides whether a page is translated at all (English is not), and the word joiner
+  `glue()` is applied to Thai only. The small scripts (message queue, auto-recovery, shared/durable chats,
+  browser panel) carry a `JZ` table keyed by their English text, or four-entry arrays.
+- Tool layer (2026-11, `mcp-local/i18n_tools.py` + generated `i18n_catalog.py`, shared by mcp-websearch through a
+  two-line shim): the tools keep their Thai messages in the code and wrap them at the point of production,
+  `TR("ไม่พบไฟล์: %s") % name` — gettext style, the Thai text is the key. `CATALOG = {thai: {en, ja, zh}}` holds
+  ~1,700 rows (runtime messages, every tool/parameter description, `RULES_SHORT`, `INSTRUCTIONS`, the
+  `local_read`/`local_do` action tables); `tr_for()` falls back en → Thai source, so an untranslated message is
+  never lost, and splits the first tool's `"<RULES_SHORT> || <description>"` prefix into two look-ups. The
+  language is the hub's: `ui_lang()` reads `projects\settings.json` → `lang` with a 2 s mtime cache
+  (`QWEN_SETTINGS_FILE` overrides the path, `set_lang()` pins it for a process — tests), so the UI switch reaches
+  the tools without a restart. server.py localizes on the way out: `tools/list` → `localize_tools()` (deep copy,
+  every `description` in the schema tree), `initialize.instructions` → `TR`, so the module constants stay Thai
+  and the Thai path returns the same objects. Processes outside mcp-local load `i18n_tools` by path, never by
+  pushing mcp-local onto sys.path (hub_browser, mcp-websearch's `_load_by_path`), and the three modules that are
+  themselves loaded from outside the folder — `netguard` (web search), `tools_memory` (hub's scan_secret),
+  `kernel_runner` (`python -I` under anaconda) — fall back to the sibling file when `from i18n_tools import TR`
+  fails. Pairs that already existed as Thai/English (`_msg`, `_L`,
+  research's `{"th","en"}` dicts) go through `pick(lang, th, en)`: th → th, ja/zh → catalogue row of the Thai
+  side, else en. Research is the one place that uses the **question's** language rather than the UI language:
+  `detect_lang()` returns th/en/ja/zh by script (≥ 2 kana = ja, Han without kana = zh), the model is told
+  `_LANG_NAME[lang]`, the banner/report headings use `_L`, and a draft whose kana+Han share is under 30 % is
+  rewritten once (`lang_retry`). The catalogue is the source of truth (one section per module, rows sorted by
+  Thai text): a new or changed Thai message gets its row there, and `tests\test_i18n_tools.py` fails on a
+  missing row, a placeholder (`%s %d %.1f {name}`), newline or edge-space mismatch, Thai left in a translation,
+  or Thai anywhere in the ja/zh `tools/list`, instructions and help text.
 - Hotkey Alt+Shift+L matched on `e.code === 'KeyL'` (a Thai layout puts a Thai char in `e.key`); caught on
   the shell document, the iframe window (capture listener in `hookFrame`, next to Ctrl+K) and PAGE;
   ignored on repeat and while a shell/WebUI modal is open.
@@ -475,6 +511,9 @@ Integration 2026-10-01 02:20-03:15: full suite 999 OK / 24 skipped; live E2E on 
   `services {embed, mcp, web(+provider), research(+running)}` probed every 8 s.
 
 ### 12b. Tools (fast surface)
+- 2026-11: with the UI in Japanese / Chinese, `extract.ocr_langs()` appends `jpn` / `chi_sim` to `OCR_LANGS` when that
+  `.traineddata` is in tessdata (`QWEN_OCR_LANGS` overrides the base set); cache records carry `langs` (no field = tha+eng)
+  and a page read with another set is read again. The Doctor adds an `ocr_pack` tip (info) on a ja/zh page without the pack.
 - `local_read extract` OCRs scanned PDF pages and images (Tesseract tha+eng, 300 dpi). Output marker
   `[OCR หน้า N · ความมั่นใจ X% (สูง|ปานกลาง|ต่ำ)]`; cache `data\<slug>\kb\ocr\<sha256>-<page>.json` (never pruned).
 - `local_read kb` has `mode=auto|lexical|semantic`; hybrid = RRF(k=60) of trigram + cosine (floor 0.40); hits found only by
@@ -483,6 +522,8 @@ Integration 2026-10-01 02:20-03:15: full suite 999 OK / 24 skipped; live E2E on 
 - `local_do research question [depth] [model]` → background job, returns id + ETA; `local_read research_status [id]`;
   `local_do research_cancel id`. State `data\<slug>\research\<id>.json`; reports `outputs\research-<date>-<id>.md/.docx`.
   No confirm (writes only its own project's research\ and outputs\). `/mcp` surface: research_start/status/cancel.
+  2026-11: the report language is the question's (th/en/ja/zh by script, `detect_lang`), progress and status
+  texts follow it too; see the tool-layer note in §10a.
 - **Routing hint (integrator, measured):** the 4B sent "ค้นคว้าเชิงลึกแล้วเขียนรายงานพร้อมอ้างอิงเรื่อง: …" (the "+" menu
   prefill) to `web_search` 3/3 times. Fixed with one sentence at the head of the `local_do` description AND one at the end
   of the `web_search` description (websearch server.py); either alone stayed 0/3, both = 3/3, plain web-search requests
@@ -520,6 +561,11 @@ skipped (+5 integrator tests in test_integ_b2b.py); stack started with the launc
 MCP/hub/STT by design); live auth spot checks 34/34; E2E on project1 (8103, Qwen3-4B) screenshots `shots/integ-b2b-*.png`.
 
 ### 13a. STT service (8795, owner voice)
+- 2026-11: the hub (`stt_forward`) and `tools_stt` send `hint=<UI language>`; `Engine.allowed_for(hint)` adds ja/zh
+  (`HINT_LANGS`) to `--languages` for that request, and the hint is the fallback language as before — a Thai or English
+  UI keeps the th,en set, so short Thai words misdetected as ja/zh still come back as Thai. `/v1/status` lists
+  `hint_languages`. Tests run in Thai whatever the machine's UI is (`QWEN_SETTINGS_FILE` in `test_security_common`,
+  `record_tests.py`, `test_browser_panel`).
 - `%USERPROFILE%\anaconda3\envs\flexxfast\python.exe -X utf8 C:\LLM\stt\stt_server.py --port 8795` (launcher step 1e, WMI clean env +
   HF_HUB_OFFLINE=1, CUDA_DEVICE_ORDER=PCI_BUS_ID; logs `C:\LLM\logs\stt.*.log`; `-SttOnly` / `-RestartStt` / `-NoStt`; restart_svc.ps1
   has no stt target). Model: faster-whisper large-v3-turbo from the HF cache on E: (E: missing = /health `no_model`, mic dimmed).

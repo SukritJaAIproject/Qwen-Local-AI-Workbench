@@ -226,6 +226,45 @@
         ["office", "Office", "Read what's selected in my open Excel workbook, then ",
           "Works with the Excel, Word and PowerPoint files open on this computer — reading is instant; writing back always asks for your approval"]
       ]
+    },
+    // 2026-11 ญี่ปุ่น/จีนตัวย่อ — research/researchPrefill ต้องตรงกับ svc_research/res_prefill ของ hub ทุกตัวอักษร (เทสต์ตรวจ)
+    ja: {
+      greet: ["おはようございます", "こんにちは", "こんばんは", "こんばんは"],
+      project: "プロジェクト",
+      phStart: "今日は何をお手伝いしましょうか？",
+      phChat: "Qwen に返信…",
+      chipsLabel: "提案",
+      sysMsg: "プロジェクトの指示",
+      sheetDesc: "ファイル、プロジェクトの指示の追加、MCP サーバーの設定",
+      research: "ディープリサーチ",
+      researchPrefill: "次のテーマについてディープリサーチを行い、出典付きのレポートを書いて: ",
+      chips: [
+        ["write", "書く", "次の文章を書くのを手伝ってください: "],
+        ["learn", "学ぶ", "次のことをわかりやすく説明してください: "],
+        ["code", "コード", "次の処理をする Python コードを書いてください: "],
+        ["files", "プロジェクトのファイル", "このプロジェクトのファイルを読んで要点をまとめてください"],
+        ["web", "ウェブ検索", "次のことをウェブで検索してください: "],
+        ["office", "Office", "開いている Excel ブックで選択中のデータを読んで、", "この PC で開いている Excel、Word、PowerPoint のファイルに使えます — 読み取りは即時、書き戻しは毎回あなたの承認が必要です"]
+      ]
+    },
+    zh: {
+      greet: ["早上好", "下午好", "晚上好", "晚上好"],
+      project: "项目",
+      phStart: "今天我能帮你做什么？",
+      phChat: "回复 Qwen…",
+      chipsLabel: "建议",
+      sysMsg: "项目指令",
+      sheetDesc: "添加文件、项目指令或配置 MCP 服务器",
+      research: "深度研究",
+      researchPrefill: "请对以下主题做深度研究并写一份带引用的报告：",
+      chips: [
+        ["write", "写作", "帮我写"],
+        ["learn", "学习", "用简单易懂的方式解释："],
+        ["code", "代码", "写一段 Python 代码，实现"],
+        ["files", "项目文件", "读取此项目的文件并总结要点"],
+        ["web", "搜索网络", "在网上搜索"],
+        ["office", "Office", "读取我打开的 Excel 工作簿中选中的内容，然后", "适用于这台电脑上打开的 Excel、Word 和 PowerPoint 文件 — 读取即时完成，写回每次都需要你批准"]
+      ]
     }
   };
 
@@ -777,117 +816,986 @@
   }
   (function () { for (var k in TH) if (Object.prototype.hasOwnProperty.call(TH, k)) TH[k] = glue(TH[k]); })();
 
+  /* ---- พจนานุกรม UI ของ WebUI: อังกฤษ → ญี่ปุ่น / จีนตัวย่อ (2026-11) ----------------------------------
+     คีย์ชุดเดียวกับ TH ทุกตัว (เทสต์ตรวจ) ไม่มี word joiner — ญี่ปุ่น/จีนตัดบรรทัดได้ทุกตัวอักษรอยู่แล้ว
+     ศัพท์เทคนิคคงอังกฤษเหมือนฉบับไทย (Temperature, Top K/P, DRY, XTC, KV cache, MCP, token ในฉบับจีน) */
+  var JA = {
+    "Settings": "設定", "Close": "閉じる", "Cancel": "キャンセル", "Save": "保存", "Delete": "削除", "Edit": "編集", "Copy": "コピー",
+    "Add": "追加", "Remove": "削除", "Update": "更新", "Confirm": "確認", "Continue": "続行", "Dismiss": "非表示", "Refresh": "更新",
+    "Reload": "再読み込み", "Retry": "再試行", "Try again": "もう一度試す", "Got it": "わかりました", "Select": "選択", "Search": "検索",
+    "Search...": "検索…", "Searching...": "検索中…", "Searching": "検索中", "Searched": "検索済み", "Browse": "参照",
+    "Previous": "前へ", "Next": "次へ", "Preview": "プレビュー", "Close preview": "プレビューを閉じる", "Preview only": "プレビューのみ",
+    "Key": "キー", "Value": "値", "Title": "タイトル", "(optional)": "（省略可）", "details": "詳細", "Unknown": "不明",
+    "Error": "エラー", "Error:": "エラー:", "Cancelled": "キャンセルしました", "Success!": "成功しました!", "Not available": "利用できません",
+    "No results": "結果なし", "No results found": "結果が見つかりません", "No items found": "項目が見つかりません",
+    "Something went wrong": "問題が発生しました", "Go Home": "ホームへ", "Custom": "カスタム", "Enabled": "有効", "Files": "ファイル",
+    "Server": "サーバー", "Browser": "ブラウザー", "Tools": "ツール", "Tool": "ツール", "Notifications alt+T": "通知 alt+T",
+    "Reasoning": "思考", "Default": "既定", "default": "既定", "Model default": "モデルの既定", "Off": "オフ", "off": "オフ",
+    "Low": "低", "low": "低", "Medium": "中", "medium": "中", "High": "高", "high": "高", "Max": "最大", "max": "最大",
+    "Unlimited": "無制限", "Maximum reasoning effort with extended context usage": "最大限に考え、コンテキストをより多く使う",
+    "New chat": "新しいチャット", "Go to start": "開始画面へ", "Expand navigation": "ナビゲーションを展開",
+    "Collapse navigation": "ナビゲーションを折りたたむ", "Open Sidebar": "サイドバーを開く", "Close Sidebar": "サイドバーを閉じる",
+    "Recent conversations": "最近のチャット", "Pinned": "ピン留め", "Search results": "検索結果",
+    "No conversations yet": "チャットはまだありません", "Start typing to see results": "入力すると結果が表示されます",
+    "Search conversations...": "チャットを検索…", "See parent conversation": "元のチャットを見る", "Pin": "ピン留め", "Unpin": "ピン留めを外す",
+    "Pin all": "すべてピン留め", "Unpin all": "すべてのピン留めを外す", "More actions": "その他の操作", "Select all": "すべて選択",
+    "Deselect all": "すべて選択解除", "Export selected": "選択項目をエクスポート", "Delete selected": "選択項目を削除",
+    "Exit bulk selection mode": "複数選択モードを終了", "Bulk actions for selected conversations": "選択したチャットの一括操作",
+    "Unavailable for mixed state selection": "状態の異なるチャットが混在していると使えません", "Rename conversation": "チャット名を変更",
+    "Choose a new title for this conversation.": "このチャットの新しいタイトルを入力してください。", "Delete Conversation": "チャットを削除",
+    "Are you sure you want to delete this conversation? This action cannot be undone and will permanently remove all messages in this conversation.": "このチャットを削除しますか？この操作は元に戻せず、チャット内のすべてのメッセージが完全に削除されます。",
+    "Open conversations": "開いているチャット", "Close tab": "タブを閉じる", "Scroll left": "左へスクロール", "Scroll right": "右へスクロール",
+    "Conversation Name": "チャット名", "Messages": "メッセージ", "No conversations available": "チャットがありません",
+    "Conversations": "チャット", "Hello there": "こんにちは",
+    "Type a message or upload files to get started": "メッセージを入力するかファイルをアップロードして始めましょう",
+    "Record audio, type a message or upload files to get started": "音声を録音、メッセージを入力、またはファイルをアップロードして始めましょう",
+    "Type a message...": "メッセージを入力…", "Ask anything...": "何でも聞いてください…", "Send": "送信", "Stop": "停止",
+    "Skip reasoning": "思考をスキップ", "Stop generation": "生成を停止", "Stop recording": "録音を停止", "Start recording": "録音を開始",
+    "Current model does not support audio": "現在のモデルは音声に対応していません", "Audio recording not supported": "このブラウザーでは録音できません",
+    "Attach a file": "ファイルを添付", "Drop your files here to upload": "ここにファイルをドロップしてアップロード",
+    "Scroll to bottom": "一番下へスクロール", "Context usage": "コンテキスト使用量", "Please select a model first": "先にモデルを選択してください",
+    "Selected model is not available, please select another": "選択したモデルは使えません。別のモデルを選んでください",
+    "Selected model is not available": "選択したモデルは使えません", "Open command picker": "コマンド一覧を開く",
+    "No matching command": "一致するコマンドがありません", "Open prompt picker": "プロンプト一覧を開く", "Open picker": "一覧を開く",
+    "Search prompts...": "プロンプトを検索…", "No MCP prompts available": "MCP プロンプトがありません", "Use Prompt": "プロンプトを使う",
+    "Unknown error executing prompt": "プロンプトの実行中に不明なエラー", "Open file mention picker": "ファイル参照一覧を開く (@)",
+    "No matching files or folders": "一致するファイルやフォルダーがありません",
+    "File search is unavailable on this server (started without --tools)": "このサーバーではファイル検索を使えません（--tools なしで起動）",
+    "File search is unavailable on this server - type a full path and press Enter": "このサーバーではファイル検索を使えません。完全なパスを入力して Enter を押してください",
+    "Insert an MCP prompt": "MCP プロンプトを挿入", "Set working directory": "作業フォルダーを設定",
+    "Set working directory to": "作業フォルダーを次に設定", "Working directory cleared": "作業フォルダーをクリアしました",
+    "Reset working directory": "作業フォルダーをリセット", "Choose working directory": "作業フォルダーを選択",
+    "Open working directory picker": "作業フォルダーの選択を開く", "Searching in:": "検索場所:",
+    "No matching folders": "一致するフォルダーがありません", "Clear search": "検索をクリア", "Select model": "モデルを選択",
+    "Add files": "ファイルを追加", "Add to chat": "チャットに追加", "MCP Servers": "MCP サーバー",
+    "Add files, prompts, tools or MCP Servers": "ファイル、プロンプト、ツール、MCP サーバーを追加",
+    "Add files, system prompt or configure MCP servers": "ファイル、システムメッセージの追加、MCP サーバーの設定",
+    "Inject custom system message at the beginning of the conversation": "チャットの先頭にカスタムシステムメッセージを挿入",
+    "Add custom system message for a new conversation": "新しいチャットにカスタムシステムメッセージを追加", "Images": "画像",
+    "Audio Files": "音声ファイル", "Video Files": "動画ファイル", "Text Files": "テキストファイル", "PDF Files": "PDF ファイル",
+    "PDFs": "PDF", "Audio": "音声", "Video": "動画", "Vision": "画像認識",
+    "Image processing requires a vision model": "画像の処理には画像対応モデルが必要です",
+    "Audio files processing requires an audio model": "音声ファイルの処理には音声対応モデルが必要です",
+    "Video files processing requires a video model": "動画ファイルの処理には動画対応モデルが必要です",
+    "PDFs will be converted to text. Image-based PDFs may not work properly.": "PDF はテキストに変換されます。画像ベースの PDF は正しく読めないことがあります。",
+    "Images require a vision-capable model": "画像には画像対応モデルが必要です",
+    "Audio files require an audio-capable model": "音声ファイルには音声対応モデルが必要です",
+    "Video files require a video-capable model": "動画ファイルには動画対応モデルが必要です", "Loading tools...": "ツールを読み込み中…",
+    "Failed to load tools": "ツールを読み込めませんでした", "No tools available": "ツールがありません", "MCP Tools": "MCP ツール",
+    "Run llama-server with": "llama-server を次のフラグ付きで実行", "flag to enable": "で有効化", "Sent as Image": "画像として送信",
+    "Sent as Text": "テキストとして送信", "Unknown File": "不明なファイル", "Pages": "ページ",
+    "Preview not available for this file type": "この種類のファイルはプレビューできません",
+    "Audio preview not available": "音声のプレビューはできません", "Video preview not available": "動画のプレビューはできません",
+    "The selected model does not support vision. Only the extracted": "選択したモデルは画像に対応していません。抽出した", "text": "テキスト",
+    "will be sent to the model.": "のみがモデルに送られます。", "Converting PDF to images...": "PDF を画像に変換中…",
+    "Failed to load PDF images": "PDF の画像を読み込めませんでした", "No PDF pages available": "PDF のページがありません",
+    "Regenerate": "再生成", "Fork conversation": "チャットを分岐", "Fork": "分岐", "Fork Conversation": "チャットを分岐",
+    "Create a new conversation branching from this message.": "このメッセージから分岐した新しいチャットを作ります。",
+    "Enter fork name": "分岐先の名前を入力", "Include all attachments": "すべての添付ファイルを含める", "Previous version": "前のバージョン",
+    "Next version": "次のバージョン", "Copy code": "コードをコピー", "Code incomplete": "コードが不完全です", "Preview code": "コードをプレビュー",
+    "Copy to clipboard": "クリップボードにコピー", "Message copied to clipboard": "メッセージをコピーしました",
+    "Code copied to clipboard": "コードをコピーしました", "Failed to copy code": "コードをコピーできませんでした",
+    "Copied to clipboard": "コピーしました", "Failed to copy to clipboard": "コピーできませんでした", "Toggle content": "内容の表示/非表示",
+    "Toggle source": "ソース表示を切り替え", "Copy mermaid syntax": "mermaid のコードをコピー",
+    "Toggle mermaid source": "mermaid のソース表示を切り替え", "Preview diagram": "図をプレビュー", "Copy svg source": "SVG のソースをコピー",
+    "Toggle svg source": "SVG のソース表示を切り替え", "Preview svg": "SVG をプレビュー", "Zoom in": "拡大", "Zoom out": "縮小",
+    "Reset view": "表示をリセット", "Download SVG": "SVG をダウンロード", "Generating diagram...": "図を生成中…",
+    "Rendering svg...": "SVG を描画中…", "Diagram incomplete": "図が不完全です", "User message with actions": "あなたのメッセージ",
+    "Assistant message with actions": "モデルの回答", "System message with actions": "システムメッセージ",
+    "MCP Prompt message with actions": "MCP プロンプトのメッセージ", "Pending user message": "送信待ちのメッセージ",
+    "Send immediately": "今すぐ送信", "Update without re-sending": "再送信せずに更新",
+    "Branch conversation after edit": "編集後にチャットを分岐", "Edit your message...": "メッセージを編集…",
+    "Edit system message...": "システムメッセージを編集…", "Keep editing": "編集を続ける", "Discard": "破棄",
+    "Discard changes?": "変更を破棄しますか？",
+    "You have unsaved changes. Are you sure you want to discard them?": "保存していない変更があります。破棄しますか？",
+    "Show full system message": "システムメッセージ全体を表示", "Collapse System Message": "システムメッセージを折りたたむ",
+    "Show raw output": "生の出力を表示", "Delete Message": "メッセージを削除",
+    "Are you sure you want to delete this message? This action cannot be undone.": "このメッセージを削除しますか？この操作は元に戻せません。",
+    "Reasoning...": "思考中…", "failed": "失敗", "incomplete": "不完全", "Processing...": "処理中…", "Initializing...": "初期化中…",
+    "Preparing response...": "回答を準備中…", "Reconnecting to the stream...": "ストリームに再接続中…", "Loading model": "モデルを読み込み中",
+    "Server unavailable": "サーバーを利用できません", "Speculative decoding enabled": "投機的デコードが有効",
+    "Agentic turn limit reached. Continue?": "エージェントのターン上限に達しました。続行しますか？", "Allow use of": "使用を許可:", "from": "提供元:",
+    "Allow once": "今回のみ許可", "More allow options": "その他の許可オプション", "Deny": "拒否", "Always allow": "常に許可", "tool": "",
+    "Receiving arguments...": "引数を受信中…", "Response was truncated": "結果が途中で切れました", "Input": "入力", "Output": "出力",
+    "No output": "出力なし", "Waiting for result...": "結果を待っています…", "(failed)": "（失敗）", "No edits": "編集なし",
+    "Running...": "実行中…", "timed out": "タイムアウト", "in": "場所:", "Total matches:": "一致数:", "No matches": "一致なし",
+    "Current time is": "現在時刻は", "Search for": "検索:", "(with line numbers)": "（行番号付き）", "bytes": "バイト",
+    "Waiting for file content...": "ファイルの内容を待っています…", "Waiting for media data...": "メディアデータを待っています…",
+    "Media attachment not found in message extras": "メッセージにメディアの添付が見つかりません", "Current time": "現在時刻",
+    "Read media": "メディアを読む", "Run JavaScript": "JavaScript を実行", "Edit file": "ファイルを編集", "Run command": "コマンドを実行",
+    "Search files": "ファイルを検索", "Runtime info": "ランタイム情報", "Search in files": "ファイル内を検索", "Read file": "ファイルを読む",
+    "Write file": "ファイルに書き込む", "Reading": "プロンプト読み込み", "Processing": "プロンプト処理", "Generation": "生成",
+    "Waiting for tokens...": "トークンを待っています…", "Tool calls": "ツール呼び出し", "Summary": "サマリー",
+    "Agentic summary": "エージェント実行のサマリー", "Generated tokens": "生成トークン数", "Generation time": "生成時間",
+    "Generation speed": "生成速度", "Prompt tokens": "プロンプトのトークン数", "Prompt processing time": "プロンプト処理時間",
+    "Prompt processing speed": "プロンプト処理速度", "Tool calls executed": "実行したツール呼び出し", "Tool execution time": "ツール実行時間",
+    "Tool execution rate": "ツール実行レート", "Agentic turns (LLM calls)": "エージェントのターン数（LLM 呼び出し）",
+    "Total tokens generated": "生成トークン合計", "Total time (LLM + tools)": "合計時間（LLM + ツール）",
+    "Token usage details": "トークン使用量の詳細", "Across all turns": "全ターン合計", "This turn · KV cache": "このターン · KV cache",
+    "KV cache total": "KV cache 合計", "Prompt tokens evaluated": "評価したプロンプトトークン", "Tokens generated": "生成トークン",
+    "Prompt": "プロンプト", "Generated": "生成", "Avg speed": "平均速度", "used": "使用済み",
+    "Available context size is only visible once the model is loaded.": "利用可能なコンテキストサイズはモデルの読み込み後に表示されます。",
+    "Loading model...": "モデルを読み込み中…", "Load model": "モデルを読み込む", "No context info available": "コンテキスト情報がありません",
+    "Context": "コンテキスト", "Context size:": "コンテキストサイズ:", "Prompt tokens:": "プロンプトトークン:", "Loaded models": "読み込み済みのモデル",
+    "Available models": "その他のモデル", "Favorite models": "お気に入りのモデル", "Loading models...": "モデルを読み込み中…",
+    "Search models...": "モデルを検索…", "No models available.": "モデルがありません。", "No models found.": "モデルが見つかりません。",
+    "No model": "モデルなし", "(not available)": "（利用不可）", "Add to favorites": "お気に入りに追加",
+    "Remove from favorites": "お気に入りから削除", "Model information": "モデル情報", "Model Information": "モデル情報",
+    "Unload model": "モデルをアンロード", "Retry loading model": "モデルの読み込みを再試行", "Select Model": "モデルを選択",
+    "Choose a model to use for the conversation": "このチャットで使うモデルを選んでください", "Copy model name": "モデル名をコピー",
+    "Click for model details": "クリックでモデルの詳細", "Current model details and capabilities": "現在のモデルの詳細と機能",
+    "Loading model information...": "モデル情報を読み込み中…", "No model information available": "モデル情報がありません",
+    "Copy model name to clipboard": "モデル名をコピー", "Copy model path to clipboard": "モデルのパスをコピー", "Model": "モデル",
+    "File Path": "ファイルパス", "Build Info": "ビルド情報", "Chat Template": "チャットテンプレート", "Modalities": "対応モダリティ",
+    "Context Size": "コンテキストサイズ", "Training Context": "学習時のコンテキスト", "Model Size": "モデルサイズ", "Parameters": "パラメーター数",
+    "Embedding Size": "埋め込みサイズ", "Vocabulary Size": "語彙サイズ", "Vocabulary Type": "語彙タイプ", "Parallel Slots": "並列スロット数",
+    "Model Not Available": "モデルを利用できません", "Select an available model:": "利用可能なモデルを選択:", "Requested:": "要求されたモデル:",
+    "The requested model could not be found. Select an available model to continue.": "要求されたモデルが見つかりません。利用可能なモデルを選んで続行してください。",
+    "Loading projector": "プロジェクターを読み込み中", "Loading draft": "ドラフトモデルを読み込み中", "Loading weights": "重みを読み込み中",
+    "Unknown Model": "不明なモデル", "General": "一般", "Display": "表示", "Agentic": "エージェント", "Import/Export": "インポート/エクスポート",
+    "Sampling & Penalties": "サンプリングとペナルティ", "Developer": "開発者", "Reload app": "アプリを再読み込み",
+    "Settings are saved in browser's localStorage": "設定はブラウザーの localStorage に保存されます", "Reset to default": "既定に戻す",
+    "Reset to Default": "既定に戻す", "Save settings": "設定を保存", "Reset Settings to Default": "設定を既定に戻す",
+    "Are you sure you want to reset all settings to their default values? This will reset all parameters to the values provided by the server's /props endpoint and remove all your custom configurations.": "すべての設定を既定値に戻しますか？すべてのパラメーターがサーバーの /props の値に戻り、あなたのカスタム設定はすべて削除されます。",
+    "Invalid JSON in custom parameters. Please check the format and try again.": "カスタムパラメーターの JSON が無効です。形式を確認してもう一度お試しください。",
+    "Theme": "テーマ", "System": "システム", "Light": "ライト", "Dark": "ダーク",
+    "Choose the color theme for the interface. You can choose between System (follows your device settings), Light, or Dark.": "画面の配色テーマを選びます。システム（デバイスの設定に従う）、ライト、ダークから選べます。",
+    "Set the API Key if you are using": "サーバーを次のオプション付きで起動している場合は API キーを設定:", "option for the server.": "",
+    "System Message": "システムメッセージ", "System message": "システムメッセージ",
+    "The starting message that defines how model should behave.": "モデルの振る舞いを決める最初のメッセージです。",
+    "Show system message": "システムメッセージを表示", "Show system message in conversations": "チャットにシステムメッセージを表示",
+    "Display the system message at the top of each conversation.": "各チャットの先頭にシステムメッセージを表示します。",
+    "Paste long text to file length": "長文の貼り付けをファイルにする長さ",
+    "On pasting long text, it will be converted to a file. You can control the file length by setting the value of this parameter. Value 0 means disable.": "この文字数を超えるテキストを貼り付けると、添付ファイルに変換されます。0 で無効になります。",
+    "Send message on Enter": "Enter で送信",
+    "Use Enter to send messages and Shift + Enter for new lines. When disabled, use Ctrl/Cmd + Enter.": "Enter で送信、Shift + Enter で改行します。オフの場合は Ctrl/Cmd + Enter で送信します。",
+    "Show microphone on empty input": "入力欄が空のときマイクを表示",
+    "Automatically show microphone button instead of send button when textarea is empty for models with audio modality support.": "音声対応モデルでは、入力欄が空のとき送信ボタンの代わりにマイクボタンを表示します。",
+    "Enable \"Continue\" button": "「続行」ボタンを有効化",
+    "Enable \"Continue\" button for assistant messages, including reasoning models.": "モデルの回答に「続行」ボタンを表示します（思考モデルを含む）。",
+    "Conversation title": "チャットのタイトル", "Use first non-empty line for the conversation title": "最初の空でない行をタイトルにする",
+    "Generate title with LLM": "LLM でタイトルを生成",
+    "Choose how conversation titles are generated. The first non-empty line uses a fast deterministic rule; the LLM option uses a model-generated title from the first message exchange.": "チャットのタイトルの付け方を選びます。最初の空でない行は速く確実で、LLM は最初のやり取りからモデルがタイトルを生成します。",
+    "LLM title generation prompt": "LLM のタイトル生成プロンプト",
+    "Optional template for the title generation prompt. Use {{USER}} for the user message and {{ASSISTANT}} for the assistant message.": "タイトル生成プロンプトのテンプレート（省略可）。{{USER}} はユーザーのメッセージ、{{ASSISTANT}} はモデルの回答に置き換わります。",
+    "Copy text attachments as plain text": "テキスト添付をプレーンテキストとしてコピー",
+    "When copying a message with text attachments, combine them into a single plain text string instead of a special format that can be pasted back as attachments.": "テキスト添付のあるメッセージをコピーするとき、添付として貼り戻せる特別な形式ではなく、ひとつのプレーンテキストにまとめます。",
+    "Parse PDF as image": "PDF を画像として読む",
+    "Parse PDF as image instead of text. Automatically falls back to text processing for non-vision models.": "PDF をテキストではなく画像として読みます。画像非対応のモデルでは自動的にテキスト処理に戻ります。",
+    "Maximum image resolution (megapixels)": "画像の最大解像度（メガピクセル）",
+    "Images larger than this will be resized before sending to server. Set to 0 to disable.": "これより大きい画像はサーバーに送る前に縮小されます。0 で無効になります。",
+    "Show message generation statistics": "メッセージ生成の統計を表示",
+    "Display generation statistics (tokens/second, token count, duration) below each assistant message.": "各回答の下に生成統計（トークン/秒、トークン数、所要時間）を表示します。",
+    "Show statistics for individual agentic turns": "エージェントの各ターンの統計を表示",
+    "Display per-turn statistics (tokens, duration) under each turn in agentic responses. Shown only when \"Show message generation statistics\" is enabled.": "エージェント応答の各ターンの下に統計（トークン、所要時間）を表示します。「メッセージ生成の統計を表示」がオンのときだけ表示されます。",
+    "Show thought in progress": "思考過程を表示",
+    "Expand thought process by default when generating messages.": "メッセージ生成中は思考過程を最初から展開します。",
+    "Always show tool call content": "ツール呼び出しの内容を常に表示",
+    "Automatically expand tool call details while executing and keep them expanded after completion.": "実行中はツール呼び出しの詳細を自動で展開し、完了後も展開したままにします。",
+    "Render user content as Markdown": "ユーザーの内容を Markdown で表示",
+    "Render user messages using markdown formatting in the chat. Turn this off to keep a message exactly as typed; @-mention badges show either way.": "チャットのユーザーメッセージを Markdown で整形します。入力したとおりに表示したい場合はオフにしてください。@-mention のバッジはどちらでも表示されます。",
+    "Render thinking as Markdown": "思考を Markdown で表示",
+    "Render the reasoning/thinking block content as formatted Markdown instead of plain text.": "思考ブロックの内容をプレーンテキストではなく Markdown として整形表示します。",
+    "Use full height code blocks": "コードブロックを全高で表示",
+    "Always display code blocks at their full natural height, overriding any height limits.": "コードブロックを高さ制限なしで常に全体表示します。",
+    "Disable automatic scroll": "自動スクロールを無効化",
+    "Disable automatic scrolling while messages stream so you can control the viewport position manually.": "メッセージのストリーミング中に自動でスクロールしないようにし、表示位置を自分で操作できるようにします。",
+    "Always show sidebar on desktop": "デスクトップでサイドバーを常に表示",
+    "Always keep the sidebar visible on desktop instead of auto-hiding it.": "デスクトップではサイドバーを自動で隠さず、常に表示します。",
+    "Conversation tabs": "チャットのタブ",
+    "Show open chats as browser-style tabs above the conversation, one per open chat. When disabled, only one chat is shown at a time.": "開いているチャットをチャットの上にブラウザー風のタブとして表示します（チャットごとに 1 つ）。オフの場合は一度に 1 つのチャットだけ表示されます。",
+    "Show raw model names": "モデル名をそのまま表示",
+    "Display full raw model identifiers (e.g. \"ggml-org/GLM-4.7-Flash-GGUF:Q8_0\") instead of parsed names with badges.": "バッジ付きの整形名ではなく、モデルの識別子をそのまま表示します（例: \"ggml-org/GLM-4.7-Flash-GGUF:Q8_0\"）。",
+    "Show model quantization information": "モデルの量子化情報を表示",
+    "Display quantization badges (e.g. Q8_0, Q4_K_M) next to model names throughout the interface.": "画面全体でモデル名の横に量子化バッジ（例: Q8_0、Q4_K_M）を表示します。",
+    "Show model tags": "モデルのタグを表示",
+    "Display model tags (e.g. \"vision\", \"reasoning\") next to model names throughout the interface.": "画面全体でモデル名の横にタグ（例: \"vision\"、\"reasoning\"）を表示します。",
+    "Show organization name in model selector trigger": "モデル選択ボタンに組織名を表示",
+    "Display the organization name in the model selector trigger button.": "モデル選択ボタンに組織名（例: ggml-org）を表示します。",
+    "Show build version information": "ビルドバージョンを表示",
+    "Display the current build version in the bottom-right corner of the interface.": "画面右下に現在のビルドバージョンを表示します。",
+    "Show full path in mentions": "メンションにフルパスを表示",
+    "Display the full file system path inside file and folder @-mention badges instead of just the file or folder name.": "ファイルやフォルダーの @-mention バッジに、名前だけでなくフルパスを表示します。",
+    "Applies to new conversations. Tool picks inside a chat only affect that chat.": "新しいチャットに適用されます。チャット内でのツール選択はそのチャットにだけ影響します。",
+    "MCP servers": "MCP サーバー",
+    "Configure MCP servers as a JSON list. Use the form in the MCP Client settings section to edit.": "MCP サーバーを JSON のリストとして設定します。編集は MCP クライアント設定のフォームから行えます。",
+    "Browser Tools": "ブラウザーのツール", "Custom Tools": "カスタムツール", "Server Tools": "サーバーのツール",
+    "Agentic turns": "エージェントの最大ターン数",
+    "Maximum number of tool execution cycles before stopping (prevents infinite loops).": "停止するまでのツール実行サイクルの最大数（無限ループ防止）。",
+    "MCP request timeout (seconds)": "MCP リクエストのタイムアウト（秒）",
+    "Timeout for individual MCP tool calls.": "MCP ツール呼び出し 1 回あたりのタイムアウトです。", "Mention search depth": "メンション検索の深さ",
+    "How many directory levels below the working directory the @-mention file search descends. Larger values surface deeply nested files but take longer on large trees.": "@-mention のファイル検索が作業フォルダーから何階層下まで探すかです。大きいほど深い階層のファイルが見つかりますが、大きなツリーでは時間がかかります。",
+    "Export": "エクスポート", "Import": "インポート", "Exported": "エクスポート済み", "Imported": "インポート済み",
+    "Export conversations": "チャットをエクスポート", "Import conversations": "チャットをインポート",
+    "Download your conversations as a ZIP of JSONL files. This includes all messages, attachments, and conversation history.": "チャットを JSONL ファイルの ZIP としてダウンロードします。すべてのメッセージ、添付ファイル、履歴が含まれます。",
+    "Import one or more conversations from a previously exported ZIP or JSONL file. This will merge with your existing conversations.": "以前エクスポートした ZIP または JSONL ファイルからチャットをインポートします。既存のチャットに統合されます。",
+    "Delete All": "すべて削除", "Delete all conversations": "すべてのチャットを削除",
+    "Permanently delete all conversations and their messages. This action cannot be undone. Consider exporting your conversations first if you want to keep a backup.": "すべてのチャットとメッセージを完全に削除します。この操作は元に戻せません。バックアップを残したい場合は先にエクスポートしてください。",
+    "Are you sure you want to delete all conversations? This action cannot be undone and will permanently remove all your conversations and messages.": "すべてのチャットを削除しますか？この操作は元に戻せず、すべてのチャットとメッセージが完全に削除されます。",
+    "Export settings": "設定をエクスポート", "Export Settings": "設定をエクスポート", "Import settings": "設定をインポート",
+    "Export your chat settings and preferences as a JSON file.": "チャットの設定を JSON ファイルとしてエクスポートします。",
+    "Import chat settings from a previously exported JSON file. This will merge with your existing settings.": "以前エクスポートした JSON ファイルから設定をインポートします。既存の設定に統合されます。",
+    "Warning: This export will include sensitive data such as API keys and MCP server custom headers (e.g., authorization tokens). Do not share this file with anyone you don't trust.": "警告: このエクスポートには API キーや MCP サーバーのカスタムヘッダー（認証トークンなど）といった機密データが含まれます。信頼できない相手とこのファイルを共有しないでください。",
+    "Sensitive data (API keys, MCP server custom headers) will not be included in the export to protect your credentials.": "認証情報を守るため、機密データ（API キー、MCP サーバーのカスタムヘッダー）はエクスポートに含まれません。",
+    "Include sensitive data (not recommended)": "機密データを含める（非推奨）", "Include sensitive data": "機密データを含める",
+    "Export Anyway": "それでもエクスポート", "Export Without Sensitive Data": "機密データを除いてエクスポート",
+    "Choose which conversations you want to export. Selected conversations will be downloaded as a JSON file.": "エクスポートするチャットを選んでください。選んだチャットは JSON ファイルとしてダウンロードされます。",
+    "Choose which conversations you want to import. Selected conversations will be merged with your existing conversations.": "インポートするチャットを選んでください。選んだチャットは既存のチャットに統合されます。",
+    "Controls the randomness of the generated text by affecting the probability distribution of the output tokens. Higher = more random, lower = more focused.": "出力トークンの確率分布を変えて、生成テキストのランダムさを制御します。高い = よりランダム、低い = より一貫。",
+    "Dynamic temperature range": "動的 Temperature の範囲",
+    "Addon for the temperature sampler. The added value to the range of dynamic temperature, which adjusts probabilities by entropy of tokens.": "Temperature サンプラーの追加設定。トークンのエントロピーに応じて確率を調整する動的 Temperature の範囲に加える値です。",
+    "Dynamic temperature exponent": "動的 Temperature の指数",
+    "Addon for the temperature sampler. Smoothes out the probability redistribution based on the most probable token.": "Temperature サンプラーの追加設定。最も確率の高いトークンを基準に、確率の再配分を滑らかにします。",
+    "Keeps only k top tokens.": "上位 k 個のトークンだけを残します。",
+    "Limits tokens to those that together have a cumulative probability of at least p": "累積確率が p 以上になるまでのトークンに限定します",
+    "Limits tokens based on the minimum probability for a token to be considered, relative to the probability of the most likely token.": "最も確率の高いトークンに対する相対的な最低確率を下回るトークンを除外します。",
+    "XTC probability": "XTC の確率", "XTC threshold": "XTC のしきい値",
+    "XTC sampler cuts out top tokens; this parameter controls the chance of cutting tokens at all. 0 disables XTC.": "XTC サンプラーは上位トークンを取り除きます。この値はそもそも取り除く確率です。0 で XTC は無効になります。",
+    "XTC sampler cuts out top tokens; this parameter controls the token probability that is required to cut that token.": "XTC サンプラーは上位トークンを取り除きます。この値は取り除く対象となるトークンの確率のしきい値です。",
+    "Sorts and limits tokens based on the difference between log-probability and entropy.": "対数確率とエントロピーの差に基づいてトークンを並べ替え、絞り込みます。",
+    "The maximum number of token per output. Use -1 for infinite (no limit).": "1 回の出力あたりの最大トークン数。-1 で無制限。",
+    "Samplers": "サンプラーの順序",
+    "The order at which samplers are applied, in simplified way. Default is \"top_k;typ_p;top_p;min_p;temperature\": top_k->typ_p->top_p->min_p->temperature": "サンプラーを適用する順序（簡略表記）。既定は \"top_k;typ_p;top_p;min_p;temperature\": top_k->typ_p->top_p->min_p->temperature",
+    "Backend sampling": "バックエンドでサンプリング",
+    "Enable backend-based samplers. When enabled, supported samplers run on the accelerator backend for faster sampling.": "対応するサンプラーをアクセラレーター（GPU など）のバックエンドで実行し、サンプリングを高速化します。",
+    "Repeat last N": "繰り返し判定の範囲（N トークン）",
+    "Last n tokens to consider for penalizing repetition": "繰り返しのペナルティ判定に使う直近のトークン数", "Repeat penalty": "繰り返しペナルティ",
+    "Controls the repetition of token sequences in the generated text": "生成テキスト内のトークン列の繰り返しを抑えます",
+    "Presence penalty": "出現ペナルティ",
+    "Limits tokens based on whether they appear in the output or not.": "すでに出力に現れたトークンにペナルティを与えます。",
+    "Frequency penalty": "頻度ペナルティ",
+    "Limits tokens based on how often they appear in the output.": "出力に現れた回数に応じてトークンにペナルティを与えます。",
+    "DRY multiplier": "DRY の乗数", "DRY base": "DRY の基数", "DRY allowed length": "DRY の許容長",
+    "DRY penalty last N": "DRY のペナルティ範囲（N トークン）",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets the DRY sampling multiplier.": "DRY サンプリングは長いコンテキストでも生成テキストの繰り返しを減らします。この値は DRY の乗数です。",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets the DRY sampling base value.": "DRY サンプリングは長いコンテキストでも生成テキストの繰り返しを減らします。この値は DRY の基数です。",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets the allowed length for DRY sampling.": "DRY サンプリングは長いコンテキストでも生成テキストの繰り返しを減らします。この値は繰り返しを許容する長さです。",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets DRY penalty for the last n tokens.": "DRY サンプリングは長いコンテキストでも生成テキストの繰り返しを減らします。この値は DRY がペナルティに使う直近のトークン数です。",
+    "Pre-fill KV cache after response": "回答後に KV cache を事前充填",
+    "After each response, re-submit the conversation to pre-fill the server KV cache. Makes the next turn faster since the prompt is already encoded while you read the response.": "回答のたびにチャットを再送信してサーバーの KV cache を事前に満たします。回答を読んでいる間にプロンプトが処理済みになるので、次のターンが速くなります。",
+    "Disable reasoning content parsing": "思考内容の解析を無効化",
+    "Send reasoning_format=none so the server returns thinking tokens inline instead of extracting them into a separate field.": "reasoning_format=none を送り、思考トークンを別フィールドに分けずに回答に混ぜて返させます。",
+    "Exclude reasoning from context": "思考をコンテキストに含めない",
+    "Strip thinking from previous messages before sending. When off, thinking is sent back via the reasoning_content field so the model sees its own chain-of-thought across turns.": "送信前に過去メッセージから思考を取り除きます。オフの場合、思考は reasoning_content フィールドで送り返され、モデルはターンをまたいで自分の思考過程を見られます。",
+    "Enable raw output toggle": "生出力の切り替えを有効化",
+    "Show toggle button to display messages as plain text instead of Markdown-formatted content": "メッセージを Markdown 整形ではなくプレーンテキストで表示する切り替えボタンを表示します",
+    "JavaScript sandbox tool": "JavaScript サンドボックスツール",
+    "Expose a run_javascript tool to the model. Code runs in a Web Worker inside a sandboxed iframe with an opaque origin, isolated from the WebUI and its API, with a hard timeout.": "モデルに run_javascript ツールを提供します。コードは不透明なオリジンのサンドボックス iframe 内の Web Worker で実行され、WebUI とその API から隔離され、厳格なタイムアウトがあります。",
+    "Symbolic math (nerdamer)": "数式処理 (nerdamer)",
+    "Pre-load nerdamer in the sandbox for symbolic computation: simplify, diff, integrate, solve, and more. Requires \"JavaScript sandbox tool\" to be enabled.": "数式処理用にサンドボックスへ nerdamer を事前読み込みします: 簡約、微分、積分、方程式の求解など。「JavaScript サンドボックスツール」を有効にする必要があります。",
+    "Custom JSON": "カスタム JSON",
+    "Custom JSON parameters to send to the API. Must be valid JSON format.": "API に送る追加の JSON パラメーター。有効な JSON である必要があります。",
+    "Custom CSS": "カスタム CSS",
+    "CSS injected into the page at runtime. Set it here, or ship it server side via the --ui-config customCss field.": "実行時にページへ注入する CSS。ここで設定するか、サーバー側の --ui-config の customCss で配布します。",
+    "Add your first MCP server": "最初の MCP サーバーを追加",
+    "Connect a remote MCP server by URL.": "URL でリモート MCP サーバーに接続します。", "Add another MCP server": "別の MCP サーバーを追加",
+    "Add New Server": "新しいサーバーを追加", "Add New MCP Server": "新しい MCP サーバーを追加", "Recommended Servers": "おすすめのサーバー",
+    "Server instructions": "サーバーからの指示", "Configure Server": "サーバーを設定", "Delete Server": "サーバーを削除",
+    "Server URL": "サーバー URL", "Display name": "表示名", "Name reported by the server": "サーバーが報告した名前",
+    "URL is required": "URL は必須です", "Please enter a server URL first.": "先にサーバー URL を入力してください。",
+    "Use llama-server proxy": "llama-server のプロキシを使う", "(Run": "(", "with": "を次のフラグ付きで実行", "flag)": ")",
+    "Authorization": "認証", "Logging": "ログ", "Completions": "補完", "Retrying...": "再試行中…", "List files": "ファイル一覧",
+    "Console": "コンソール", "Text": "テキスト", "Paste token here": "ここにトークンを貼り付け", "Custom Headers": "カスタムヘッダー",
+    "Header name": "ヘッダー名", "No custom headers configured.": "カスタムヘッダーは設定されていません。",
+    "No items configured.": "項目は設定されていません。", "Remove item": "項目を削除", "Open website": "ウェブサイトを開く", "Resources": "リソース",
+    "Prompts": "プロンプト", "Tasks": "タスク", "Templates": "テンプレート", "MCP Resources": "MCP リソース",
+    "Available resources": "利用可能なリソース", "Loading resources...": "リソースを読み込み中…", "No resources available": "リソースがありません",
+    "No resources": "リソースなし", "Search resources...": "リソースを検索…", "Refresh resources": "リソースを更新",
+    "Select a resource to preview": "プレビューするリソースを選択", "No content available": "内容がありません",
+    "Failed to load resource content": "リソースの内容を読み込めませんでした", "Copy content": "内容をコピー",
+    "Download content": "内容をダウンロード", "Resolved URI:": "解決された URI:", "Read Resource": "リソースを読む",
+    "Attach Resource": "リソースを添付", "Resource already attached": "このリソースは添付済みです", "Resource content": "リソースの内容",
+    "Browse and attach resources from connected MCP servers to your chat context.": "接続中の MCP サーバーのリソースを参照して、チャットのコンテキストに添付します。",
+    "Binary content": "バイナリデータ", "Connecting...": "接続中…", "Connected": "接続済み", "Connection Error": "接続エラー",
+    "All MCP server connections failed": "すべての MCP サーバーへの接続に失敗しました", "Failed to read resource": "リソースを読み取れませんでした",
+    "Search the web and fetch full page content as clean markdown.": "ウェブを検索し、ページ全体をきれいな Markdown として取得します。",
+    "Search and browse AI models, datasets, spaces, and docs on the Hugging Face Hub.": "Hugging Face Hub の AI モデル、データセット、Spaces、ドキュメントを検索・閲覧します。",
+    "Search repositories, issues, pull requests and interact with code on GitHub.": "GitHub のリポジトリ、issue、pull request を検索し、コードを操作します。",
+    "Browse up-to-date documentation and code examples for libraries and frameworks.": "ライブラリやフレームワークの最新ドキュメントとコード例を閲覧します。",
+    "Empty Files Detected": "空のファイルを検出", "Empty Files:": "空のファイル:", "What happened:": "何が起きたか:",
+    "Empty files cannot be processed or sent to the AI model": "空のファイルは処理も AI モデルへの送信もできません",
+    "These files have been automatically removed from your attachments": "これらのファイルは添付から自動的に削除されました",
+    "You can try uploading files with content instead": "内容のあるファイルをアップロードしてみてください",
+    "The following files are empty and have been removed from your attachments:": "次のファイルは空のため添付から削除されました:",
+    "File type not supported": "対応していないファイル形式です", "Unsupported File Types": "対応していないファイル形式",
+    "This model supports:": "このモデルの対応形式:", "File Upload Error": "ファイルのアップロードエラー",
+    "Some files cannot be uploaded with the current model.": "現在のモデルではアップロードできないファイルがあります。",
+    "Not supported by current model": "現在のモデルは対応していません", "TCP Timeout": "TCP タイムアウト", "Server Error": "サーバーエラー",
+    "The request did not receive a response from the server before timing out.": "タイムアウトまでにサーバーから応答がありませんでした。",
+    "The server responded with an error message. Review the details below.": "サーバーがエラーを返しました。下の詳細を確認してください。",
+    "Server Connection Error": "サーバー接続エラー", "Connecting to Server": "サーバーに接続中",
+    "Initializing connection to server...": "サーバーへの接続を初期化中…", "Troubleshooting": "トラブルシューティング",
+    "Start the llama-server:": "llama-server を起動:", "or": "または",
+    "Check that the server is accessible at the correct URL": "正しい URL でサーバーにアクセスできるか確認してください",
+    "Verify your network connection": "ネットワーク接続を確認してください",
+    "Check server logs for any error messages": "サーバーのログにエラーがないか確認してください", "Enter API Key": "API キーを入力",
+    "Enter your API key...": "API キーを入力…", "Validating...": "検証中…", "Save & Retry": "保存して再試行",
+    "Retry Connection": "接続を再試行", "✓ API key validated successfully! Connecting...": "✓ API キーを確認しました。接続中…",
+    "Invalid API key - please check and try again": "API キーが無効です。確認してもう一度お試しください",
+    "Cannot connect to server - check if server is running": "サーバーに接続できません。サーバーが動作しているか確認してください",
+    "Connection error - please try again": "接続エラーです。もう一度お試しください",
+    "Access denied - check server permissions": "アクセスが拒否されました。サーバーの権限を確認してください",
+    "A new version is available. Reload to update.": "新しいバージョンがあります。再読み込みして更新してください。", "Update available": "更新があります",
+    "Access denied": "アクセスが拒否されました", "Request failed": "リクエストに失敗しました",
+    "Server error - check server logs": "サーバーエラーです。サーバーのログを確認してください",
+    "Server temporarily unavailable": "サーバーは一時的に利用できません", "Failed to connect to server": "サーバーに接続できませんでした",
+    "Server not found - check server address": "サーバーが見つかりません。サーバーのアドレスを確認してください",
+    "Connection refused - server may be offline": "接続が拒否されました。サーバーが停止している可能性があります",
+    "Request timed out": "リクエストがタイムアウトしました", "Server is not running or unreachable": "サーバーが動作していないか到達できません",
+    "Unable to connect to server - please check if the server is running": "サーバーに接続できません。サーバーが動作しているか確認してください",
+    "Request timed out - the server took too long to respond": "リクエストがタイムアウトしました。サーバーの応答に時間がかかりすぎています",
+    "Unknown error occurred while sending message": "メッセージの送信中に不明なエラーが発生しました",
+    "No response received from server. Please try again.": "サーバーから応答がありませんでした。もう一度お試しください。",
+    "Unknown server error": "不明なサーバーエラー", "Unknown error": "不明なエラー", "Unknown error occurred": "不明なエラーが発生しました",
+    "Stream connection lost and could not be resumed": "ストリーム接続が切れ、再開できませんでした",
+    "No active conversation": "開いているチャットがありません", "Failed to read file": "ファイルを読み取れませんでした",
+    "File reading error": "ファイルの読み取りエラー",
+    "Failed to access microphone. Please check permissions.": "マイクにアクセスできません。権限を確認してください。",
+    "Recording failed": "録音に失敗しました", "Conversation deleted": "チャットを削除しました",
+    "Failed to delete conversations": "チャットを削除できませんでした", "No conversations to export": "エクスポートするチャットがありません",
+    "Conversation exported": "チャットをエクスポートしました", "Failed to export conversations": "チャットをエクスポートできませんでした",
+    "Conversation pin toggled": "ピン留めを切り替えました", "Failed to update pin state": "ピン留めを変更できませんでした",
+    "All conversations deleted": "すべてのチャットを削除しました", "Conversation forked": "チャットを分岐しました",
+    "Failed to fork conversation": "チャットを分岐できませんでした", "Failed to load model": "モデルを読み込めませんでした",
+    "Failed to unload model": "モデルをアンロードできませんでした", "Failed to load models": "モデル一覧を読み込めませんでした",
+    "Failed to load favorite models from local storage": "お気に入りのモデルをブラウザーから読み込めませんでした",
+    "Failed to save favorite models to local storage": "お気に入りのモデルをブラウザーに保存できませんでした",
+    "Settings exported": "設定をエクスポートしました", "Failed to export settings": "設定をエクスポートできませんでした",
+    "Settings imported successfully": "設定をインポートしました", "Failed to import settings": "設定をインポートできませんでした",
+    "Invalid settings file: missing config": "設定ファイルが無効です: config がありません",
+    "Invalid settings data: missing config": "設定データが無効です: config がありません",
+    "Failed to open file picker": "ファイル選択を開けませんでした", "Failed to load conversations": "チャットを読み込めませんでした",
+    "No conversations found in file": "ファイルにチャットが見つかりません", "Failed to import conversations": "チャットをインポートできませんでした",
+    "Failed to import conversations. Please check the file format.": "チャットをインポートできませんでした。ファイル形式を確認してください。",
+    "No conversations to delete": "削除するチャットがありません", "Error processing file": "ファイルの処理に失敗しました",
+    "Enable PDF as Images": "PDF を画像として読む",
+    "You can enable parsing PDF as images with vision models.": "画像対応モデルでは PDF を画像として読む設定を有効にできます。",
+    "PDF parsing as images enabled!": "PDF を画像として読む設定を有効にしました!",
+    "PDF setting changed: Non-vision model detected, PDFs will be processed as text instead of images.": "PDF の設定を変更しました: 画像非対応のモデルのため、PDF は画像ではなくテキストとして処理されます。",
+    "Fast (4B)": "高速 (4B)",
+    "Fast mode: answer with Qwen3-4B, much faster but less thorough. Click again to go back to the project model (if it isn't loaded yet, it loads first: large and slow).": "高速モード: Qwen3-4B で回答します。ずっと速いですが詳しさは劣ります。もう一度クリックするとプロジェクトのモデルに戻ります（未読み込みなら先に読み込みます: 大きく時間がかかります）。",
+    "Click again to load the project model and switch back.": "もう一度クリックするとプロジェクトのモデルを読み込んで戻ります。",
+    "{model} isn't loaded yet. Click again to load it and switch back (large model, slow to load).": "{model} はまだ読み込まれていません。もう一度クリックすると読み込んで戻ります（大きなモデルのため時間がかかります）。",
+    "Couldn't switch the model. Choose it from the model menu instead.": "モデルを切り替えられませんでした。モデルメニューから選んでください。",
+    "Open the chat to read the reply.": "チャットを開いて回答を読んでください。", "Open in panel": "パネルで開く", "Read aloud": "読み上げ",
+    "Pause reading": "読み上げを一時停止", "Resume reading": "読み上げを再開", "Stop reading": "読み上げを停止",
+    "Ask about this": "これについて質問", "HTML page": "HTML ページ", "SVG image": "SVG 画像", "Mermaid diagram": "Mermaid 図",
+    "Markdown document": "Markdown 文書", "CSV table": "CSV 表", "Chart image": "グラフ画像", "Reply finished": "回答が完了しました",
+    "Tool permission needed": "ツールの使用許可が必要です", "Agentic turn limit reached": "エージェントのターン上限に達しました",
+    "Press Continue to keep going, or Stop.": "続けるには「続行」、やめるには「停止」を押してください。",
+    "Review this — it is exactly what will run": "許可する前に確認してください — これがそのまま実行されます",
+    "Loading what will run...": "実行内容を読み込み中…", "Confirm code": "確認コード",
+    "Hidden or look-alike characters are shown as «U+XXXX». Don't allow unless you expected them.": "見えない文字や紛らわしい文字は «U+XXXX» で表示されます。意図したものでなければ許可しないでください。",
+    "This request has no review text, so you can't see what will run. Choose Deny.": "このリクエストには確認用の文がなく、何が実行されるか見えません。「拒否」を選んでください。",
+    "Arguments sent by the model:": "モデルが送った引数:",
+    "This request's arguments aren't valid JSON. Choose Deny.": "このリクエストの引数は有効な JSON ではありません。「拒否」を選んでください。",
+    "Couldn't read what this request will run. Expand the local_confirm call above to check it, or choose Deny.": "このリクエストが何を実行するか読み取れませんでした。上の local_confirm の呼び出しを展開して確認するか、「拒否」を選んでください。",
+    "This review is far longer than the server ever issues. Choose Deny.": "この確認文はサーバーが発行するものよりはるかに長すぎます。「拒否」を選んでください。",
+    "The model padded this text with extra blank lines or spaces (left out here). The server refuses text padded like this, so allowing it won't run anything. Choose Deny.": "モデルがこの文に余分な空行や空白を加えました（ここでは省いています）。サーバーはこうした文を拒否するため、許可しても何も実行されません。「拒否」を選んでください。",
+    "local_confirm always asks, so you can see exactly what will run before you allow it.": "local_confirm は毎回確認を求めるので、許可する前に何が実行されるかを正確に確認できます。",
+    "Ran — expand to see the result": "実行しました — 展開して結果を見る",
+    "Not run — the review text didn't match": "未実行 — 確認文が一致しませんでした",
+    "Not run — the confirm code expired or was already used": "未実行 — 確認コードが期限切れか使用済みです",
+    "Not run — you chose Deny": "未実行 — 「拒否」を選びました", "Not run — interrupted": "未実行 — 中断されました",
+    "Not run — refused": "未実行 — 拒否されました", "Failed — expand to see the error": "失敗 — 展開してエラーを見る",
+    "Review this before you allow it — this is exactly what will run (from the server)": "許可する前に確認してください — これがそのまま実行されます（サーバーより）",
+    "Could not load details — do not allow": "詳細を読み込めませんでした — 許可しないでください",
+    "The review the model sent differs from the server's version below. The server will refuse it, so allowing runs nothing.": "モデルが送った確認文は下のサーバー版と異なります。サーバーは拒否するため、許可しても何も実行されません。",
+    "Couldn't find this request in the chat.": "このリクエストがチャット内に見つかりませんでした。",
+    "This request has no valid confirm code.": "このリクエストには有効な確認コードがありません。",
+    "The server has no pending request for this confirm code — it expired, was already used, or never existed.": "この確認コードに対応する保留中のリクエストがサーバーにありません — 期限切れ、使用済み、または存在しなかったものです。",
+    "This confirm code belongs to another project.": "この確認コードは別のプロジェクトのものです。",
+    "This confirm code has expired.": "この確認コードは期限切れです。",
+    "The local tool server refused this page's request.": "ローカルツールサーバーがこのページのリクエストを拒否しました。",
+    "The local tool server didn't answer.": "ローカルツールサーバーが応答しませんでした。",
+    "The local tool server is busy.": "ローカルツールサーバーが混み合っています。",
+    "The local tool server can't show request details yet (it needs an update).": "ローカルツールサーバーはまだリクエストの詳細を表示できません（更新が必要です）。",
+    "The server's answer couldn't be read.": "サーバーの応答を読み取れませんでした。",
+    "This page has no local tool server set up.": "このページにはローカルツールサーバーが設定されていません。", "Trying again...": "もう一度試しています…",
+  };
+  var ZH = {
+    "Settings": "设置", "Close": "关闭", "Cancel": "取消", "Save": "保存", "Delete": "删除", "Edit": "编辑", "Copy": "复制",
+    "Add": "添加", "Remove": "移除", "Update": "更新", "Confirm": "确认", "Continue": "继续", "Dismiss": "隐藏", "Refresh": "刷新",
+    "Reload": "重新加载", "Retry": "重试", "Try again": "再试一次", "Got it": "知道了", "Select": "选择", "Search": "搜索",
+    "Search...": "搜索…", "Searching...": "正在搜索…", "Searching": "正在搜索", "Searched": "已搜索", "Browse": "浏览",
+    "Previous": "上一个", "Next": "下一个", "Preview": "预览", "Close preview": "关闭预览", "Preview only": "仅预览", "Key": "键",
+    "Value": "值", "Title": "标题", "(optional)": "（可选）", "details": "详情", "Unknown": "未知", "Error": "错误",
+    "Error:": "错误：", "Cancelled": "已取消", "Success!": "成功！", "Not available": "不可用", "No results": "没有结果",
+    "No results found": "未找到结果", "No items found": "未找到项目", "Something went wrong": "出了点问题", "Go Home": "回到首页",
+    "Custom": "自定义", "Enabled": "已启用", "Files": "文件", "Server": "服务器", "Browser": "浏览器", "Tools": "工具", "Tool": "工具",
+    "Notifications alt+T": "通知 alt+T", "Reasoning": "思考", "Default": "默认", "default": "默认", "Model default": "模型默认",
+    "Off": "关", "off": "关", "Low": "低", "low": "低", "Medium": "中", "medium": "中", "High": "高", "high": "高",
+    "Max": "最大", "max": "最大", "Unlimited": "无限制",
+    "Maximum reasoning effort with extended context usage": "最充分地思考，使用更多上下文", "New chat": "新建对话",
+    "Go to start": "回到起始页", "Expand navigation": "展开导航", "Collapse navigation": "收起导航", "Open Sidebar": "打开侧边栏",
+    "Close Sidebar": "关闭侧边栏", "Recent conversations": "最近的对话", "Pinned": "已置顶", "Search results": "搜索结果",
+    "No conversations yet": "还没有对话", "Start typing to see results": "开始输入以查看结果", "Search conversations...": "搜索对话…",
+    "See parent conversation": "查看来源对话", "Pin": "置顶", "Unpin": "取消置顶", "Pin all": "全部置顶", "Unpin all": "全部取消置顶",
+    "More actions": "更多操作", "Select all": "全选", "Deselect all": "取消全选", "Export selected": "导出所选",
+    "Delete selected": "删除所选", "Exit bulk selection mode": "退出多选模式",
+    "Bulk actions for selected conversations": "对所选对话批量操作", "Unavailable for mixed state selection": "所选对话状态不一致时不可用",
+    "Rename conversation": "重命名对话", "Choose a new title for this conversation.": "为这个对话取一个新标题。",
+    "Delete Conversation": "删除对话",
+    "Are you sure you want to delete this conversation? This action cannot be undone and will permanently remove all messages in this conversation.": "确定删除这个对话？此操作无法撤销，对话中的所有消息将被永久删除。",
+    "Open conversations": "打开的对话", "Close tab": "关闭标签页", "Scroll left": "向左滚动", "Scroll right": "向右滚动",
+    "Conversation Name": "对话名称", "Messages": "消息", "No conversations available": "没有可用的对话", "Conversations": "对话",
+    "Hello there": "你好", "Type a message or upload files to get started": "输入消息或上传文件开始",
+    "Record audio, type a message or upload files to get started": "录音、输入消息或上传文件开始", "Type a message...": "输入消息…",
+    "Ask anything...": "随便问点什么…", "Send": "发送", "Stop": "停止", "Skip reasoning": "跳过思考", "Stop generation": "停止生成",
+    "Stop recording": "停止录音", "Start recording": "开始录音", "Current model does not support audio": "当前模型不支持音频",
+    "Audio recording not supported": "此浏览器不支持录音", "Attach a file": "附加文件",
+    "Drop your files here to upload": "将文件拖到这里上传", "Scroll to bottom": "滚动到底部", "Context usage": "上下文用量",
+    "Please select a model first": "请先选择模型",
+    "Selected model is not available, please select another": "所选模型不可用，请选择其他模型",
+    "Selected model is not available": "所选模型不可用", "Open command picker": "打开命令列表", "No matching command": "没有匹配的命令",
+    "Open prompt picker": "打开提示词列表", "Open picker": "打开列表", "Search prompts...": "搜索提示词…",
+    "No MCP prompts available": "没有可用的 MCP 提示词", "Use Prompt": "使用提示词",
+    "Unknown error executing prompt": "执行提示词时发生未知错误", "Open file mention picker": "打开文件引用列表 (@)",
+    "No matching files or folders": "没有匹配的文件或文件夹",
+    "File search is unavailable on this server (started without --tools)": "此服务器无法搜索文件（启动时没有 --tools）",
+    "File search is unavailable on this server - type a full path and press Enter": "此服务器无法搜索文件，请输入完整路径后按 Enter",
+    "Insert an MCP prompt": "插入 MCP 提示词", "Set working directory": "设置工作目录", "Set working directory to": "将工作目录设置为",
+    "Working directory cleared": "已清除工作目录", "Reset working directory": "重置工作目录", "Choose working directory": "选择工作目录",
+    "Open working directory picker": "打开工作目录选择器", "Searching in:": "搜索范围：", "No matching folders": "没有匹配的文件夹",
+    "Clear search": "清除搜索", "Select model": "选择模型", "Add files": "添加文件", "Add to chat": "添加到对话",
+    "MCP Servers": "MCP 服务器", "Add files, prompts, tools or MCP Servers": "添加文件、提示词、工具或 MCP 服务器",
+    "Add files, system prompt or configure MCP servers": "添加文件、系统消息或配置 MCP 服务器",
+    "Inject custom system message at the beginning of the conversation": "在对话开头插入自定义系统消息",
+    "Add custom system message for a new conversation": "为新对话添加自定义系统消息", "Images": "图片", "Audio Files": "音频文件",
+    "Video Files": "视频文件", "Text Files": "文本文件", "PDF Files": "PDF 文件", "PDFs": "PDF", "Audio": "音频", "Video": "视频",
+    "Vision": "视觉", "Image processing requires a vision model": "处理图片需要支持视觉的模型",
+    "Audio files processing requires an audio model": "处理音频文件需要支持音频的模型",
+    "Video files processing requires a video model": "处理视频文件需要支持视频的模型",
+    "PDFs will be converted to text. Image-based PDFs may not work properly.": "PDF 会被转换为文本。图片型 PDF 可能无法正常读取。",
+    "Images require a vision-capable model": "图片需要支持视觉的模型",
+    "Audio files require an audio-capable model": "音频文件需要支持音频的模型",
+    "Video files require a video-capable model": "视频文件需要支持视频的模型", "Loading tools...": "正在加载工具…",
+    "Failed to load tools": "加载工具失败", "No tools available": "没有可用的工具", "MCP Tools": "MCP 工具",
+    "Run llama-server with": "运行 llama-server 时加上", "flag to enable": "以启用", "Sent as Image": "以图片发送",
+    "Sent as Text": "以文本发送", "Unknown File": "未知文件", "Pages": "页",
+    "Preview not available for this file type": "此类型文件无法预览", "Audio preview not available": "无法预览音频",
+    "Video preview not available": "无法预览视频",
+    "The selected model does not support vision. Only the extracted": "所选模型不支持视觉。只会把提取出的", "text": "文本",
+    "will be sent to the model.": "发送给模型。", "Converting PDF to images...": "正在将 PDF 转换为图片…",
+    "Failed to load PDF images": "加载 PDF 图片失败", "No PDF pages available": "没有可用的 PDF 页面", "Regenerate": "重新生成",
+    "Fork conversation": "分叉对话", "Fork": "分叉", "Fork Conversation": "分叉对话",
+    "Create a new conversation branching from this message.": "从这条消息分出一个新的对话。", "Enter fork name": "输入分叉名称",
+    "Include all attachments": "包含所有附件", "Previous version": "上一个版本", "Next version": "下一个版本", "Copy code": "复制代码",
+    "Code incomplete": "代码不完整", "Preview code": "预览代码", "Copy to clipboard": "复制到剪贴板",
+    "Message copied to clipboard": "已复制消息", "Code copied to clipboard": "已复制代码", "Failed to copy code": "复制代码失败",
+    "Copied to clipboard": "已复制", "Failed to copy to clipboard": "复制失败", "Toggle content": "显示/隐藏内容",
+    "Toggle source": "切换源码", "Copy mermaid syntax": "复制 mermaid 代码", "Toggle mermaid source": "切换 mermaid 源码",
+    "Preview diagram": "预览图表", "Copy svg source": "复制 SVG 源码", "Toggle svg source": "切换 SVG 源码",
+    "Preview svg": "预览 SVG", "Zoom in": "放大", "Zoom out": "缩小", "Reset view": "重置视图", "Download SVG": "下载 SVG",
+    "Generating diagram...": "正在生成图表…", "Rendering svg...": "正在渲染 SVG…", "Diagram incomplete": "图表不完整",
+    "User message with actions": "你的消息", "Assistant message with actions": "模型的回答",
+    "System message with actions": "系统消息", "MCP Prompt message with actions": "MCP 提示词消息",
+    "Pending user message": "待发送的消息", "Send immediately": "立即发送", "Update without re-sending": "更新但不重新发送",
+    "Branch conversation after edit": "编辑后分叉对话", "Edit your message...": "编辑你的消息…",
+    "Edit system message...": "编辑系统消息…", "Keep editing": "继续编辑", "Discard": "放弃", "Discard changes?": "放弃更改？",
+    "You have unsaved changes. Are you sure you want to discard them?": "有未保存的更改。确定放弃？",
+    "Show full system message": "显示完整系统消息", "Collapse System Message": "收起系统消息", "Show raw output": "显示原始输出",
+    "Delete Message": "删除消息",
+    "Are you sure you want to delete this message? This action cannot be undone.": "确定删除这条消息？此操作无法撤销。",
+    "Reasoning...": "思考中…", "failed": "失败", "incomplete": "不完整", "Processing...": "处理中…", "Initializing...": "正在初始化…",
+    "Preparing response...": "正在准备回答…", "Reconnecting to the stream...": "正在重新连接流…", "Loading model": "正在加载模型",
+    "Server unavailable": "服务器不可用", "Speculative decoding enabled": "已启用推测解码",
+    "Agentic turn limit reached. Continue?": "已达到智能体轮次上限。继续吗？", "Allow use of": "允许使用", "from": "来自",
+    "Allow once": "允许一次", "More allow options": "更多允许选项", "Deny": "拒绝", "Always allow": "始终允许", "tool": "",
+    "Receiving arguments...": "正在接收参数…", "Response was truncated": "结果被截断", "Input": "输入", "Output": "输出",
+    "No output": "无输出", "Waiting for result...": "正在等待结果…", "(failed)": "（失败）", "No edits": "没有编辑",
+    "Running...": "运行中…", "timed out": "超时", "in": "位于", "Total matches:": "匹配总数：", "No matches": "没有匹配",
+    "Current time is": "当前时间是", "Search for": "搜索", "(with line numbers)": "（带行号）", "bytes": "字节",
+    "Waiting for file content...": "正在等待文件内容…", "Waiting for media data...": "正在等待媒体数据…",
+    "Media attachment not found in message extras": "消息中未找到媒体附件", "Current time": "当前时间", "Read media": "读取媒体",
+    "Run JavaScript": "运行 JavaScript", "Edit file": "编辑文件", "Run command": "运行命令", "Search files": "搜索文件",
+    "Runtime info": "运行时信息", "Search in files": "在文件中搜索", "Read file": "读取文件", "Write file": "写入文件",
+    "Reading": "读取提示词", "Processing": "处理提示词", "Generation": "生成", "Waiting for tokens...": "正在等待 token…",
+    "Tool calls": "工具调用", "Summary": "摘要", "Agentic summary": "智能体执行摘要", "Generated tokens": "生成的 token",
+    "Generation time": "生成时间", "Generation speed": "生成速度", "Prompt tokens": "提示词 token",
+    "Prompt processing time": "提示词处理时间", "Prompt processing speed": "提示词处理速度", "Tool calls executed": "已执行的工具调用",
+    "Tool execution time": "工具执行时间", "Tool execution rate": "工具执行速率", "Agentic turns (LLM calls)": "智能体轮次（LLM 调用）",
+    "Total tokens generated": "生成 token 总数", "Total time (LLM + tools)": "总时间（LLM + 工具）",
+    "Token usage details": "token 用量详情", "Across all turns": "所有轮次合计", "This turn · KV cache": "本轮 · KV cache",
+    "KV cache total": "KV cache 总计", "Prompt tokens evaluated": "已处理的提示词 token", "Tokens generated": "生成的 token",
+    "Prompt": "提示词", "Generated": "生成", "Avg speed": "平均速度", "used": "已用",
+    "Available context size is only visible once the model is loaded.": "可用上下文大小要等模型加载后才会显示。",
+    "Loading model...": "正在加载模型…", "Load model": "加载模型", "No context info available": "没有上下文信息", "Context": "上下文",
+    "Context size:": "上下文大小：", "Prompt tokens:": "提示词 token：", "Loaded models": "已加载的模型", "Available models": "其他模型",
+    "Favorite models": "收藏的模型", "Loading models...": "正在加载模型…", "Search models...": "搜索模型…",
+    "No models available.": "没有可用的模型。", "No models found.": "未找到模型。", "No model": "没有模型", "(not available)": "（不可用）",
+    "Add to favorites": "添加到收藏", "Remove from favorites": "从收藏中移除", "Model information": "模型信息",
+    "Model Information": "模型信息", "Unload model": "卸载模型", "Retry loading model": "重试加载模型", "Select Model": "选择模型",
+    "Choose a model to use for the conversation": "选择这个对话要使用的模型", "Copy model name": "复制模型名称",
+    "Click for model details": "点击查看模型详情", "Current model details and capabilities": "当前模型的详情与能力",
+    "Loading model information...": "正在加载模型信息…", "No model information available": "没有模型信息",
+    "Copy model name to clipboard": "复制模型名称", "Copy model path to clipboard": "复制模型路径", "Model": "模型",
+    "File Path": "文件路径", "Build Info": "构建信息", "Chat Template": "对话模板", "Modalities": "支持的模态",
+    "Context Size": "上下文大小", "Training Context": "训练上下文", "Model Size": "模型大小", "Parameters": "参数量",
+    "Embedding Size": "嵌入维度", "Vocabulary Size": "词表大小", "Vocabulary Type": "词表类型", "Parallel Slots": "并行槽位",
+    "Model Not Available": "模型不可用", "Select an available model:": "选择一个可用的模型：", "Requested:": "请求的模型：",
+    "The requested model could not be found. Select an available model to continue.": "找不到请求的模型。请选择一个可用的模型继续。",
+    "Loading projector": "正在加载 projector", "Loading draft": "正在加载草稿模型", "Loading weights": "正在加载权重",
+    "Unknown Model": "未知模型", "General": "常规", "Display": "显示", "Agentic": "智能体", "Import/Export": "导入/导出",
+    "Sampling & Penalties": "采样与惩罚", "Developer": "开发者", "Reload app": "重新加载应用",
+    "Settings are saved in browser's localStorage": "设置保存在浏览器的 localStorage 中", "Reset to default": "恢复默认",
+    "Reset to Default": "恢复默认", "Save settings": "保存设置", "Reset Settings to Default": "将设置恢复为默认",
+    "Are you sure you want to reset all settings to their default values? This will reset all parameters to the values provided by the server's /props endpoint and remove all your custom configurations.": "确定将所有设置恢复为默认值？所有参数会恢复为服务器 /props 提供的值，你的自定义配置将全部删除。",
+    "Invalid JSON in custom parameters. Please check the format and try again.": "自定义参数中的 JSON 无效。请检查格式后重试。",
+    "Theme": "主题", "System": "系统", "Light": "浅色", "Dark": "深色",
+    "Choose the color theme for the interface. You can choose between System (follows your device settings), Light, or Dark.": "选择界面的配色主题：系统（跟随设备设置）、浅色或深色。",
+    "Set the API Key if you are using": "如果服务器启动时使用了以下选项，请设置 API 密钥：", "option for the server.": "",
+    "System Message": "系统消息", "System message": "系统消息",
+    "The starting message that defines how model should behave.": "决定模型行为方式的起始消息。", "Show system message": "显示系统消息",
+    "Show system message in conversations": "在对话中显示系统消息",
+    "Display the system message at the top of each conversation.": "在每个对话顶部显示系统消息。",
+    "Paste long text to file length": "粘贴长文本转为文件的长度",
+    "On pasting long text, it will be converted to a file. You can control the file length by setting the value of this parameter. Value 0 means disable.": "粘贴超过此长度（字符数）的文本时会转换为附件。设为 0 则关闭。",
+    "Send message on Enter": "按 Enter 发送消息",
+    "Use Enter to send messages and Shift + Enter for new lines. When disabled, use Ctrl/Cmd + Enter.": "按 Enter 发送，Shift + Enter 换行。关闭后用 Ctrl/Cmd + Enter 发送。",
+    "Show microphone on empty input": "输入框为空时显示麦克风",
+    "Automatically show microphone button instead of send button when textarea is empty for models with audio modality support.": "对于支持音频的模型，输入框为空时自动显示麦克风按钮代替发送按钮。",
+    "Enable \"Continue\" button": "启用“继续”按钮",
+    "Enable \"Continue\" button for assistant messages, including reasoning models.": "在模型回答下显示“继续”按钮，包括推理模型。",
+    "Conversation title": "对话标题", "Use first non-empty line for the conversation title": "用第一个非空行作为对话标题",
+    "Generate title with LLM": "用 LLM 生成标题",
+    "Choose how conversation titles are generated. The first non-empty line uses a fast deterministic rule; the LLM option uses a model-generated title from the first message exchange.": "选择对话标题的生成方式：第一个非空行快速且确定；LLM 选项由模型根据第一轮对话生成标题。",
+    "LLM title generation prompt": "LLM 标题生成提示词",
+    "Optional template for the title generation prompt. Use {{USER}} for the user message and {{ASSISTANT}} for the assistant message.": "标题生成提示词的模板（可选）。{{USER}} 代表用户消息，{{ASSISTANT}} 代表模型回答。",
+    "Copy text attachments as plain text": "将文本附件复制为纯文本",
+    "When copying a message with text attachments, combine them into a single plain text string instead of a special format that can be pasted back as attachments.": "复制带文本附件的消息时，合并为一段纯文本，而不是可以粘贴回附件的特殊格式。",
+    "Parse PDF as image": "将 PDF 作为图片解析",
+    "Parse PDF as image instead of text. Automatically falls back to text processing for non-vision models.": "将 PDF 作为图片而非文本解析。对不支持视觉的模型会自动回退为文本处理。",
+    "Maximum image resolution (megapixels)": "图片最大分辨率（百万像素）",
+    "Images larger than this will be resized before sending to server. Set to 0 to disable.": "大于此值的图片在发送到服务器前会被缩小。设为 0 则关闭。",
+    "Show message generation statistics": "显示消息生成统计",
+    "Display generation statistics (tokens/second, token count, duration) below each assistant message.": "在每条模型回答下方显示生成统计（token/秒、token 数、耗时）。",
+    "Show statistics for individual agentic turns": "显示每个智能体轮次的统计",
+    "Display per-turn statistics (tokens, duration) under each turn in agentic responses. Shown only when \"Show message generation statistics\" is enabled.": "在智能体回答的每一轮下方显示统计（token、耗时）。仅在开启“显示消息生成统计”时显示。",
+    "Show thought in progress": "显示思考过程",
+    "Expand thought process by default when generating messages.": "生成消息时默认展开思考过程。",
+    "Always show tool call content": "始终显示工具调用内容",
+    "Automatically expand tool call details while executing and keep them expanded after completion.": "执行时自动展开工具调用详情，完成后保持展开。",
+    "Render user content as Markdown": "将用户内容渲染为 Markdown",
+    "Render user messages using markdown formatting in the chat. Turn this off to keep a message exactly as typed; @-mention badges show either way.": "在对话中用 Markdown 格式渲染用户消息。关闭后消息会按原样显示；@-mention 标记始终显示。",
+    "Render thinking as Markdown": "将思考渲染为 Markdown",
+    "Render the reasoning/thinking block content as formatted Markdown instead of plain text.": "将推理/思考块的内容渲染为 Markdown 而非纯文本。",
+    "Use full height code blocks": "使用全高代码块",
+    "Always display code blocks at their full natural height, overriding any height limits.": "始终以完整高度显示代码块，不受高度限制。",
+    "Disable automatic scroll": "关闭自动滚动",
+    "Disable automatic scrolling while messages stream so you can control the viewport position manually.": "消息流式输出时不自动滚动，由你手动控制视图位置。",
+    "Always show sidebar on desktop": "在桌面端始终显示侧边栏",
+    "Always keep the sidebar visible on desktop instead of auto-hiding it.": "在桌面端始终显示侧边栏，而不是自动隐藏。",
+    "Conversation tabs": "对话标签页",
+    "Show open chats as browser-style tabs above the conversation, one per open chat. When disabled, only one chat is shown at a time.": "把打开的对话显示为对话上方的浏览器式标签页，每个对话一个。关闭后一次只显示一个对话。",
+    "Show raw model names": "显示原始模型名称",
+    "Display full raw model identifiers (e.g. \"ggml-org/GLM-4.7-Flash-GGUF:Q8_0\") instead of parsed names with badges.": "显示完整的原始模型标识（如 \"ggml-org/GLM-4.7-Flash-GGUF:Q8_0\"），而不是带标记的解析后名称。",
+    "Show model quantization information": "显示模型量化信息",
+    "Display quantization badges (e.g. Q8_0, Q4_K_M) next to model names throughout the interface.": "在整个界面的模型名称旁显示量化标记（如 Q8_0、Q4_K_M）。",
+    "Show model tags": "显示模型标签",
+    "Display model tags (e.g. \"vision\", \"reasoning\") next to model names throughout the interface.": "在整个界面的模型名称旁显示标签（如 \"vision\"、\"reasoning\"）。",
+    "Show organization name in model selector trigger": "在模型选择按钮中显示组织名称",
+    "Display the organization name in the model selector trigger button.": "在模型选择按钮上显示组织名称（如 ggml-org）。",
+    "Show build version information": "显示构建版本信息",
+    "Display the current build version in the bottom-right corner of the interface.": "在界面右下角显示当前构建版本。",
+    "Show full path in mentions": "在引用中显示完整路径",
+    "Display the full file system path inside file and folder @-mention badges instead of just the file or folder name.": "在文件和文件夹的 @-mention 标记中显示完整路径，而不只是名称。",
+    "Applies to new conversations. Tool picks inside a chat only affect that chat.": "对新对话生效。对话内的工具选择只影响该对话。",
+    "MCP servers": "MCP 服务器",
+    "Configure MCP servers as a JSON list. Use the form in the MCP Client settings section to edit.": "以 JSON 列表配置 MCP 服务器。可在 MCP 客户端设置部分的表单中编辑。",
+    "Browser Tools": "浏览器工具", "Custom Tools": "自定义工具", "Server Tools": "服务器工具", "Agentic turns": "智能体最大轮次",
+    "Maximum number of tool execution cycles before stopping (prevents infinite loops).": "停止前工具执行周期的最大次数（防止无限循环）。",
+    "MCP request timeout (seconds)": "MCP 请求超时（秒）", "Timeout for individual MCP tool calls.": "单次 MCP 工具调用的超时时间。",
+    "Mention search depth": "引用搜索深度",
+    "How many directory levels below the working directory the @-mention file search descends. Larger values surface deeply nested files but take longer on large trees.": "@-mention 文件搜索从工作目录向下搜索的层数。值越大越能找到深层文件，但大目录树会更慢。",
+    "Export": "导出", "Import": "导入", "Exported": "已导出", "Imported": "已导入", "Export conversations": "导出对话",
+    "Import conversations": "导入对话",
+    "Download your conversations as a ZIP of JSONL files. This includes all messages, attachments, and conversation history.": "将对话下载为 JSONL 文件的 ZIP 包，包含所有消息、附件和对话历史。",
+    "Import one or more conversations from a previously exported ZIP or JSONL file. This will merge with your existing conversations.": "从之前导出的 ZIP 或 JSONL 文件导入一个或多个对话，会与现有对话合并。",
+    "Delete All": "全部删除", "Delete all conversations": "删除所有对话",
+    "Permanently delete all conversations and their messages. This action cannot be undone. Consider exporting your conversations first if you want to keep a backup.": "永久删除所有对话及其消息。此操作无法撤销。如需备份，请先导出对话。",
+    "Are you sure you want to delete all conversations? This action cannot be undone and will permanently remove all your conversations and messages.": "确定删除所有对话？此操作无法撤销，所有对话和消息将被永久删除。",
+    "Export settings": "导出设置", "Export Settings": "导出设置", "Import settings": "导入设置",
+    "Export your chat settings and preferences as a JSON file.": "将对话设置和偏好导出为 JSON 文件。",
+    "Import chat settings from a previously exported JSON file. This will merge with your existing settings.": "从之前导出的 JSON 文件导入对话设置，会与现有设置合并。",
+    "Warning: This export will include sensitive data such as API keys and MCP server custom headers (e.g., authorization tokens). Do not share this file with anyone you don't trust.": "警告：此导出会包含敏感数据，例如 API 密钥和 MCP 服务器的自定义请求头（如授权令牌）。不要把这个文件分享给你不信任的人。",
+    "Sensitive data (API keys, MCP server custom headers) will not be included in the export to protect your credentials.": "为保护你的凭据，导出不会包含敏感数据（API 密钥、MCP 服务器自定义请求头）。",
+    "Include sensitive data (not recommended)": "包含敏感数据（不推荐）", "Include sensitive data": "包含敏感数据",
+    "Export Anyway": "仍然导出", "Export Without Sensitive Data": "导出但不含敏感数据",
+    "Choose which conversations you want to export. Selected conversations will be downloaded as a JSON file.": "选择要导出的对话。所选对话会下载为 JSON 文件。",
+    "Choose which conversations you want to import. Selected conversations will be merged with your existing conversations.": "选择要导入的对话。所选对话会与现有对话合并。",
+    "Controls the randomness of the generated text by affecting the probability distribution of the output tokens. Higher = more random, lower = more focused.": "通过调整输出 token 的概率分布控制生成文本的随机性。越高越随机，越低越集中。",
+    "Dynamic temperature range": "动态 Temperature 范围",
+    "Addon for the temperature sampler. The added value to the range of dynamic temperature, which adjusts probabilities by entropy of tokens.": "Temperature 采样器的附加设置。加到动态 Temperature 范围上的值，动态 Temperature 会按 token 的熵调整概率。",
+    "Dynamic temperature exponent": "动态 Temperature 指数",
+    "Addon for the temperature sampler. Smoothes out the probability redistribution based on the most probable token.": "Temperature 采样器的附加设置。以最可能的 token 为基准，让概率重新分布更平滑。",
+    "Keeps only k top tokens.": "只保留概率最高的 k 个 token。",
+    "Limits tokens to those that together have a cumulative probability of at least p": "只保留累计概率至少达到 p 的 token",
+    "Limits tokens based on the minimum probability for a token to be considered, relative to the probability of the most likely token.": "按相对于最可能 token 的最低概率阈值过滤 token。",
+    "XTC probability": "XTC 概率", "XTC threshold": "XTC 阈值",
+    "XTC sampler cuts out top tokens; this parameter controls the chance of cutting tokens at all. 0 disables XTC.": "XTC 采样器会剔除排名靠前的 token；此参数控制是否执行剔除的概率。0 表示关闭 XTC。",
+    "XTC sampler cuts out top tokens; this parameter controls the token probability that is required to cut that token.": "XTC 采样器会剔除排名靠前的 token；此参数是 token 被剔除所需的概率阈值。",
+    "Sorts and limits tokens based on the difference between log-probability and entropy.": "根据对数概率与熵的差值对 token 排序并筛选。",
+    "The maximum number of token per output. Use -1 for infinite (no limit).": "每次输出的最大 token 数。-1 表示不限制。",
+    "Samplers": "采样器顺序",
+    "The order at which samplers are applied, in simplified way. Default is \"top_k;typ_p;top_p;min_p;temperature\": top_k->typ_p->top_p->min_p->temperature": "采样器的应用顺序（简写）。默认是 \"top_k;typ_p;top_p;min_p;temperature\"：top_k->typ_p->top_p->min_p->temperature",
+    "Backend sampling": "后端采样",
+    "Enable backend-based samplers. When enabled, supported samplers run on the accelerator backend for faster sampling.": "让支持的采样器在加速器（如 GPU）后端运行，以加快采样。",
+    "Repeat last N": "重复检查范围（最近 N 个 token）",
+    "Last n tokens to consider for penalizing repetition": "用于重复惩罚判定的最近 token 数", "Repeat penalty": "重复惩罚",
+    "Controls the repetition of token sequences in the generated text": "抑制生成文本中 token 序列的重复",
+    "Presence penalty": "存在惩罚",
+    "Limits tokens based on whether they appear in the output or not.": "对已经在输出中出现过的 token 施加惩罚。",
+    "Frequency penalty": "频率惩罚",
+    "Limits tokens based on how often they appear in the output.": "按 token 在输出中出现的次数施加惩罚。",
+    "DRY multiplier": "DRY 乘数", "DRY base": "DRY 基数", "DRY allowed length": "DRY 允许长度",
+    "DRY penalty last N": "DRY 惩罚范围（最近 N 个 token）",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets the DRY sampling multiplier.": "DRY 采样即使在长上下文中也能减少生成文本的重复。此参数是 DRY 的乘数。",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets the DRY sampling base value.": "DRY 采样即使在长上下文中也能减少生成文本的重复。此参数是 DRY 的基数。",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets the allowed length for DRY sampling.": "DRY 采样即使在长上下文中也能减少生成文本的重复。此参数是允许重复的长度。",
+    "DRY sampling reduces repetition in generated text even across long contexts. This parameter sets DRY penalty for the last n tokens.": "DRY 采样即使在长上下文中也能减少生成文本的重复。此参数是 DRY 施加惩罚的最近 token 数。",
+    "Pre-fill KV cache after response": "回答后预填充 KV cache",
+    "After each response, re-submit the conversation to pre-fill the server KV cache. Makes the next turn faster since the prompt is already encoded while you read the response.": "每次回答后重新提交对话以预填充服务器的 KV cache。你阅读回答时提示词已经处理好，下一轮会更快。",
+    "Disable reasoning content parsing": "关闭思考内容解析",
+    "Send reasoning_format=none so the server returns thinking tokens inline instead of extracting them into a separate field.": "发送 reasoning_format=none，让服务器把思考 token 混在回答中返回，而不是提取到单独字段。",
+    "Exclude reasoning from context": "不把思考放回上下文",
+    "Strip thinking from previous messages before sending. When off, thinking is sent back via the reasoning_content field so the model sees its own chain-of-thought across turns.": "发送前去掉之前消息中的思考。关闭时，思考通过 reasoning_content 字段发回，模型能跨轮看到自己的思维链。",
+    "Enable raw output toggle": "启用原始输出开关",
+    "Show toggle button to display messages as plain text instead of Markdown-formatted content": "显示一个开关，可以把消息以纯文本而非 Markdown 格式显示",
+    "JavaScript sandbox tool": "JavaScript 沙箱工具",
+    "Expose a run_javascript tool to the model. Code runs in a Web Worker inside a sandboxed iframe with an opaque origin, isolated from the WebUI and its API, with a hard timeout.": "向模型提供 run_javascript 工具。代码在带不透明来源的沙箱 iframe 中的 Web Worker 里运行，与 WebUI 及其 API 隔离，并有严格超时。",
+    "Symbolic math (nerdamer)": "符号数学 (nerdamer)",
+    "Pre-load nerdamer in the sandbox for symbolic computation: simplify, diff, integrate, solve, and more. Requires \"JavaScript sandbox tool\" to be enabled.": "在沙箱中预加载 nerdamer 用于符号计算：化简、求导、积分、解方程等。需要先启用“JavaScript 沙箱工具”。",
+    "Custom JSON": "自定义 JSON",
+    "Custom JSON parameters to send to the API. Must be valid JSON format.": "随 API 请求发送的自定义 JSON 参数。必须是有效的 JSON。",
+    "Custom CSS": "自定义 CSS",
+    "CSS injected into the page at runtime. Set it here, or ship it server side via the --ui-config customCss field.": "运行时注入页面的 CSS。可在这里设置，或通过服务器端 --ui-config 的 customCss 字段下发。",
+    "Add your first MCP server": "添加你的第一个 MCP 服务器", "Connect a remote MCP server by URL.": "通过 URL 连接远程 MCP 服务器。",
+    "Add another MCP server": "再添加一个 MCP 服务器", "Add New Server": "添加新服务器", "Add New MCP Server": "添加新的 MCP 服务器",
+    "Recommended Servers": "推荐的服务器", "Server instructions": "服务器说明", "Configure Server": "配置服务器",
+    "Delete Server": "删除服务器", "Server URL": "服务器 URL", "Display name": "显示名称",
+    "Name reported by the server": "服务器报告的名称", "URL is required": "必须填写 URL",
+    "Please enter a server URL first.": "请先输入服务器 URL。", "Use llama-server proxy": "使用 llama-server 代理", "(Run": "(",
+    "with": "运行时加上", "flag)": ")", "Authorization": "身份验证", "Logging": "日志", "Completions": "补全",
+    "Retrying...": "正在重试…", "List files": "列出文件", "Console": "控制台", "Text": "文本", "Paste token here": "在此粘贴令牌",
+    "Custom Headers": "自定义请求头", "Header name": "请求头名称", "No custom headers configured.": "尚未配置自定义请求头。",
+    "No items configured.": "尚未配置任何项目。", "Remove item": "删除项目", "Open website": "打开网站", "Resources": "资源",
+    "Prompts": "提示词", "Tasks": "任务", "Templates": "模板", "MCP Resources": "MCP 资源", "Available resources": "可用资源",
+    "Loading resources...": "正在加载资源…", "No resources available": "没有可用的资源", "No resources": "没有资源",
+    "Search resources...": "搜索资源…", "Refresh resources": "刷新资源", "Select a resource to preview": "选择要预览的资源",
+    "No content available": "没有内容", "Failed to load resource content": "加载资源内容失败", "Copy content": "复制内容",
+    "Download content": "下载内容", "Resolved URI:": "解析后的 URI：", "Read Resource": "读取资源", "Attach Resource": "附加资源",
+    "Resource already attached": "该资源已附加", "Resource content": "资源内容",
+    "Browse and attach resources from connected MCP servers to your chat context.": "浏览已连接 MCP 服务器的资源，并附加到对话上下文中。",
+    "Binary content": "二进制内容", "Connecting...": "正在连接…", "Connected": "已连接", "Connection Error": "连接错误",
+    "All MCP server connections failed": "所有 MCP 服务器连接均失败", "Failed to read resource": "读取资源失败",
+    "Search the web and fetch full page content as clean markdown.": "搜索网络并把整页内容抓取为整洁的 Markdown。",
+    "Search and browse AI models, datasets, spaces, and docs on the Hugging Face Hub.": "搜索并浏览 Hugging Face Hub 上的 AI 模型、数据集、Spaces 和文档。",
+    "Search repositories, issues, pull requests and interact with code on GitHub.": "在 GitHub 上搜索仓库、issue、pull request 并操作代码。",
+    "Browse up-to-date documentation and code examples for libraries and frameworks.": "浏览库和框架的最新文档与代码示例。",
+    "Empty Files Detected": "检测到空文件", "Empty Files:": "空文件：", "What happened:": "发生了什么：",
+    "Empty files cannot be processed or sent to the AI model": "空文件无法处理，也无法发送给 AI 模型",
+    "These files have been automatically removed from your attachments": "这些文件已自动从附件中移除",
+    "You can try uploading files with content instead": "请改为上传有内容的文件",
+    "The following files are empty and have been removed from your attachments:": "以下文件为空，已从附件中移除：",
+    "File type not supported": "不支持的文件类型", "Unsupported File Types": "不支持的文件类型", "This model supports:": "此模型支持：",
+    "File Upload Error": "文件上传错误", "Some files cannot be uploaded with the current model.": "部分文件无法用当前模型上传。",
+    "Not supported by current model": "当前模型不支持", "TCP Timeout": "TCP 超时", "Server Error": "服务器错误",
+    "The request did not receive a response from the server before timing out.": "请求在超时前未收到服务器响应。",
+    "The server responded with an error message. Review the details below.": "服务器返回了错误信息。请查看下面的详情。",
+    "Server Connection Error": "服务器连接错误", "Connecting to Server": "正在连接服务器",
+    "Initializing connection to server...": "正在初始化与服务器的连接…", "Troubleshooting": "故障排除",
+    "Start the llama-server:": "启动 llama-server：", "or": "或",
+    "Check that the server is accessible at the correct URL": "检查服务器在正确的 URL 上是否可访问",
+    "Verify your network connection": "检查你的网络连接", "Check server logs for any error messages": "检查服务器日志中的错误信息",
+    "Enter API Key": "输入 API 密钥", "Enter your API key...": "输入你的 API 密钥…", "Validating...": "正在验证…",
+    "Save & Retry": "保存并重试", "Retry Connection": "重试连接",
+    "✓ API key validated successfully! Connecting...": "✓ API 密钥验证成功！正在连接…",
+    "Invalid API key - please check and try again": "API 密钥无效，请检查后重试",
+    "Cannot connect to server - check if server is running": "无法连接服务器，请检查服务器是否在运行",
+    "Connection error - please try again": "连接错误，请重试", "Access denied - check server permissions": "访问被拒绝，请检查服务器权限",
+    "A new version is available. Reload to update.": "有新版本可用。重新加载以更新。", "Update available": "有可用更新",
+    "Access denied": "访问被拒绝", "Request failed": "请求失败", "Server error - check server logs": "服务器错误，请检查服务器日志",
+    "Server temporarily unavailable": "服务器暂时不可用", "Failed to connect to server": "连接服务器失败",
+    "Server not found - check server address": "未找到服务器，请检查服务器地址",
+    "Connection refused - server may be offline": "连接被拒绝，服务器可能已离线", "Request timed out": "请求超时",
+    "Server is not running or unreachable": "服务器未运行或无法访问",
+    "Unable to connect to server - please check if the server is running": "无法连接服务器，请检查服务器是否在运行",
+    "Request timed out - the server took too long to respond": "请求超时，服务器响应时间过长",
+    "Unknown error occurred while sending message": "发送消息时发生未知错误",
+    "No response received from server. Please try again.": "未收到服务器响应。请重试。", "Unknown server error": "未知的服务器错误",
+    "Unknown error": "未知错误", "Unknown error occurred": "发生未知错误",
+    "Stream connection lost and could not be resumed": "流连接已断开且无法恢复", "No active conversation": "没有活动的对话",
+    "Failed to read file": "读取文件失败", "File reading error": "文件读取错误",
+    "Failed to access microphone. Please check permissions.": "无法访问麦克风。请检查权限。", "Recording failed": "录音失败",
+    "Conversation deleted": "已删除对话", "Failed to delete conversations": "删除对话失败",
+    "No conversations to export": "没有可导出的对话", "Conversation exported": "已导出对话",
+    "Failed to export conversations": "导出对话失败", "Conversation pin toggled": "已切换置顶状态",
+    "Failed to update pin state": "更新置顶状态失败", "All conversations deleted": "已删除所有对话", "Conversation forked": "已分叉对话",
+    "Failed to fork conversation": "分叉对话失败", "Failed to load model": "加载模型失败", "Failed to unload model": "卸载模型失败",
+    "Failed to load models": "加载模型列表失败", "Failed to load favorite models from local storage": "无法从浏览器加载收藏的模型",
+    "Failed to save favorite models to local storage": "无法把收藏的模型保存到浏览器", "Settings exported": "已导出设置",
+    "Failed to export settings": "导出设置失败", "Settings imported successfully": "已成功导入设置",
+    "Failed to import settings": "导入设置失败", "Invalid settings file: missing config": "设置文件无效：缺少 config",
+    "Invalid settings data: missing config": "设置数据无效：缺少 config", "Failed to open file picker": "无法打开文件选择器",
+    "Failed to load conversations": "加载对话失败", "No conversations found in file": "文件中未找到对话",
+    "Failed to import conversations": "导入对话失败",
+    "Failed to import conversations. Please check the file format.": "导入对话失败。请检查文件格式。",
+    "No conversations to delete": "没有可删除的对话", "Error processing file": "处理文件出错",
+    "Enable PDF as Images": "将 PDF 作为图片读取",
+    "You can enable parsing PDF as images with vision models.": "使用支持视觉的模型时，可以开启把 PDF 作为图片解析。",
+    "PDF parsing as images enabled!": "已开启将 PDF 作为图片解析！",
+    "PDF setting changed: Non-vision model detected, PDFs will be processed as text instead of images.": "PDF 设置已更改：检测到不支持视觉的模型，PDF 将按文本而非图片处理。",
+    "Fast (4B)": "快速 (4B)",
+    "Fast mode: answer with Qwen3-4B, much faster but less thorough. Click again to go back to the project model (if it isn't loaded yet, it loads first: large and slow).": "快速模式：用 Qwen3-4B 回答，快得多但不够深入。再点一次回到项目模型（若尚未加载会先加载：模型大、耗时长）。",
+    "Click again to load the project model and switch back.": "再点一次加载项目模型并切换回去。",
+    "{model} isn't loaded yet. Click again to load it and switch back (large model, slow to load).": "{model} 尚未加载。再点一次加载并切换回去（模型大，加载慢）。",
+    "Couldn't switch the model. Choose it from the model menu instead.": "无法切换模型。请从模型菜单中选择。",
+    "Open the chat to read the reply.": "打开对话查看回复。", "Open in panel": "在面板中打开", "Read aloud": "朗读",
+    "Pause reading": "暂停朗读", "Resume reading": "继续朗读", "Stop reading": "停止朗读", "Ask about this": "就此提问",
+    "HTML page": "HTML 页面", "SVG image": "SVG 图片", "Mermaid diagram": "Mermaid 图表",
+    "Markdown document": "Markdown 文档", "CSV table": "CSV 表格", "Chart image": "图表图片", "Reply finished": "回复已完成",
+    "Tool permission needed": "需要你允许使用工具", "Agentic turn limit reached": "已达到智能体轮次上限",
+    "Press Continue to keep going, or Stop.": "按“继续”接着做，或按“停止”。",
+    "Review this — it is exactly what will run": "允许前请检查 — 这就是将要运行的内容", "Loading what will run...": "正在加载将要运行的内容…",
+    "Confirm code": "确认码",
+    "Hidden or look-alike characters are shown as «U+XXXX». Don't allow unless you expected them.": "不可见或易混淆的字符显示为 «U+XXXX»。除非你预期有它们，否则不要允许。",
+    "This request has no review text, so you can't see what will run. Choose Deny.": "此请求没有审查文本，看不到将运行什么。请选择拒绝。",
+    "Arguments sent by the model:": "模型发送的参数：",
+    "This request's arguments aren't valid JSON. Choose Deny.": "此请求的参数不是有效的 JSON。请选择拒绝。",
+    "Couldn't read what this request will run. Expand the local_confirm call above to check it, or choose Deny.": "无法读取此请求将运行的内容。展开上面的 local_confirm 调用来检查，或选择拒绝。",
+    "This review is far longer than the server ever issues. Choose Deny.": "这段审查文本远超服务器会签发的长度。请选择拒绝。",
+    "The model padded this text with extra blank lines or spaces (left out here). The server refuses text padded like this, so allowing it won't run anything. Choose Deny.": "模型在这段文本里加了多余的空行或空格（此处已省略）。服务器会拒绝这样的文本，允许也不会运行任何东西。请选择拒绝。",
+    "local_confirm always asks, so you can see exactly what will run before you allow it.": "local_confirm 每次都会询问，这样你在允许前能准确看到将运行什么。",
+    "Ran — expand to see the result": "已运行 — 展开查看结果", "Not run — the review text didn't match": "未运行 — 审查文本不匹配",
+    "Not run — the confirm code expired or was already used": "未运行 — 确认码已过期或已被使用",
+    "Not run — you chose Deny": "未运行 — 你选择了拒绝", "Not run — interrupted": "未运行 — 被中断",
+    "Not run — refused": "未运行 — 被拒绝", "Failed — expand to see the error": "失败 — 展开查看错误",
+    "Review this before you allow it — this is exactly what will run (from the server)": "允许前请检查 — 这就是将要运行的内容（来自服务器）",
+    "Could not load details — do not allow": "无法加载详情 — 不要允许",
+    "The review the model sent differs from the server's version below. The server will refuse it, so allowing runs nothing.": "模型发送的审查文本与下方服务器版本不同。服务器会拒绝，允许也不会运行任何东西。",
+    "Couldn't find this request in the chat.": "在对话中找不到此请求。",
+    "This request has no valid confirm code.": "此请求没有有效的确认码。",
+    "The server has no pending request for this confirm code — it expired, was already used, or never existed.": "服务器没有与此确认码对应的待处理请求 — 它已过期、已被使用，或从未存在。",
+    "This confirm code belongs to another project.": "此确认码属于另一个项目。", "This confirm code has expired.": "此确认码已过期。",
+    "The local tool server refused this page's request.": "本地工具服务器拒绝了此页面的请求。",
+    "The local tool server didn't answer.": "本地工具服务器没有响应。", "The local tool server is busy.": "本地工具服务器正忙。",
+    "The local tool server can't show request details yet (it needs an update).": "本地工具服务器还无法显示请求详情（需要更新）。",
+    "The server's answer couldn't be read.": "无法读取服务器的回答。",
+    "This page has no local tool server set up.": "此页面未设置本地工具服务器。", "Trying again...": "正在重试…",
+  };
+  // พจนานุกรมตามรหัสภาษาของ shell — อังกฤษไม่มี (= ไม่แปล) ภาษาที่ไม่รู้จักก็ไม่แปล
+  var WORDS = { th: TH, ja: JA, zh: ZH };
+  function hasDict(l) { return hasOwn(WORDS, l); }
+
   // รูปแบบที่มีตัวเลข/ชื่อปน: [regex ทั้งข้อความ, ฟังก์ชันคืนภาษาไทย] — ส่วนที่จับได้ (ชื่อ, ตัวเลข) คงตามเดิม
   // ป้ายสถิติมาก่อน เพราะเปลี่ยนทุกโทเค็นระหว่างสตรีม (เจอเร็ว = เช็กน้อยข้อ)
-  var STAT_UNIT_TH = { "tokens": "โทเค็น", "tokens/s": "โทเค็น/วิ", "t/s": "โทเค็น/วิ", "tok": "โทเค็น",
-    "calls": "ครั้ง", "calls/s": "ครั้ง/วิ", "turns": "รอบ" };
-  var DUR_TH = { h: "ชม.", min: "นาที", s: "วิ" };
+  var STAT_UNIT = {
+    th: { "tokens": "โทเค็น", "tokens/s": "โทเค็น/วิ", "t/s": "โทเค็น/วิ", "tok": "โทเค็น", "calls": "ครั้ง", "calls/s": "ครั้ง/วิ", "turns": "รอบ" },
+    ja: { "tokens": "トークン", "tokens/s": "トークン/秒", "t/s": "トークン/秒", "tok": "トークン", "calls": "回", "calls/s": "回/秒", "turns": "ターン" },
+    zh: { "tokens": "token", "tokens/s": "token/秒", "t/s": "token/秒", "tok": "token", "calls": "次", "calls/s": "次/秒", "turns": "轮" }
+  };
+  var DUR = { th: { h: "ชม.", min: "นาที", s: "วิ" }, ja: { h: "時間", min: "分", s: "秒" }, zh: { h: "小时", min: "分", s: "秒" } };
   // U+2060 (word joiner) ใน "ไม่ได้": ตัวตัดคำไทยของเบราว์เซอร์ตัดระหว่าง "ไม่|ได้" ได้ บนมือถือเลยเหลือ "ได้" ค้างบรรทัดเดียว
-  var NO_UNDO_TH = "กู้คืนไม่⁠ได้";
-  function thVerb(v) { return v === "Export" || v === "Exported" ? "ส่งออก" : "นำเข้า"; }
-  var TH_RE = [
-    [/^([\d.,]+) ?(tokens\/s|tokens|t\/s|tok|calls\/s|calls|turns)$/, function (_, n, u) { return n + " " + STAT_UNIT_TH[u]; }],
+  var NO_UNDO = { th: "กู้คืนไม่⁠ได้", ja: "元に戻せません", zh: "无法撤销" };
+  var VERB = { th: { Export: "ส่งออก", Import: "นำเข้า" }, ja: { Export: "エクスポート", Import: "インポート" },
+    zh: { Export: "导出", Import: "导入" } };
+  function verbOf(v, l) { return VERB[l][v === "Export" || v === "Exported" ? "Export" : "Import"]; }
+  function durOf(t, l) { return t.replace(/([\d.]+)(h|min|s)/g, function (_, n, u) { return n + " " + DUR[l][u]; }); }
+  /* กติกาแบบรูปแบบทั้งข้อความ: [regex, {th, ja, zh}] — ฟังก์ชันรับผลของ exec แบบเดียวกัน (ตัวที่จับได้คงเดิม: ตัวเลข ชื่อไฟล์
+     ชื่อเซิร์ฟเวอร์ ชื่อแชต) ภาษาที่ไม่มีฟังก์ชันของกติกาข้อนั้น = ไม่แปลข้อความนั้น */
+  var RULES = [
+    [/^([\d.,]+) ?(tokens\/s|tokens|t\/s|tok|calls\/s|calls|turns)$/, {
+      th: function (_, n, u) { return n + " " + STAT_UNIT.th[u]; },
+      ja: function (_, n, u) { return n + " " + STAT_UNIT.ja[u]; },
+      zh: function (_, n, u) { return n + " " + STAT_UNIT.zh[u]; } }],
     // ระยะเวลาจาก formatter ของ WebUI: "0.7s", "12.3s", "2min 22s", "1h 5min"
-    [/^(?=\d)(\d+h)? ?(\d+min)? ?([\d.]+s)?$/, function (t) {
-      return t.replace(/([\d.]+)(h|min|s)/g, function (_, n, u) { return n + " " + DUR_TH[u]; });
-    }],
-    [/^(\d+) tools?$/, function (_, n) { return n + " เครื่องมือ"; }],
+    [/^(?=\d)(\d+h)? ?(\d+min)? ?([\d.]+s)?$/, {
+      th: function (t) { return durOf(t, "th"); }, ja: function (t) { return durOf(t, "ja"); }, zh: function (t) { return durOf(t, "zh"); } }],
+    [/^(\d+) tools?$/, { th: function (_, n) { return n + " เครื่องมือ"; }, ja: function (_, n) { return n + " 個のツール"; },
+      zh: function (_, n) { return n + " 个工具"; } }],
     // คำอธิบายใต้ระดับการคิด: "สูงสุด" เป็นชื่อระดับ Max อยู่แล้ว ถ้าใช้ซ้ำเป็นคำนำเพดาน แถว "สูงสุด — ไม่จำกัด"
     // จะอ่านเหมือนคำอธิบายของแถวบน จึงใช้ "ไม่เกิน" สำหรับเพดานโทเค็น
-    [/^Max ([\d,]+) tokens$/, function (_, n) { return "ไม่เกิน " + n + " โทเค็น"; }],
-    [/^Default: (.+)$/, function (_, v) { return "ค่าเริ่มต้น: " + v; }],
-    [/^Processing \((\d+)%\)$/, function (_, p) { return "กำลังประมวลผล (" + p + "%)"; }],
-    [/^Processing (\d+)% \(ETA: (\d+)s\)$/, function (_, p, s) { return "กำลังประมวลผล " + p + "% (อีกราว " + s + " วิ)"; }],
-    [/^Processing (\d+)%$/, function (_, p) { return "กำลังประมวลผล " + p + "%"; }],
-    [/^Context: (.+)$/, function (_, v) { return "บริบท: " + v; }],
-    [/^Output: (.+)$/, function (_, v) { return "เอาต์พุต: " + v; }],
-    [/^([\d.,]+[KMB]?) remaining$/, function (_, n) { return "เหลือ " + n; }],
-    [/^([\d,]+) fresh \+ ([\d,]+) cached$/, function (_, a, b) { return "ใหม่ " + a + " + แคช " + b; }],
-    [/^([\d,]+) reused from KV cache$/, function (_, n) { return "ใช้ซ้ำจาก KV cache " + n; }],
-    [/^(Enable|Disable) ([\d,]+) tools?$/, function (_, v, n) { return (v === "Enable" ? "เปิด " : "ปิด ") + n + " เครื่องมือ"; }],
-    [/^([\d,]+) args?$/, function (_, n) { return n + " อาร์กิวเมนต์"; }],
-    [/^([\d,]+) tools available · Show details$/, function (_, n) { return "มี " + n + " เครื่องมือ · ดูรายละเอียด"; }],
-    [/^· Connected in ([\d.,]+)ms$/, function (_, n) { return "· เชื่อมต่อใน " + n + " ms"; }],
-    [/^Connection Log \((\d+)\)$/, function (_, n) { return "บันทึกการเชื่อมต่อ (" + n + ")"; }],
-    [/^Protocol version: (.+)$/, function (_, v) { return "เวอร์ชันโปรโตคอล: " + v; }],
-    [/^Binary content \((.+)\)$/, function (_, v) { return "ข้อมูลไบนารี (" + v + ")"; }],
-    [/^, ([\d,]+) templates?$/, function (_, n) { return ", " + n + " เทมเพลต"; }],
-    [/^\(([\d,]+) resources?$/, function (_, n) { return "(" + n + " ทรัพยากร"; }],
-    [/^Resource attached: (.+)$/, function (_, v) { return "แนบทรัพยากรแล้ว: " + v; }],
-    [/^([\d,]+) resources attached$/, function (_, n) { return "แนบ " + n + " ทรัพยากรแล้ว"; }],
-    [/^Priority: (.+)$/, function (_, v) { return "ลำดับความสำคัญ: " + v; }],
-    [/^Server: (.+)$/, function (_, v) { return "เซิร์ฟเวอร์: " + v; }],
-    [/^Error: (.+)$/, function (_, v) { return "ข้อผิดพลาด: " + v; }],
-    [/^Error (\d+)$/, function (_, v) { return "ข้อผิดพลาด " + v; }],
-    [/^Authentication failed \((.+)\)$/, function (_, v) { return "ยืนยันตัวตนไม่สำเร็จ (" + v + ")"; }],
-    [/^Connection failed: (.+)$/, function (_, v) { return "เชื่อมต่อไม่สำเร็จ: " + v; }],
-    [/^Failed to reconnect to "(.+)"$/, function (_, v) { return "เชื่อมต่อ \"" + v + "\" ใหม่ไม่สำเร็จ"; }],
-    [/^Server "(.+)" is not connected$/, function (_, v) { return "เซิร์ฟเวอร์ \"" + v + "\" ไม่ได้เชื่อมต่อ"; }],
-    [/^Server error \((\d+)\): (.+)$/, function (_, c, v) { return "เซิร์ฟเวอร์ผิดพลาด (" + c + "): " + v; }],
-    [/^Delete "(.+)"\? This action cannot be undone\.$/, function (_, v) { return "ลบ \"" + v + "\"? " + NO_UNDO_TH; }],
-    [/^Invalid numeric value for (.+)\. Please enter a valid number\.$/, function (_, v) { return "ค่าของ " + v + " ไม่ใช่ตัวเลขที่ถูกต้อง ใส่ตัวเลขอีกครั้ง"; }],
-    [/^Always allow all tools from (.+)$/, function (_, v) { return "อนุญาตทุกเครื่องมือจาก " + v + " เสมอ"; }],
-    [/^Approve all tools from (.+)$/, function (_, v) { return "อนุมัติทุกเครื่องมือจาก " + v; }],
-    [/^Edit ([\d,]+) of ([\d,]+)$/, function (_, a, b) { return "แก้ไขที่ " + a + " จาก " + b; }],
-    [/^\(lines ([\d,]+)-([\d,]+)\)$/, function (_, a, b) { return "(บรรทัด " + a + "-" + b + ")"; }],
+    [/^Max ([\d,]+) tokens$/, { th: function (_, n) { return "ไม่เกิน " + n + " โทเค็น"; }, ja: function (_, n) { return "最大 " + n + " トークン"; },
+      zh: function (_, n) { return "最多 " + n + " token"; } }],
+    [/^Default: (.+)$/, { th: function (_, v) { return "ค่าเริ่มต้น: " + v; }, ja: function (_, v) { return "既定: " + v; },
+      zh: function (_, v) { return "默认：" + v; } }],
+    [/^Processing \((\d+)%\)$/, { th: function (_, p) { return "กำลังประมวลผล (" + p + "%)"; }, ja: function (_, p) { return "処理中 (" + p + "%)"; },
+      zh: function (_, p) { return "处理中 (" + p + "%)"; } }],
+    [/^Processing (\d+)% \(ETA: (\d+)s\)$/, {
+      th: function (_, p, s) { return "กำลังประมวลผล " + p + "% (อีกราว " + s + " วิ)"; },
+      ja: function (_, p, s) { return "処理中 " + p + "%（残り約 " + s + " 秒）"; },
+      zh: function (_, p, s) { return "处理中 " + p + "%（约剩 " + s + " 秒）"; } }],
+    [/^Processing (\d+)%$/, { th: function (_, p) { return "กำลังประมวลผล " + p + "%"; }, ja: function (_, p) { return "処理中 " + p + "%"; },
+      zh: function (_, p) { return "处理中 " + p + "%"; } }],
+    [/^Context: (.+)$/, { th: function (_, v) { return "บริบท: " + v; }, ja: function (_, v) { return "コンテキスト: " + v; },
+      zh: function (_, v) { return "上下文：" + v; } }],
+    [/^Output: (.+)$/, { th: function (_, v) { return "เอาต์พุต: " + v; }, ja: function (_, v) { return "出力: " + v; },
+      zh: function (_, v) { return "输出：" + v; } }],
+    [/^([\d.,]+[KMB]?) remaining$/, { th: function (_, n) { return "เหลือ " + n; }, ja: function (_, n) { return "残り " + n; },
+      zh: function (_, n) { return "剩余 " + n; } }],
+    [/^([\d,]+) fresh \+ ([\d,]+) cached$/, { th: function (_, a, b) { return "ใหม่ " + a + " + แคช " + b; },
+      ja: function (_, a, b) { return "新規 " + a + " + キャッシュ " + b; }, zh: function (_, a, b) { return "新 " + a + " + 缓存 " + b; } }],
+    [/^([\d,]+) reused from KV cache$/, { th: function (_, n) { return "ใช้ซ้ำจาก KV cache " + n; },
+      ja: function (_, n) { return "KV cache から再利用 " + n; }, zh: function (_, n) { return "从 KV cache 复用 " + n; } }],
+    [/^(Enable|Disable) ([\d,]+) tools?$/, {
+      th: function (_, v, n) { return (v === "Enable" ? "เปิด " : "ปิด ") + n + " เครื่องมือ"; },
+      ja: function (_, v, n) { return n + " 個のツールを" + (v === "Enable" ? "有効化" : "無効化"); },
+      zh: function (_, v, n) { return (v === "Enable" ? "启用 " : "禁用 ") + n + " 个工具"; } }],
+    [/^([\d,]+) args?$/, { th: function (_, n) { return n + " อาร์กิวเมนต์"; }, ja: function (_, n) { return n + " 個の引数"; },
+      zh: function (_, n) { return n + " 个参数"; } }],
+    [/^([\d,]+) tools available · Show details$/, { th: function (_, n) { return "มี " + n + " เครื่องมือ · ดูรายละเอียด"; },
+      ja: function (_, n) { return n + " 個のツールが利用可能 · 詳細を表示"; }, zh: function (_, n) { return "有 " + n + " 个工具 · 查看详情"; } }],
+    [/^· Connected in ([\d.,]+)ms$/, { th: function (_, n) { return "· เชื่อมต่อใน " + n + " ms"; }, ja: function (_, n) { return "· " + n + " ms で接続"; },
+      zh: function (_, n) { return "· 已连接，用时 " + n + " ms"; } }],
+    [/^Connection Log \((\d+)\)$/, { th: function (_, n) { return "บันทึกการเชื่อมต่อ (" + n + ")"; }, ja: function (_, n) { return "接続ログ (" + n + ")"; },
+      zh: function (_, n) { return "连接日志 (" + n + ")"; } }],
+    [/^Protocol version: (.+)$/, { th: function (_, v) { return "เวอร์ชันโปรโตคอล: " + v; }, ja: function (_, v) { return "プロトコルバージョン: " + v; },
+      zh: function (_, v) { return "协议版本：" + v; } }],
+    [/^Binary content \((.+)\)$/, { th: function (_, v) { return "ข้อมูลไบนารี (" + v + ")"; }, ja: function (_, v) { return "バイナリデータ (" + v + ")"; },
+      zh: function (_, v) { return "二进制内容 (" + v + ")"; } }],
+    [/^, ([\d,]+) templates?$/, { th: function (_, n) { return ", " + n + " เทมเพลต"; }, ja: function (_, n) { return ", " + n + " 個のテンプレート"; },
+      zh: function (_, n) { return ", " + n + " 个模板"; } }],
+    [/^\(([\d,]+) resources?$/, { th: function (_, n) { return "(" + n + " ทรัพยากร"; }, ja: function (_, n) { return "(" + n + " 個のリソース"; },
+      zh: function (_, n) { return "(" + n + " 个资源"; } }],
+    [/^Resource attached: (.+)$/, { th: function (_, v) { return "แนบทรัพยากรแล้ว: " + v; }, ja: function (_, v) { return "リソースを添付しました: " + v; },
+      zh: function (_, v) { return "已附加资源：" + v; } }],
+    [/^([\d,]+) resources attached$/, { th: function (_, n) { return "แนบ " + n + " ทรัพยากรแล้ว"; }, ja: function (_, n) { return n + " 個のリソースを添付済み"; },
+      zh: function (_, n) { return "已附加 " + n + " 个资源"; } }],
+    [/^Priority: (.+)$/, { th: function (_, v) { return "ลำดับความสำคัญ: " + v; }, ja: function (_, v) { return "優先度: " + v; },
+      zh: function (_, v) { return "优先级：" + v; } }],
+    [/^Server: (.+)$/, { th: function (_, v) { return "เซิร์ฟเวอร์: " + v; }, ja: function (_, v) { return "サーバー: " + v; },
+      zh: function (_, v) { return "服务器：" + v; } }],
+    [/^Error: (.+)$/, { th: function (_, v) { return "ข้อผิดพลาด: " + v; }, ja: function (_, v) { return "エラー: " + v; },
+      zh: function (_, v) { return "错误：" + v; } }],
+    [/^Error (\d+)$/, { th: function (_, v) { return "ข้อผิดพลาด " + v; }, ja: function (_, v) { return "エラー " + v; },
+      zh: function (_, v) { return "错误 " + v; } }],
+    [/^Authentication failed \((.+)\)$/, { th: function (_, v) { return "ยืนยันตัวตนไม่สำเร็จ (" + v + ")"; }, ja: function (_, v) { return "認証に失敗しました (" + v + ")"; },
+      zh: function (_, v) { return "身份验证失败 (" + v + ")"; } }],
+    [/^Connection failed: (.+)$/, { th: function (_, v) { return "เชื่อมต่อไม่สำเร็จ: " + v; }, ja: function (_, v) { return "接続に失敗しました: " + v; },
+      zh: function (_, v) { return "连接失败：" + v; } }],
+    [/^Failed to reconnect to "(.+)"$/, { th: function (_, v) { return "เชื่อมต่อ \"" + v + "\" ใหม่ไม่สำเร็จ"; },
+      ja: function (_, v) { return "\"" + v + "\" に再接続できませんでした"; }, zh: function (_, v) { return "无法重新连接到 \"" + v + "\""; } }],
+    [/^Server "(.+)" is not connected$/, { th: function (_, v) { return "เซิร์ฟเวอร์ \"" + v + "\" ไม่ได้เชื่อมต่อ"; },
+      ja: function (_, v) { return "サーバー \"" + v + "\" は接続されていません"; }, zh: function (_, v) { return "服务器 \"" + v + "\" 未连接"; } }],
+    [/^Server error \((\d+)\): (.+)$/, { th: function (_, c, v) { return "เซิร์ฟเวอร์ผิดพลาด (" + c + "): " + v; },
+      ja: function (_, c, v) { return "サーバーエラー (" + c + "): " + v; }, zh: function (_, c, v) { return "服务器错误 (" + c + ")：" + v; } }],
+    [/^Delete "(.+)"\? This action cannot be undone\.$/, { th: function (_, v) { return "ลบ \"" + v + "\"? " + NO_UNDO.th; },
+      ja: function (_, v) { return "\"" + v + "\" を削除しますか？" + NO_UNDO.ja + "。"; }, zh: function (_, v) { return "删除 \"" + v + "\"？" + NO_UNDO.zh + "。"; } }],
+    [/^Invalid numeric value for (.+)\. Please enter a valid number\.$/, {
+      th: function (_, v) { return "ค่าของ " + v + " ไม่ใช่ตัวเลขที่ถูกต้อง ใส่ตัวเลขอีกครั้ง"; },
+      ja: function (_, v) { return v + " の値が数値として無効です。正しい数値を入力してください。"; },
+      zh: function (_, v) { return v + " 的值不是有效数字。请输入有效的数字。"; } }],
+    [/^Always allow all tools from (.+)$/, { th: function (_, v) { return "อนุญาตทุกเครื่องมือจาก " + v + " เสมอ"; },
+      ja: function (_, v) { return v + " のすべてのツールを常に許可"; }, zh: function (_, v) { return "始终允许来自 " + v + " 的所有工具"; } }],
+    [/^Approve all tools from (.+)$/, { th: function (_, v) { return "อนุมัติทุกเครื่องมือจาก " + v; },
+      ja: function (_, v) { return v + " のすべてのツールを承認"; }, zh: function (_, v) { return "批准来自 " + v + " 的所有工具"; } }],
+    [/^Edit ([\d,]+) of ([\d,]+)$/, { th: function (_, a, b) { return "แก้ไขที่ " + a + " จาก " + b; }, ja: function (_, a, b) { return "編集 " + a + " / " + b; },
+      zh: function (_, a, b) { return "编辑 " + a + " / " + b; } }],
+    [/^\(lines ([\d,]+)-([\d,]+)\)$/, { th: function (_, a, b) { return "(บรรทัด " + a + "-" + b + ")"; }, ja: function (_, a, b) { return "(" + a + "-" + b + " 行)"; },
+      zh: function (_, a, b) { return "(第 " + a + "-" + b + " 行)"; } }],
     // กล่องตรวจทาน (R4) บอกเมื่อข้อความยาวเกินกล่อง
-    [/^([\d,]+) lines — scroll to read them all$/, function (_, n) { return n + " บรรทัด — เลื่อนอ่านให้ครบ"; }],
-    [/^Size: ([\d,]+) bytes$/, function (_, n) { return "ขนาด: " + n + " ไบต์"; }],
-    [/^· timeout ([\d,]+) ms$/, function (_, n) { return "· หมดเวลา " + n + " ms"; }],
-    [/^(PDF )?Page ([\d,]+)$/, function (_, p, n) { return (p ? "หน้า PDF " : "หน้า ") + n; }],
-    [/^Message version ([\d,]+) of ([\d,]+)$/, function (_, a, b) { return "ข้อความเวอร์ชัน " + a + " จาก " + b; }],
+    [/^([\d,]+) lines — scroll to read them all$/, { th: function (_, n) { return n + " บรรทัด — เลื่อนอ่านให้ครบ"; },
+      ja: function (_, n) { return n + " 行 — スクロールしてすべて読んでください"; }, zh: function (_, n) { return n + " 行 — 请滚动读完全部"; } }],
+    [/^Size: ([\d,]+) bytes$/, { th: function (_, n) { return "ขนาด: " + n + " ไบต์"; }, ja: function (_, n) { return "サイズ: " + n + " バイト"; },
+      zh: function (_, n) { return "大小：" + n + " 字节"; } }],
+    [/^· timeout ([\d,]+) ms$/, { th: function (_, n) { return "· หมดเวลา " + n + " ms"; }, ja: function (_, n) { return "· タイムアウト " + n + " ms"; },
+      zh: function (_, n) { return "· 超时 " + n + " ms"; } }],
+    [/^(PDF )?Page ([\d,]+)$/, { th: function (_, p, n) { return (p ? "หน้า PDF " : "หน้า ") + n; }, ja: function (_, p, n) { return (p ? "PDF " : "") + n + " ページ"; },
+      zh: function (_, p, n) { return (p ? "PDF 第 " : "第 ") + n + " 页"; } }],
+    [/^Message version ([\d,]+) of ([\d,]+)$/, { th: function (_, a, b) { return "ข้อความเวอร์ชัน " + a + " จาก " + b; },
+      ja: function (_, a, b) { return "メッセージのバージョン " + a + " / " + b; }, zh: function (_, a, b) { return "消息版本 " + a + " / " + b; } }],
     // หน้าต่างยืนยันลบข้อความ / แชต (ตัวเลขมาจาก WebUI)
-    [/^Delete ([\d,]+) Messages$/, function (_, n) { return "ลบ " + n + " ข้อความ"; }],
-    [/^This will delete ([\d,]+) messages including: ([\d,]+) user messages? and ([\d,]+) assistant responses?\. All messages in this branch and their responses will be permanently removed\. This action cannot be undone\.$/,
-      function (_, a, u, r) {
+    [/^Delete ([\d,]+) Messages$/, { th: function (_, n) { return "ลบ " + n + " ข้อความ"; }, ja: function (_, n) { return n + " 件のメッセージを削除"; },
+      zh: function (_, n) { return "删除 " + n + " 条消息"; } }],
+    [/^This will delete ([\d,]+) messages including: ([\d,]+) user messages? and ([\d,]+) assistant responses?\. All messages in this branch and their responses will be permanently removed\. This action cannot be undone\.$/, {
+      th: function (_, a, u, r) {
         return "จะลบทั้งหมด " + a + " ข้อความ (ข้อความของคุณ " + u + " และคำตอบ " + r +
-          ") คือข้อความนี้กับทุกข้อความที่ต่อจากมันในแขนงนี้ ลบแล้ว" + NO_UNDO_TH;
-      }],
-    [/^Delete ([\d,]+) conversations?$/, function (_, n) { return "ลบ " + n + " แชต"; }],
-    [/^This action cannot be undone\. The selected conversations? and (its|their) messages will be permanently removed, including any forks\.$/,
-      function () { return "แชตที่เลือกและข้อความทั้งหมดจะถูกลบถาวร รวมถึงแชตที่แยกออกไป " + NO_UNDO_TH; }],
-    [/^([\d,]+) \/ ([\d,]+) selected$/, function (_, a, b) { return "เลือก " + a + " / " + b; }],
-    [/^([\d,]+) of ([\d,]+) selected$/, function (_, a, b) { return "เลือกแล้ว " + a + " จาก " + b; }],
-    [/^\(([\d,]+) shown\)$/, function (_, n) { return "(แสดง " + n + ")"; }],
-    [/^(Export|Import) \(([\d,]+)\)$/, function (_, v, n) { return thVerb(v) + " (" + n + ")"; }],
-    [/^Select Conversations to (Export|Import)$/, function (_, v) { return "เลือกแชตที่จะ" + thVerb(v); }],
-    [/^(Exported|Imported) ([\d,]+) conversations?$/, function (_, v, n) { return thVerb(v) + "แล้ว " + n + " แชต"; }],
-    [/^No conversations found matching "(.*)"$/, function (_, v) { return "ไม่พบแชตที่ตรงกับ \"" + v + "\""; }],
-    [/^\.\.\. and ([\d,]+) more$/, function (_, n) { return "…และอีก " + n + " รายการ"; }],
-    [/^Skipped ([\d,]+) conversations? already in your library$/, function (_, n) { return "ข้าม " + n + " แชตที่มีอยู่แล้ว"; }],
-    [/^([\d,]+) conversations deleted$/, function (_, n) { return "ลบ " + n + " แชตแล้ว"; }],
-    [/^([\d,]+) conversations exported$/, function (_, n) { return "ส่งออก " + n + " แชตแล้ว"; }],
-    [/^Updated pin state for ([\d,]+) conversations$/, function (_, n) { return "เปลี่ยนการปักหมุด " + n + " แชตแล้ว"; }],
-    [/^(Export|Import) failed: (.+)$/, function (_, v, e) { return thVerb(v) + "ไม่สำเร็จ: " + e; }],
+          ") คือข้อความนี้กับทุกข้อความที่ต่อจากมันในแขนงนี้ ลบแล้ว" + NO_UNDO.th;
+      },
+      ja: function (_, a, u, r) {
+        return a + " 件のメッセージ（あなたのメッセージ " + u + " 件と回答 " + r + " 件）を削除します。この分岐内のこのメッセージ以降がすべて完全に削除されます。" + NO_UNDO.ja + "。";
+      },
+      zh: function (_, a, u, r) {
+        return "将删除 " + a + " 条消息（你的消息 " + u + " 条，回答 " + r + " 条）：这条消息及此分支中它之后的所有消息都会被永久删除。" + NO_UNDO.zh + "。";
+      } }],
+    [/^Delete ([\d,]+) conversations?$/, { th: function (_, n) { return "ลบ " + n + " แชต"; }, ja: function (_, n) { return n + " 件のチャットを削除"; },
+      zh: function (_, n) { return "删除 " + n + " 个对话"; } }],
+    [/^This action cannot be undone\. The selected conversations? and (its|their) messages will be permanently removed, including any forks\.$/, {
+      th: function () { return "แชตที่เลือกและข้อความทั้งหมดจะถูกลบถาวร รวมถึงแชตที่แยกออกไป " + NO_UNDO.th; },
+      ja: function () { return "選択したチャットとそのメッセージは、分岐も含めて完全に削除されます。" + NO_UNDO.ja + "。"; },
+      zh: function () { return "所选对话及其消息（包括所有分叉）将被永久删除。" + NO_UNDO.zh + "。"; } }],
+    [/^([\d,]+) \/ ([\d,]+) selected$/, { th: function (_, a, b) { return "เลือก " + a + " / " + b; }, ja: function (_, a, b) { return a + " / " + b + " 件選択"; },
+      zh: function (_, a, b) { return "已选 " + a + " / " + b; } }],
+    [/^([\d,]+) of ([\d,]+) selected$/, { th: function (_, a, b) { return "เลือกแล้ว " + a + " จาก " + b; }, ja: function (_, a, b) { return b + " 件中 " + a + " 件を選択"; },
+      zh: function (_, a, b) { return "已选 " + a + " 项，共 " + b + " 项"; } }],
+    [/^\(([\d,]+) shown\)$/, { th: function (_, n) { return "(แสดง " + n + ")"; }, ja: function (_, n) { return "(" + n + " 件表示)"; },
+      zh: function (_, n) { return "(显示 " + n + " 项)"; } }],
+    [/^(Export|Import) \(([\d,]+)\)$/, { th: function (_, v, n) { return verbOf(v, "th") + " (" + n + ")"; },
+      ja: function (_, v, n) { return verbOf(v, "ja") + " (" + n + ")"; }, zh: function (_, v, n) { return verbOf(v, "zh") + " (" + n + ")"; } }],
+    [/^Select Conversations to (Export|Import)$/, { th: function (_, v) { return "เลือกแชตที่จะ" + verbOf(v, "th"); },
+      ja: function (_, v) { return verbOf(v, "ja") + "するチャットを選択"; }, zh: function (_, v) { return "选择要" + verbOf(v, "zh") + "的对话"; } }],
+    [/^(Exported|Imported) ([\d,]+) conversations?$/, { th: function (_, v, n) { return verbOf(v, "th") + "แล้ว " + n + " แชต"; },
+      ja: function (_, v, n) { return n + " 件のチャットを" + verbOf(v, "ja") + "しました"; }, zh: function (_, v, n) { return "已" + verbOf(v, "zh") + " " + n + " 个对话"; } }],
+    [/^No conversations found matching "(.*)"$/, { th: function (_, v) { return "ไม่พบแชตที่ตรงกับ \"" + v + "\""; },
+      ja: function (_, v) { return "\"" + v + "\" に一致するチャットはありません"; }, zh: function (_, v) { return "没有找到匹配 \"" + v + "\" 的对话"; } }],
+    [/^\.\.\. and ([\d,]+) more$/, { th: function (_, n) { return "…และอีก " + n + " รายการ"; }, ja: function (_, n) { return "…他 " + n + " 件"; },
+      zh: function (_, n) { return "…还有 " + n + " 项"; } }],
+    [/^Skipped ([\d,]+) conversations? already in your library$/, { th: function (_, n) { return "ข้าม " + n + " แชตที่มีอยู่แล้ว"; },
+      ja: function (_, n) { return "既にある " + n + " 件のチャットをスキップしました"; }, zh: function (_, n) { return "跳过了 " + n + " 个已存在的对话"; } }],
+    [/^([\d,]+) conversations deleted$/, { th: function (_, n) { return "ลบ " + n + " แชตแล้ว"; }, ja: function (_, n) { return n + " 件のチャットを削除しました"; },
+      zh: function (_, n) { return "已删除 " + n + " 个对话"; } }],
+    [/^([\d,]+) conversations exported$/, { th: function (_, n) { return "ส่งออก " + n + " แชตแล้ว"; }, ja: function (_, n) { return n + " 件のチャットをエクスポートしました"; },
+      zh: function (_, n) { return "已导出 " + n + " 个对话"; } }],
+    [/^Updated pin state for ([\d,]+) conversations$/, { th: function (_, n) { return "เปลี่ยนการปักหมุด " + n + " แชตแล้ว"; },
+      ja: function (_, n) { return n + " 件のチャットのピン留めを変更しました"; }, zh: function (_, n) { return "已更新 " + n + " 个对话的置顶状态"; } }],
+    [/^(Export|Import) failed: (.+)$/, { th: function (_, v, e) { return verbOf(v, "th") + "ไม่สำเร็จ: " + e; },
+      ja: function (_, v, e) { return verbOf(v, "ja") + "に失敗しました: " + e; }, zh: function (_, v, e) { return verbOf(v, "zh") + "失败：" + e; } }],
     // toast ของโมเดล (ชื่อโมเดลคงเดิม)
-    [/^Model loaded: (.+)$/, function (_, v) { return "โหลดโมเดลแล้ว: " + v; }],
-    [/^Failed to load model: (.+)$/, function (_, v) { return "โหลดโมเดลไม่สำเร็จ: " + v; }],
-    [/^Model unloaded: (.+)$/, function (_, v) { return "เลิกโหลดโมเดลแล้ว: " + v; }],
-    [/^Failed to unload model: (.+)$/, function (_, v) { return "เลิกโหลดโมเดลไม่สำเร็จ: " + v; }],
-    [/^Model failed: (.+)$/, function (_, v) { return "โมเดลล้มเหลว: " + v; }],
-    [/^Model removed: (.+)$/, function (_, v) { return "นำโมเดลออกแล้ว: " + v; }],
-    [/^Failed to parse file: (.+)$/, function (_, v) { return "อ่านไฟล์ไม่สำเร็จ: " + v; }],
-    [/^PDF "(.+)" processed as ([\d,]+) images for vision model\.$/, function (_, v, n) { return "แปลง PDF \"" + v + "\" เป็นรูปภาพ " + n + " หน้าให้โมเดลที่รองรับภาพแล้ว"; }],
-    [/^PDF "(.+)" processed as text content\.$/, function (_, v) { return "อ่าน PDF \"" + v + "\" เป็นข้อความแล้ว"; }],
-    [/^File (.+) is empty and will be skipped$/, function (_, v) { return "ไฟล์ " + v + " ว่างเปล่า จะถูกข้าม"; }],
-    [/^File (.+) appears to be binary and will be skipped$/, function (_, v) { return "ไฟล์ " + v + " เป็นไฟล์ไบนารี จะถูกข้าม"; }],
+    [/^Model loaded: (.+)$/, { th: function (_, v) { return "โหลดโมเดลแล้ว: " + v; }, ja: function (_, v) { return "モデルを読み込みました: " + v; },
+      zh: function (_, v) { return "已加载模型：" + v; } }],
+    [/^Failed to load model: (.+)$/, { th: function (_, v) { return "โหลดโมเดลไม่สำเร็จ: " + v; }, ja: function (_, v) { return "モデルを読み込めませんでした: " + v; },
+      zh: function (_, v) { return "加载模型失败：" + v; } }],
+    [/^Model unloaded: (.+)$/, { th: function (_, v) { return "เลิกโหลดโมเดลแล้ว: " + v; }, ja: function (_, v) { return "モデルをアンロードしました: " + v; },
+      zh: function (_, v) { return "已卸载模型：" + v; } }],
+    [/^Failed to unload model: (.+)$/, { th: function (_, v) { return "เลิกโหลดโมเดลไม่สำเร็จ: " + v; }, ja: function (_, v) { return "モデルをアンロードできませんでした: " + v; },
+      zh: function (_, v) { return "卸载模型失败：" + v; } }],
+    [/^Model failed: (.+)$/, { th: function (_, v) { return "โมเดลล้มเหลว: " + v; }, ja: function (_, v) { return "モデルが失敗しました: " + v; },
+      zh: function (_, v) { return "模型出错：" + v; } }],
+    [/^Model removed: (.+)$/, { th: function (_, v) { return "นำโมเดลออกแล้ว: " + v; }, ja: function (_, v) { return "モデルを削除しました: " + v; },
+      zh: function (_, v) { return "已移除模型：" + v; } }],
+    [/^Failed to parse file: (.+)$/, { th: function (_, v) { return "อ่านไฟล์ไม่สำเร็จ: " + v; }, ja: function (_, v) { return "ファイルを解析できませんでした: " + v; },
+      zh: function (_, v) { return "解析文件失败：" + v; } }],
+    [/^PDF "(.+)" processed as ([\d,]+) images for vision model\.$/, {
+      th: function (_, v, n) { return "แปลง PDF \"" + v + "\" เป็นรูปภาพ " + n + " หน้าให้โมเดลที่รองรับภาพแล้ว"; },
+      ja: function (_, v, n) { return "PDF \"" + v + "\" を画像対応モデル向けに " + n + " 枚の画像として処理しました。"; },
+      zh: function (_, v, n) { return "已将 PDF \"" + v + "\" 处理为 " + n + " 张图片供视觉模型使用。"; } }],
+    [/^PDF "(.+)" processed as text content\.$/, { th: function (_, v) { return "อ่าน PDF \"" + v + "\" เป็นข้อความแล้ว"; },
+      ja: function (_, v) { return "PDF \"" + v + "\" をテキストとして処理しました。"; }, zh: function (_, v) { return "已将 PDF \"" + v + "\" 处理为文本。"; } }],
+    [/^File (.+) is empty and will be skipped$/, { th: function (_, v) { return "ไฟล์ " + v + " ว่างเปล่า จะถูกข้าม"; },
+      ja: function (_, v) { return "ファイル " + v + " は空のためスキップされます"; }, zh: function (_, v) { return "文件 " + v + " 为空，将被跳过"; } }],
+    [/^File (.+) appears to be binary and will be skipped$/, { th: function (_, v) { return "ไฟล์ " + v + " เป็นไฟล์ไบนารี จะถูกข้าม"; },
+      ja: function (_, v) { return "ファイル " + v + " はバイナリのようなのでスキップされます"; }, zh: function (_, v) { return "文件 " + v + " 似乎是二进制文件，将被跳过"; } }],
     // ไฟล์แนบ: ขนาดจาก formatter ของ WebUI ("22 Bytes", "1.5 KB" — KB/MB/GB เป็นหน่วยสากล คงไว้)
     // และชื่อปุ่ม "Go to <ชื่อไฟล์>" (ภาพย่อในหน้าต่างดูตัวอย่าง) / "Preview <ชื่อไฟล์>" (การ์ดไฟล์แนบ) — ชื่อไฟล์คงเดิม
-    [/^([\d.]+) Bytes$/, function (_, n) { return n + " ไบต์"; }],
-    [/^Go to (.+)$/, function (_, v) { return "ไปที่ " + v; }],
-    [/^Preview (.+)$/, function (_, v) { return "ดูตัวอย่าง " + v; }],
+    [/^([\d.]+) Bytes$/, { th: function (_, n) { return n + " ไบต์"; }, ja: function (_, n) { return n + " バイト"; }, zh: function (_, n) { return n + " 字节"; } }],
+    [/^Go to (.+)$/, { th: function (_, v) { return "ไปที่ " + v; }, ja: function (_, v) { return v + " へ移動"; }, zh: function (_, v) { return "转到 " + v; } }],
+    [/^Preview (.+)$/, { th: function (_, v) { return "ดูตัวอย่าง " + v; }, ja: function (_, v) { return v + " をプレビュー"; }, zh: function (_, v) { return "预览 " + v; } }],
     // ช่องเลือกแชตในโหมดเลือกหลายรายการ: "Select <ชื่อแชต>" (ชื่อแชตคงเดิม) — ต้องอยู่ท้ายสุด หลังรูปแบบ Select อื่น
-    [/^(Select|Deselect) (.+)$/, function (_, v, n) { return (v === "Select" ? "เลือก " : "เลิกเลือก ") + n; }]
+    [/^(Select|Deselect) (.+)$/, { th: function (_, v, n) { return (v === "Select" ? "เลือก " : "เลิกเลือก ") + n; },
+      ja: function (_, v, n) { return n + (v === "Select" ? " を選択" : " の選択を解除"); }, zh: function (_, v, n) { return (v === "Select" ? "选择 " : "取消选择 ") + n; } }]
   ];
+  var TH_RE = RULES;                                    // ชื่อเดิม (เทสต์/สคริปต์เก่าอ้างถึง)
 
   // ประโยคที่เทมเพลตของ WebUI แยกเป็นหลาย text node รอบชื่อที่เน้นตัวหนา ตัวจับทั้งข้อความจึงไม่เคยเห็นทั้งประโยค:
   // "Are you sure you want to delete <strong>ชื่อเซิร์ฟเวอร์</strong>? This action cannot be undone." (ยืนยันลบเซิร์ฟเวอร์ MCP)
   // แปลทีละชิ้นเฉพาะในคำอธิบายของ alert dialog (ชิ้นเหล่านี้ไม่ใช่ประโยคที่ควรแปลที่อื่น) ชื่อใน <strong> ไม่แตะ
   // → "ลบ ชื่อ? กู้คืนไม่ได้" แบบเดียวกับ window.confirm ลบแชต — ช่องว่างหัวท้ายของ text node คงเดิม (txText)
   var FRAG_SCOPE = '[data-slot="alert-dialog-description"]';
-  var FRAG_TH = {
-    "Are you sure you want to delete": "ลบ",
-    "? This action cannot be undone.": "? " + NO_UNDO_TH
+  var FRAG = {
+    th: { "Are you sure you want to delete": "ลบ", "? This action cannot be undone.": "? " + NO_UNDO.th },
+    ja: { "Are you sure you want to delete": "削除:", "? This action cannot be undone.": "？" + NO_UNDO.ja + "。" },
+    zh: { "Are you sure you want to delete": "删除", "? This action cannot be undone.": "？" + NO_UNDO.zh + "。" }
   };
 
   // ข้อความประกาศเปลี่ยนหน้าของ SvelteKit (#svelte-announcer, aria-live) คือ document.title ของ WebUI:
@@ -895,14 +1803,17 @@
   // "Error 404 - llama-ui" — ผู้ใช้โปรแกรมอ่านจอได้ยินทุกครั้งที่เปลี่ยนแชต แปลเฉพาะคำของ WebUI และใช้ชื่อผลิตภัณฑ์
   // ที่เห็นบนจอ (Qwen3.8) แทนชื่อแอปของ WebUI ที่ถูกซ่อนไว้ ชื่อแชตคงเดิม (ไม่ใส่ word joiner — เป็นข้อความสำหรับเสียงอ่าน)
   var APP_NAME = "Qwen3.8";
-  function thTitle(t) {
+  var TITLE_WORDS = { th: { search: "ค้นหาแชต", chat: "แชต", error: "ข้อผิดพลาด" }, ja: { search: "チャットを検索", chat: "チャット", error: "エラー" },
+    zh: { search: "搜索对话", chat: "对话", error: "错误" } };
+  function titleOf(t, l) {
+    var W = TITLE_WORDS[l] || TITLE_WORDS.th;
     if (t === "llama-ui" || t === "untitled page") return APP_NAME;
-    if (t === "Search · llama.cpp") return "ค้นหาแชต · " + APP_NAME;
+    if (t === "Search · llama.cpp") return W.search + " · " + APP_NAME;
     var m = /^([\s\S]*) - llama-ui$/.exec(t);
     if (!m) return null;
     var name = m[1], e = /^Error (\d*)$/.exec(name);
-    if (name === "Chat") name = "แชต";
-    else if (e) name = ("ข้อผิดพลาด " + e[1]).trim();
+    if (name === "Chat") name = W.chat;
+    else if (e) name = (W.error + " " + e[1]).trim();
     return name + " - " + APP_NAME;
   }
 
@@ -954,14 +1865,17 @@
     return true;
   }
   // ภาษาที่ใช้: ค่าที่ setLang() ตั้งไว้ (สลับสดโดยไม่โหลดหน้า) มาก่อน แล้วจึงเป็นของ shell / <html lang>
+  // 2026-11: ภาษาของ shell ทั้งสี่ (th/en/ja/zh) — พจนานุกรม WORDS/RULES/B2B/B3/STR มีครบทุกภาษาที่ไม่ใช่อังกฤษ
+  var UI_LANGS = ["th", "en", "ja", "zh"];
+  var LOCALE = { th: "th-TH", en: "en-GB", ja: "ja-JP", zh: "zh-CN" };
   var langOverride = null;
   function lang() {
     if (langOverride) return langOverride;
     var s = shell(), l = s && s.lang;
-    if (l !== "th" && l !== "en") l = (root.getAttribute("lang") || "").slice(0, 2).toLowerCase();
-    return l === "th" ? "th" : "en";
+    if (UI_LANGS.indexOf(l) < 0) l = (root.getAttribute("lang") || "").slice(0, 2).toLowerCase();
+    return UI_LANGS.indexOf(l) >= 0 ? l : "en";
   }
-  function S() { return STR[lang()]; }
+  function S() { return STR[lang()] || STR.en; }
 
   /* ---- ธีม ------------------------------------------------------------------ */
   // ต้นทางของธีมคือ class "dark" ที่ mode-watcher ของ WebUI คุม เราแค่สะท้อนเป็น data-theme
@@ -1313,6 +2227,8 @@
   // ทุกครั้ง) เขียนผ่าน setter ของ prototype + event input ให้ bind:value ของ Svelte รับค่า แบบเดียวกับ prefill()
   // ค่าที่ไม่ขึ้นต้นด้วย "Fork of " (ผู้ใช้แก้แล้ว) ไม่แตะ และจำค่าเดิมไว้คืนเมื่อ setLang("en")
   var FORK_EN = "Fork of ";
+  var FORK_WORDS = { th: { prefix: "แยกจาก ", suffix: "", chat: "แชต" }, ja: { prefix: "", suffix: " の分岐", chat: "チャット" },
+    zh: { prefix: "", suffix: " 的分叉", chat: "对话" } };
   var forkSeen = new WeakSet(), forkMine = new WeakMap();   // ช่องชื่อ → [ค่าของ WebUI, ค่าที่เราเขียน]
   function setInputValue(inp, v) {
     var all = document.activeElement === inp && inp.selectionStart === 0 && inp.selectionEnd === inp.value.length;
@@ -1327,9 +2243,9 @@
     var v = inp.value;
     if (!v) return;                                         // Svelte ยังไม่ผูกค่า — รอบหน้าค่อยดู
     forkSeen.add(inp);
-    if (l !== "th" || v.indexOf(FORK_EN) !== 0) return;
-    var rest = v.slice(FORK_EN.length);
-    var out = "แยกจาก " + (rest === "Conversation" ? "แชต" : rest);   // "Conversation" = แชตไม่มีชื่อ (ค่าของ WebUI)
+    if (!hasDict(l) || v.indexOf(FORK_EN) !== 0) return;
+    var rest = v.slice(FORK_EN.length), F = FORK_WORDS[l];
+    var out = F.prefix + (rest === "Conversation" ? F.chat : rest) + F.suffix;   // "Conversation" = แชตไม่มีชื่อ (ค่าของ WebUI)
     forkMine.set(inp, [v, out]);
     setInputValue(inp, out);
   }
@@ -1804,18 +2720,25 @@
 
   function hasOwn(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
   function txKey(s) { return s.replace(/\s+/g, " ").trim().replace(/…/g, "..."); }
-  function thOf(key) {
-    if (hasOwn(TH, key)) return TH[key];
-    for (var i = 0; i < TH_RE.length; i++) {
-      var m = TH_RE[i][0].exec(key);
+  // ข้อความแปลของ key ในภาษา l (null = ไม่มีในพจนานุกรมและไม่ตรงกติกาใด) — thOf() คือชื่อเดิมสำหรับภาษาไทย
+  function wordOf(key, l) {
+    var W = WORDS[l];
+    if (!W) return null;
+    if (hasOwn(W, key)) return W[key];
+    for (var i = 0; i < RULES.length; i++) {
+      var m = RULES[i][0].exec(key);
       if (!m) continue;
-      var out = TH_RE[i][1].apply(null, m);
+      var fn = RULES[i][1][l];
+      if (!fn) return null;
+      var out = fn.apply(null, m);
+      if (l !== "th") return out;
       // ค่าที่จับได้เป็นไทย (เช่นชื่อไฟล์ภาษาไทยใน toast) ต้องคงเดิมทุกตัวอักษร — ไม่ใส่ word joiner ทั้งข้อความ
       for (var j = 1; j < m.length; j++) if (m[j] && THAI.test(m[j])) return out;
       return glue(out);
     }
     return null;
   }
+  function thOf(key) { return wordOf(key, "th"); }
   // ข้อความที่ใช้แทน key ในภาษา l (null = ปล่อยตามเดิม)
   // "System Message" ในเมนู "+" เป็นกรณีพิเศษทั้งสองภาษา: ใน shell มันเปิดแผงคำสั่งของโปรเจกต์ (interceptSysMsg)
   // แต่ในหน้าตั้งค่ามันคือชื่อช่อง system message ของ WebUI จึงเปลี่ยนเฉพาะในเมนู — คำอธิบายของชีต "+" (sr-only)
@@ -1824,10 +2747,10 @@
   function txFor(key, el, l) {
     if ((key === "System Message" || key === SHEET_DESC_EN) && el && el.closest && el.closest(MENU_SCOPES) &&
         canRedirectSysMsg()) return key === SHEET_DESC_EN ? STR[l].sheetDesc : STR[l].sysMsg;
-    if (l !== "th" || !key || key.length > 400 || !LETTER.test(key)) return null;
-    if (el && el.id === "svelte-announcer") return thTitle(key);       // text node เป็นลูกตรงของตัวประกาศ
-    if (hasOwn(FRAG_TH, key)) return el && el.closest && el.closest(FRAG_SCOPE) ? FRAG_TH[key] : null;
-    return thOf(key);
+    if (!hasDict(l) || !key || key.length > 400 || !LETTER.test(key)) return null;
+    if (el && el.id === "svelte-announcer") return titleOf(key, l);    // text node เป็นลูกตรงของตัวประกาศ
+    if (hasOwn(FRAG[l], key)) return el && el.closest && el.closest(FRAG_SCOPE) ? FRAG[l][key] : null;
+    return wordOf(key, l);
   }
   // ชื่อเครื่องมือ/เซิร์ฟเวอร์ที่วางถัดจากไอคอนประแจหรือ favicon (หัวบล็อกเครื่องมือในแชต ตารางเครื่องมือ)
   // คือชื่อจริงของเครื่องมือ MCP ต้องคงเดิม — เครื่องมือในตัวของ WebUI มีไอคอนของมันเองและป้ายที่แปลได้
@@ -1906,7 +2829,7 @@
   }
   function txAria(el, l) {
     var en = el.getAttribute("aria-label"), lb = el.getAttribute("aria-labelledby"), cur = el.getAttribute("data-qw-tx");
-    var x = en != null && l === "th" && LETTER.test(en) ? txFor(txKey(en), el, l) : null;
+    var x = en != null && hasDict(l) && LETTER.test(en) ? txFor(txKey(en), el, l) : null;
     if (x) {
       if (lb && lb.indexOf("qw-tx-") !== 0) return;       // WebUI ผูกชื่อไว้เองแล้ว ไม่แตะ
       var id = txLabelId(en, x);
@@ -1959,7 +2882,7 @@
   function txRecords(recs) {
     // record ติดกันมักมาจาก node เดียวกัน (โทเค็นต่อท้าย text node / <p> เดิม) — จำผลของ node ล่าสุดไว้
     var l = lang(), t0 = performance.now(), lastT = null, lastHost = null, lastFast = false;
-    if (l !== "th") { if (canRedirectSysMsg()) txRedirectOnly(recs); }
+    if (!hasDict(l)) { if (canRedirectSysMsg()) txRedirectOnly(recs); }
     else for (var i = 0; i < recs.length; i++) {
       var r = recs[i], t = r.target;
       if (r.type === "characterData") {
@@ -2008,7 +2931,8 @@
 
   // ---- สลับภาษาสดๆ โดยไม่โหลดหน้าใหม่ ----
   // คืนต้นฉบับทุกจุดที่เราเคยเปลี่ยน (WeakMap วนไม่ได้ จึงเดิน text node ทั้งเอกสารครั้งเดียว — ทำเฉพาะตอนสลับภาษา)
-  function txRestore() {
+  function txRestore(prev) {
+    prev = prev || lang();
     var w = document.createTreeWalker(document.body, NF.SHOW_TEXT), n;
     while ((n = w.nextNode())) {
       var r = txOrig.get(n);
@@ -2018,7 +2942,7 @@
       var k = "data-qw-en-" + a, els = document.querySelectorAll("[" + k + "]");
       for (var i = 0; i < els.length; i++) {
         var e = els[i], en = e.getAttribute(k);
-        if (e.getAttribute(a) === txFor(txKey(en), e, "th")) e.setAttribute(a, en);
+        if (e.getAttribute(a) === txFor(txKey(en), e, prev)) e.setAttribute(a, en);
         e.removeAttribute(k);
       }
     });
@@ -2054,17 +2978,18 @@
   // เช่นชื่อโมเดล) ติด lang="en" ให้ เสียงอ่านภาษาไทยจะได้ไม่อ่านด้วยกฎภาษาไทย
   // ไม่แตะกล่องที่มีเนื้อหาข้อความ (เช่น role=group ของข้อความแชต) — เฉพาะปุ่ม/ลิงก์/sr-only
   var THAI = /[฀-๿]/, ASCII_NAME = /^[\x20-\x7E…⌘]*[A-Za-z][\x20-\x7E…⌘]*$/;
+  var NON_LATIN = /[\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff]/;                // ไทย คานะ หรืออักษรฮั่น = ข้อความที่แปลแล้ว
   // จด element ที่เราติด lang="en" เอง (ไม่ใช่ของ WebUI) ไว้ถอดคืนได้ — สลับกลับเป็นอังกฤษแล้ว DOM ต้องเหมือนหน้าที่
   // เปิดเป็นอังกฤษตั้งแต่แรก
   var EN_MARK = "data-qw-lang-en";
   function tagEnglish() {
-    if (root.getAttribute("lang") !== "th") return;
+    if (!hasDict(root.getAttribute("lang") || "")) return;
     // ปุ่มที่ได้ชื่อไทยแล้ว (data-qw-tx) ไม่ใช่ชื่ออังกฤษ ห้ามติด lang="en"
     var els = document.querySelectorAll(
       ':is(button, a, [role="button"])[aria-label]:not([lang]):not([data-qw-tx]), .sr-only:not([lang])');
     for (var i = 0; i < els.length; i++) {
       var e = els[i], name = (e.getAttribute("aria-label") || e.textContent || "").trim();
-      if (ASCII_NAME.test(name) && !THAI.test(e.textContent)) { e.setAttribute("lang", "en"); e.setAttribute(EN_MARK, ""); }
+      if (ASCII_NAME.test(name) && !NON_LATIN.test(e.textContent)) { e.setAttribute("lang", "en"); e.setAttribute(EN_MARK, ""); }
     }
   }
   function untagEnglish(e) {
@@ -2083,8 +3008,9 @@
     if (typeof orig !== "function") return;
     window[fn] = function (msg) {
       var args = Array.prototype.slice.call(arguments);
-      if (typeof msg === "string" && lang() === "th") {
-        try { var x = txFor(txKey(msg), null, "th"); if (x != null) args[0] = x; } catch (e) {}
+      var l = lang();
+      if (typeof msg === "string" && hasDict(l)) {
+        try { var x = txFor(txKey(msg), null, l); if (x != null) args[0] = x; } catch (e) {}
       }
       return orig.apply(window, args);
     };
@@ -2117,7 +3043,7 @@
   function wantLang() {
     if (langOverride) return langOverride;
     var sh = shell();
-    return sh && (sh.lang === "th" || sh.lang === "en") ? sh.lang : null;
+    return sh && UI_LANGS.indexOf(sh.lang) >= 0 ? sh.lang : null;
   }
   function syncRootAttrs() {
     var sh = shell(), wl = wantLang();
@@ -2309,12 +3235,12 @@
   // ตาม ข้อมูลของมันจะบอกภาษาหนึ่งขณะที่หน้าจอเป็นอีกภาษา และถ้า shell โหลด iframe ใหม่ (บันทึกคำสั่ง/เปลี่ยนโมเดล)
   // หน้าแชตจะบูตจากค่านั้นเป็นคนละภาษากับ shell รอบข้าง ภาษาของ shell เป็นของ shell (PATCH /api/settings แล้วโหลดใหม่)
   function setLang(l) {
-    if (l !== "th" && l !== "en") return false;
+    if (UI_LANGS.indexOf(l) < 0) return false;
     var prev = lang();
     langOverride = l;
     setAttr("lang", l);
     if (prev !== l) {
-      txRestore();
+      txRestore(prev);
       restoreForkName();
       txTree(document.body, l);
       bodyObs.takeRecords();
@@ -2486,8 +3412,9 @@
   // ข้อความที่ไม่ได้อยู่ใน DOM (การแจ้งเตือน ชื่อ artifact สำรอง) แปลจากพจนานุกรมเดียวกับ UI
   // ตัด U+2060 ทิ้ง: word joiner มีไว้กันตัดบรรทัดในหน้าจอ ไม่ควรติดไปกับข้อความแจ้งเตือนของระบบปฏิบัติการ
   function tx(en) {
-    if (lang() !== "th") return en;
-    var t = thOf(txKey(en));
+    var l = lang();
+    if (!hasDict(l)) return en;
+    var t = wordOf(txKey(en), l);
     return t == null ? en : t.replace(/⁠/g, "");
   }
   function clip(s, n) {
@@ -4132,29 +5059,42 @@
     text.split(/\n+/).forEach(function (para) {
       var words = para.split(/\s+/).filter(Boolean);
       if (!words.length) return;
-      var hasThai = THAI_CH.test(para), runs = [];
+      // 2026-11: ชุดอักษรของแต่ละคำ — ไทย / ญี่ปุ่น (คานะ) / จีน (ฮั่นล้วน: ถ้าหน้าเป็นญี่ปุ่นให้เสียงญี่ปุ่นอ่านคันจิ) / ละติน
+      // (ฟังก์ชันนี้ถูกดึงไปทดสอบเดี่ยวๆ ใน node — ไม่พึ่งตัวแปรนอกฟังก์ชันนอกจาก THAI_CH)
+      var page = typeof lang === "function" ? lang() : "en", hasNative = /[\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff]/.test(para), runs = [];
+      function scriptOf(w) {
+        if (THAI_CH.test(w)) return "th";
+        if (/[\u3040-\u30ff]/.test(w)) return "ja";
+        if (/[\u3400-\u9fff]/.test(w)) return page === "ja" ? "ja" : "zh";
+        return "en";
+      }
       words.forEach(function (w) {
-        var th = THAI_CH.test(w), r = runs[runs.length - 1];
-        if (r && r.th === th) r.w.push(w); else runs.push({ th: th, w: [w] });
+        var sc = scriptOf(w), r = runs[runs.length - 1];
+        if (r && r.sc === sc) r.w.push(w); else runs.push({ sc: sc, w: [w] });
       });
-      // คำอังกฤษ < 4 คำกลางย่อหน้าไทย (BootNotification, Heartbeat, 3 kW) ให้เสียงไทยอ่านต่อ ไม่สลับเสียงถี่ๆ
-      if (hasThai) runs.forEach(function (r) { if (!r.th && r.w.length < 4) r.th = true; });
+      // คำอังกฤษ < 4 คำกลางย่อหน้าไทย/ญี่ปุ่น/จีน (BootNotification, Heartbeat, 3 kW) ให้เสียงของภาษานั้นอ่านต่อ ไม่สลับเสียงถี่ๆ
+      if (hasNative) {
+        var main = null;
+        runs.forEach(function (r) { if (r.sc !== "en" && !main) main = r.sc; });
+        runs.forEach(function (r) { if (r.sc === "en" && r.w.length < 4 && main) r.sc = main; });
+      }
       var merged = [];
       runs.forEach(function (r) {
         var p = merged[merged.length - 1];
-        if (p && p.th === r.th) p.w = p.w.concat(r.w); else merged.push({ th: r.th, w: r.w.slice() });
+        if (p && p.sc === r.sc) p.w = p.w.concat(r.w); else merged.push({ sc: r.sc, w: r.w.slice() });
       });
+      var VOICE_LANG = { th: "th-TH", ja: "ja-JP", zh: "zh-CN", en: "en-US" };
       merged.forEach(function (r) {
         var cur = "";
         r.w.forEach(function (w) {
           var next = cur ? cur + " " + w : w;
           // ตัดที่จุดจบประโยคเมื่อยาวพอ หรือบังคับตัดเมื่อเกิน 200 ตัวอักษร
-          if (cur && (next.length > 200 || (/[.!?:;]$/.test(cur) && cur.length > 80))) {
-            out.push({ text: cur, lang: r.th ? "th-TH" : "en-US" });
+          if (cur && (next.length > 200 || (/[.!?:;。！？]$/.test(cur) && cur.length > 80))) {
+            out.push({ text: cur, lang: VOICE_LANG[r.sc] });
             cur = w;
           } else cur = next;
         });
-        if (cur) out.push({ text: cur, lang: r.th ? "th-TH" : "en-US" });
+        if (cur) out.push({ text: cur, lang: VOICE_LANG[r.sc] });
       });
     });
     return out;
@@ -4559,11 +5499,101 @@
     "{n} matching files — arrow keys to choose, Enter to insert": "พบ {n} ไฟล์ — ลูกศรขึ้นลงเพื่อเลือก Enter เพื่อแทรก",
     "Inserted {name}": "แทรก {name} แล้ว"
   };
+  // 2026-11 ญี่ปุ่น/จีนตัวย่อ — คีย์ชุดเดียวกับ TH_B2B (เทสต์ตรวจ)
+  var JA_B2B = {
+    "Voice input": "音声入力",
+    "Voice input: speak Thai or English, then press again to put the text in the message box": "音声入力: 話してから、もう一度押すと文字がメッセージ欄に入ります",
+    "Stop and transcribe": "停止して文字起こし", "Cancel recording": "録音をキャンセル", "Cancel transcription": "文字起こしをキャンセル",
+    "Transcribing…": "文字起こし中…", "Waiting for microphone permission…": "マイクの許可を待っています…",
+    "Recording — press the button again when you're done, Escape to cancel": "録音中 — 話し終わったらもう一度ボタンを押してください。Esc でキャンセル",
+    "Text from your voice was added to the message box": "音声から起こした文字をメッセージ欄に入れました",
+    "Recording cancelled": "録音をキャンセルしました",
+    "Voice input is unavailable: the speech service isn't running": "音声入力は使えません: 音声認識サービスが動作していません",
+    "Microphone access is blocked. Allow the microphone for this page (icon at the left of the address bar), then try again.": "マイクへのアクセスがブロックされています。このページにマイクを許可し（アドレスバー左のアイコン）、もう一度お試しください。",
+    "No microphone was found.": "マイクが見つかりません。", "The microphone is being used by another app.": "マイクは別のアプリが使用中です。",
+    "This browser can't record audio.": "このブラウザーでは録音できません。",
+    "That was too short — hold on and speak a little longer.": "短すぎます — もう少し長く話してください。",
+    "No speech was recognised. Try again closer to the microphone.": "音声を認識できませんでした。マイクに近づいてもう一度お試しください。",
+    "The recording is too long. Keep it under 3 minutes.": "録音が長すぎます。3 分以内にしてください。",
+    "The speech service couldn't read this audio format.": "音声認識サービスがこの音声形式を読み取れませんでした。",
+    "The speech service isn't running. Open Qwen3.8 again from its icon to start it.": "音声認識サービスが動作していません。アイコンから Qwen3.8 をもう一度開いて起動してください。",
+    "Voice input needs the updated hub. Open Qwen3.8 again from its icon.": "音声入力には更新されたハブが必要です。アイコンから Qwen3.8 をもう一度開いてください。",
+    "Couldn't reach the speech service.": "音声認識サービスに接続できませんでした。",
+    "Transcription took too long and was stopped.": "文字起こしに時間がかかりすぎたため停止しました。",
+    "Transcription failed.": "文字起こしに失敗しました。",
+    "The speech service is busy. Try again in a moment.": "音声認識サービスが混み合っています。しばらくしてからお試しください。", "Plan first": "まず計画",
+    "Plan first: Qwen answers with a numbered plan and waits for your approval. Tools that change files, run code or write to Office are switched off in this chat until you turn it off.": "まず計画: Qwen は番号付きの計画で答え、あなたの承認を待ちます。ファイルの変更、コードの実行、Office への書き込みを行うツールは、このモードをオフにするまでこのチャットで無効になります。",
+    "Plan mode: Qwen proposes a plan first and won't change anything yet": "計画モード: Qwen はまず計画を提案し、まだ何も変更しません",
+    "Approve plan": "計画を承認",
+    "Approve the plan: turn plan mode off and ask Qwen to carry it out": "計画を承認: 計画モードをオフにして Qwen に実行を依頼します",
+    "Turn off": "オフにする", "Turn off plan mode": "計画モードをオフにする",
+    "Plan approved — go ahead and carry it out.": "計画を承認しました — 実行してください。",
+    "Plan mode is on for this chat": "このチャットで計画モードがオンです", "Plan mode is on for the new chat": "新しいチャットで計画モードがオンです",
+    "Plan mode is off": "計画モードはオフです", "Bypass permissions: OFF": "許可の確認をスキップ: オフ",
+    "Bypass permissions: ON": "許可の確認をスキップ: オン", "Bypass permissions: PAUSED": "許可の確認をスキップ: 一時停止",
+    "Bypass permissions automatically allows agent tools, including file changes and commands. Click to turn it on or off. Your choice is saved for this project.": "許可の確認をスキップすると、ファイルの変更やコマンドを含むエージェントのツールを自動で許可します。クリックでオン/オフ。選択はこのプロジェクトに保存されます。",
+    "Bypass permissions is paused while Plan first is on. Turn Plan first off to resume automatic approvals.": "「まず計画」がオンの間、許可の確認スキップは一時停止します。自動許可に戻すには「まず計画」をオフにしてください。",
+    "Waiting for project information before enabling bypass permissions.": "許可の確認スキップを有効にする前にプロジェクト情報を待っています。",
+    "Auto Continue: ON": "自動続行: オン", "Auto Continue: OFF": "自動続行: オフ", "Auto Continue: PAUSED": "自動続行: 一時停止",
+    "Automatically continues at the turn limit and reconnects interrupted responses without repeating completed tools. Stop cancels the run. Your choice is saved for this project.": "ターン上限で自動的に続行し、中断された回答を完了済みのツールを繰り返さずに再接続します。「停止」で実行をキャンセルします。選択はこのプロジェクトに保存されます。",
+    "Auto Continue is paused after Stop. Send a new message or turn Auto Continue off and on to resume.": "「停止」の後、自動続行は一時停止しています。再開するには新しいメッセージを送るか、自動続行をオフにしてからオンにしてください。",
+    "Auto Continue is paused while Plan first is on.": "「まず計画」がオンの間、自動続行は一時停止します。",
+    "Waiting for project information before enabling Auto Continue.": "自動続行を有効にする前にプロジェクト情報を待っています。",
+    "Project files": "プロジェクトのファイル", "↑↓ choose · Enter insert · Esc close": "↑↓ 選択 · Enter 挿入 · Esc 閉じる",
+    "Attachment": "添付ファイル", "Output": "出力ファイル", "Loading project files…": "プロジェクトのファイルを読み込み中…",
+    "This project has no files yet.": "このプロジェクトにはまだファイルがありません。", "Add files": "ファイルを追加",
+    "No files match “{q}”": "“{q}” に一致するファイルはありません",
+    "{n} matching files — arrow keys to choose, Enter to insert": "{n} 件のファイルが一致 — 矢印キーで選択、Enter で挿入",
+    "Inserted {name}": "{name} を挿入しました",
+  };
+  var ZH_B2B = {
+    "Voice input": "语音输入",
+    "Voice input: speak Thai or English, then press again to put the text in the message box": "语音输入：说话后再按一次，把文字放进输入框",
+    "Stop and transcribe": "停止并转写", "Cancel recording": "取消录音", "Cancel transcription": "取消转写",
+    "Transcribing…": "正在转写…", "Waiting for microphone permission…": "正在等待麦克风权限…",
+    "Recording — press the button again when you're done, Escape to cancel": "正在录音 — 说完后再按一次按钮，按 Esc 取消",
+    "Text from your voice was added to the message box": "已把语音转成的文字放进输入框", "Recording cancelled": "已取消录音",
+    "Voice input is unavailable: the speech service isn't running": "语音输入不可用：语音服务未运行",
+    "Microphone access is blocked. Allow the microphone for this page (icon at the left of the address bar), then try again.": "麦克风访问被阻止。请允许此页面使用麦克风（地址栏左侧的图标），然后重试。",
+    "No microphone was found.": "未找到麦克风。", "The microphone is being used by another app.": "麦克风正被其他应用占用。",
+    "This browser can't record audio.": "此浏览器无法录音。",
+    "That was too short — hold on and speak a little longer.": "太短了 — 请多说一会儿。",
+    "No speech was recognised. Try again closer to the microphone.": "没有识别到语音。请靠近麦克风再试一次。",
+    "The recording is too long. Keep it under 3 minutes.": "录音太长了。请控制在 3 分钟以内。",
+    "The speech service couldn't read this audio format.": "语音服务无法读取这种音频格式。",
+    "The speech service isn't running. Open Qwen3.8 again from its icon to start it.": "语音服务未运行。请从图标再次打开 Qwen3.8 以启动它。",
+    "Voice input needs the updated hub. Open Qwen3.8 again from its icon.": "语音输入需要更新后的 Hub。请从图标再次打开 Qwen3.8。",
+    "Couldn't reach the speech service.": "无法连接语音服务。", "Transcription took too long and was stopped.": "转写耗时过长，已停止。",
+    "Transcription failed.": "转写失败。", "The speech service is busy. Try again in a moment.": "语音服务正忙。请稍后再试。",
+    "Plan first": "先规划",
+    "Plan first: Qwen answers with a numbered plan and waits for your approval. Tools that change files, run code or write to Office are switched off in this chat until you turn it off.": "先规划：Qwen 会先给出编号的计划并等你批准。修改文件、运行代码或写入 Office 的工具在这个对话中会被关闭，直到你关闭此模式。",
+    "Plan mode: Qwen proposes a plan first and won't change anything yet": "规划模式：Qwen 会先提出计划，暂时不做任何更改",
+    "Approve plan": "批准计划",
+    "Approve the plan: turn plan mode off and ask Qwen to carry it out": "批准计划：关闭规划模式并让 Qwen 执行", "Turn off": "关闭",
+    "Turn off plan mode": "关闭规划模式", "Plan approved — go ahead and carry it out.": "计划已批准 — 请开始执行。",
+    "Plan mode is on for this chat": "此对话已开启规划模式", "Plan mode is on for the new chat": "新对话已开启规划模式",
+    "Plan mode is off": "规划模式已关闭", "Bypass permissions: OFF": "跳过权限确认：关", "Bypass permissions: ON": "跳过权限确认：开",
+    "Bypass permissions: PAUSED": "跳过权限确认：已暂停",
+    "Bypass permissions automatically allows agent tools, including file changes and commands. Click to turn it on or off. Your choice is saved for this project.": "跳过权限确认会自动允许智能体工具，包括修改文件和运行命令。点击开启或关闭。你的选择会为此项目保存。",
+    "Bypass permissions is paused while Plan first is on. Turn Plan first off to resume automatic approvals.": "“先规划”开启期间，跳过权限确认会暂停。关闭“先规划”即可恢复自动允许。",
+    "Waiting for project information before enabling bypass permissions.": "正在等待项目信息，之后才能开启跳过权限确认。",
+    "Auto Continue: ON": "自动继续：开", "Auto Continue: OFF": "自动继续：关", "Auto Continue: PAUSED": "自动继续：已暂停",
+    "Automatically continues at the turn limit and reconnects interrupted responses without repeating completed tools. Stop cancels the run. Your choice is saved for this project.": "到达轮次上限时自动继续，并重新连接被中断的回答而不重复已完成的工具。按停止可取消运行。你的选择会为此项目保存。",
+    "Auto Continue is paused after Stop. Send a new message or turn Auto Continue off and on to resume.": "按停止后自动继续已暂停。发送新消息，或把自动继续关了再开，即可恢复。",
+    "Auto Continue is paused while Plan first is on.": "“先规划”开启期间，自动继续会暂停。",
+    "Waiting for project information before enabling Auto Continue.": "正在等待项目信息，之后才能开启自动继续。", "Project files": "项目文件",
+    "↑↓ choose · Enter insert · Esc close": "↑↓ 选择 · Enter 插入 · Esc 关闭", "Attachment": "附件", "Output": "输出文件",
+    "Loading project files…": "正在加载项目文件…", "This project has no files yet.": "此项目还没有文件。", "Add files": "添加文件",
+    "No files match “{q}”": "没有匹配“{q}”的文件",
+    "{n} matching files — arrow keys to choose, Enter to insert": "找到 {n} 个文件 — 方向键选择，Enter 插入",
+    "Inserted {name}": "已插入 {name}",
+  };
+  var B2B = { th: TH_B2B, ja: JA_B2B, zh: ZH_B2B };
   // พจนานุกรมแยกจาก TH ของตัวแปล: คำอย่าง "Output" / "Turn off" มีในพจนานุกรมของ WebUI แล้วด้วยความหมายอื่น
   // (เจอจริง: "Output" → "เอาต์พุต") และใส่รวมใน TH จะทำให้ตัวแปลไปแปลป้ายของ WebUI ที่บังเอิญตรงคำเหล่านี้ด้วย
   (function () { for (var k in TH_B2B) if (hasOwn(TH_B2B, k)) TH_B2B[k] = glue(TH_B2B[k]); })();
   // ป้ายบนจอ (คำแปลไทยมี word joiner กันตัดกลางคำทับศัพท์) / ชื่อสำหรับ aria-label และ title (ไม่มี word joiner)
-  function L(en) { return lang() === "th" && hasOwn(TH_B2B, en) ? TH_B2B[en] : en; }
+  function L(en) { var D = B2B[lang()]; return D && hasOwn(D, en) ? D[en] : en; }
   function A(en) { return L(en).replace(/⁠/g, ""); }
   function setTxt(n, s) { if (n.textContent !== s) n.textContent = s; }
   function setAt(n, k, v) {
@@ -5216,7 +6246,7 @@
     return "server";
   }
   function sttServerMsg(d) {
-    var s = d && (lang() === "th" ? d.error_th : d.error_en);
+    var s = d && (d["error_" + lang()] || d.error_en || d.error_th);
     return typeof s === "string" && s.trim() ? s.trim().slice(0, 240) : "";
   }
   function micStopTracks(stream) {
@@ -5803,7 +6833,20 @@
   };
   // พจนานุกรมแยก (เหมือน TH_B2B): ไม่ใส่รวมใน TH ของตัวแปล ป้ายของ WebUI ที่บังเอิญตรงคำจะได้ไม่เพี้ยน
   (function () { for (var k in TH_B3) if (hasOwn(TH_B3, k)) TH_B3[k] = glue(TH_B3[k]); })();
-  function L3(en) { return lang() === "th" && hasOwn(TH_B3, en) ? TH_B3[en] : en; }
+  var JA_B3 = {
+    "Earlier part of this chat summarized ({n} turns)": "このチャットの前半を要約しました（{n} ターン）",
+    "This chat got longer than the model can hold at once, so the middle part ({n} turns) was summarized automatically. Qwen still sees your first message, the summary and the latest turns. Every message is still here on this page.": "このチャットはモデルが一度に保持できる長さを超えたため、中間部分（{n} ターン）を自動で要約しました。Qwen には最初のメッセージ、要約、直近のターンが見えています。すべてのメッセージはこのページに残っています。",
+    "The earlier part of this chat was summarized to fit the model's memory": "モデルのメモリーに収めるため、このチャットの前半を要約しました",
+    "Recovered an incomplete tool record so this chat can continue. Your saved messages are preserved.": "不完全なツール記録を復元したので、このチャットを続けられます。保存済みのメッセージはそのまま残っています。",
+  };
+  var ZH_B3 = {
+    "Earlier part of this chat summarized ({n} turns)": "已总结这段对话的前半部分（{n} 轮）",
+    "This chat got longer than the model can hold at once, so the middle part ({n} turns) was summarized automatically. Qwen still sees your first message, the summary and the latest turns. Every message is still here on this page.": "这段对话超过了模型一次能容纳的长度，因此中间部分（{n} 轮）已被自动总结。Qwen 仍能看到你的第一条消息、摘要和最近几轮。所有消息都还在这个页面上。",
+    "The earlier part of this chat was summarized to fit the model's memory": "为了适应模型的记忆容量，这段对话的前半部分已被总结",
+    "Recovered an incomplete tool record so this chat can continue. Your saved messages are preserved.": "已恢复一条不完整的工具记录，这段对话可以继续。你保存的消息都在。",
+  };
+  var B3 = { th: TH_B3, ja: JA_B3, zh: ZH_B3 };
+  function L3(en) { var D = B3[lang()]; return D && hasOwn(D, en) ? D[en] : en; }
   function A3(en) { return L3(en).replace(/⁠/g, ""); }
   XICON.compact = '<path d="M12 3.5v6"/><path d="m8.8 6.6 3.2 3.2 3.2-3.2"/><path d="M12 20.5v-6"/><path d="m8.8 17.4 3.2-3.2 3.2 3.2"/>' +
     '<path d="M4.5 12h15"/>';
@@ -5948,7 +6991,7 @@
     b3cEl.appendChild(b3cTip);
   }
   function b3cNum(n) {
-    try { return Number(n).toLocaleString(lang() === "th" ? "th-TH" : "en-GB"); } catch (e) { return String(n); }
+    try { return Number(n).toLocaleString(LOCALE[lang()] || "en-GB"); } catch (e) { return String(n); }
   }
   // จาก extrasPass() ทุกรอบ: แสดงเฉพาะในแชตที่ถูกย่อ — อยู่ในฟอร์ม ก่อนแถบโหมดวางแผน (ถ้ามี) หรือก่อนการ์ดกล่องพิมพ์
   function b3Pass(r) {

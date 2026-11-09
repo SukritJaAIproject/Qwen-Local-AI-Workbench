@@ -12,8 +12,9 @@ API (127.0.0.1 เท่านั้น)
                         + expect_device (cuda|cpu ที่งานถัดไปจะได้) + window_s (วินาทีต่อหน้าต่างเสียง 30 วิ ต่ออุปกรณ์)
   POST /v1/transcribe   ต้องใช้ token — body เป็นไฟล์เสียงดิบ (Content-Type audio/* หรือ application/octet-stream)
                         หรือ multipart/form-data (ส่วน file/audio + ช่อง language/hint ถ้ามี)
-                        query: language=th|en|auto (ค่าเริ่มต้น auto) · hint=th|en (ภาษาของหน้าจอผู้ใช้ — ใช้เฉพาะตอน
-                        ตรวจภาษาเองแล้วไม่แน่ใจ) · max_seconds=<ลดเพดานเองได้>
+                        query: language=th|en|ja|zh|auto (ค่าเริ่มต้น auto) · hint=th|en|ja|zh (ภาษาของหน้าจอผู้ใช้ —
+                        เป็นภาษาสำรองตอนตรวจภาษาเองแล้วไม่แน่ใจ และ ja/zh ถูกเพิ่มเข้าชุดภาษาที่ตรวจได้ของคำขอนั้น
+                        ดู HINT_LANGS) · max_seconds=<ลดเพดานเองได้>
                         -> {"text", "language", "language_probability", "duration", "segments":[{start,end,text}],
                             "model", "device", "elapsed_s", "detected"?}
   POST /v1/warm         ต้องใช้ token — เตรียมโมเดลล่วงหน้า (hub เรียกตอนผู้ใช้เริ่มอัดเสียง) ไม่รอ: {"state","action"}
@@ -50,6 +51,9 @@ API (127.0.0.1 เท่านั้น)
     ได้ en >= 0.965 ทุกคำ — จึงถอดใหม่เป็นภาษาสำรอง (hint จากหน้าจอ หรือ --primary-language) เมื่อผลตรวจอยู่นอกชุด หรือ
     เป็นอีกภาษาในชุดแต่ความน่าจะเป็น < 0.9 (คลิปสั้น) — บังคับไทยกับอังกฤษจริงก็ไม่ได้: โหมดไทยถอดคลิปอังกฤษ 4-11 วิ
     เป็นภาษาไทยมั่วๆ จึงไม่ "ล็อกไทยทุกครั้ง" (ดู choose_language)
+  * 2026-11: หน้าจอภาษาญี่ปุ่น/จีนส่ง hint=ja|zh มา — ภาษานั้นถูกเพิ่มเข้าชุดตรวจเองเฉพาะคำขอนั้น (Engine.allowed_for) และ
+    เป็นภาษาสำรองด้วย: พูดญี่ปุ่นบนหน้าจอญี่ปุ่นได้เลย ส่วนหน้าจอไทย/อังกฤษยังได้ชุด th,en เดิม (คำไทยสั้นที่เพี้ยนเป็น ja/zh
+    ยังกลับเป็นไทย) — faster-whisper รองรับ ja/zh อยู่แล้ว ไม่ต้องเปลี่ยนโมเดล
 
 ความปลอดภัย
   * ฟังเฉพาะ 127.0.0.1 · Host ต้องเป็น 127.0.0.1/localhost:<port> (กัน DNS rebinding) · Origin ถ้ามีต้องเป็นหน้าของเรา
@@ -126,6 +130,9 @@ LANG_RE = re.compile(r"^[a-z]{2,3}$")
 PRIMARY_LANGUAGE_DEFAULT = "th"            # ภาษาหลักของผู้ใช้เครื่องนี้ — ดูเหตุผลที่ Engine._transcribe
 # ---- [fix 2026-10-06 voice] ภาษาที่ตรวจเองได้ / เพดานการถอดรหัส / เวลาต่อหน้าต่าง (เหตุผลอยู่หัวไฟล์)
 LANGUAGES_DEFAULT = ("th", "en")           # สัญญา C1: ไทย + อังกฤษ ตรวจเอง — ผลตรวจนอกชุดนี้ = ถอดใหม่เป็นภาษาสำรอง
+# 2026-11: ภาษาของหน้าจอ (hint) ที่ "เพิ่ม" เข้าชุดตรวจเองได้เฉพาะคำขอนั้น — ผู้ใช้ที่ตั้ง UI เป็นญี่ปุ่น/จีนพูดภาษานั้น
+# ได้โดยไม่ต้องแก้ --languages ส่วนหน้าจอไทย/อังกฤษไม่เปลี่ยนอะไร (คำไทยสั้นที่เพี้ยนเป็น ja/zh ยังถูกดึงกลับเป็นไทยเหมือนเดิม)
+HINT_LANGS = ("ja", "zh")
 LANG_SURE = 0.9                            # คลิปสั้น: อีกภาษาในชุดต้องมั่นใจ >= นี้ (อังกฤษจริง >= 0.965, ไทยที่เพี้ยน <= 0.75)
 SHORT_CLIP_S = 30.0                        # หน้าต่างเดียวของ whisper — คลิปยาวกว่านี้ใช้กลยุทธ์ multilingual เดิม
 MIN_RATE, MAX_RATE = 8000, 192000          # อัตราสุ่มที่รับ: ต่ำกว่า 8 kHz = แปลงขึ้น 16 kHz แล้วขยายหน่วยความจำได้ไม่จำกัด
@@ -797,6 +804,13 @@ class Engine:
                     self._run.release()
 
     # ---- ถอดเสียง
+    def allowed_for(self, hint: str | None) -> tuple:
+        """ชุดภาษาที่โหมดตรวจเองเลือกได้สำหรับคำขอนี้ — ชุดของเซิร์ฟเวอร์ + ภาษาของหน้าจอเมื่อเป็น ja/zh (HINT_LANGS)
+        ชุดว่าง (ไม่จำกัด) คงว่าง; hint อื่นนอก HINT_LANGS (เช่น ko) ไม่เพิ่ม — พฤติกรรมเดิมทุกประการ"""
+        if not self.languages or not hint or hint in self.languages or hint not in HINT_LANGS:
+            return self.languages
+        return self.languages + (hint,)
+
     def transcribe(self, audio, duration: float, language: str | None, hint: str | None = None) -> dict:
         if not self._slots.acquire(blocking=False):
             raise EngineBusy("queue full")
@@ -858,8 +872,9 @@ class Engine:
         if language is None:
             det = (info.language or "").lower()
             prob = float(info.language_probability or 0.0)
-            fallback = hint if (hint and hint in self.languages) else self.primary_language
-            pick, why = choose_language(det, prob, duration, self.languages, fallback, self.primary_language)
+            allowed = self.allowed_for(hint)
+            fallback = hint if (hint and hint in allowed) else self.primary_language
+            pick, why = choose_language(det, prob, duration, allowed, fallback, self.primary_language)
             detected = {"language": det, "probability": round(prob, 3), "rule": why}
             if pick is None:
                 if duration > SHORT_CLIP_S:
@@ -896,6 +911,7 @@ class Engine:
                 "idle_unload_min": round(self.idle_unload_s / 60.0, 1),
                 # [fix 2026-10-06 voice] ให้ hub/หน้าเว็บบอกผู้ใช้ได้ว่างานถัดไปเร็วแค่ไหน (GPU ~2 วิ, CPU ~24-54 วิ/30 วิเสียง)
                 "languages": list(self.languages), "primary_language": self.primary_language,
+                "hint_languages": [x for x in HINT_LANGS if x not in self.languages],
                 "window_s": dict(self.window_s), "window_measured": dict(self.window_measured),
                 "warming": bool(self._warming)}
 
@@ -1260,7 +1276,8 @@ def main(argv=None) -> int:
                     help="auto mode keeps this language for the whole clip when the first 30 s are in it")
     ap.add_argument("--languages", default=os.environ.get("QWEN_STT_LANGUAGES") or ",".join(LANGUAGES_DEFAULT),
                     help="languages auto mode may pick (comma list; 'any' = no limit). Outside this set, or an "
-                         "unsure other language on a short clip, it transcribes in the hint/primary language")
+                         "unsure other language on a short clip, it transcribes in the hint/primary language. "
+                         "A Japanese or Chinese interface (hint=ja|zh) adds its language to the set for that request")
     args = ap.parse_args(argv)
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")

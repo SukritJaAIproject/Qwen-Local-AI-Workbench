@@ -28,6 +28,22 @@ import socket
 import urllib.error
 import urllib.parse
 import urllib.request
+try:
+    from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
+except ImportError:  # โหลดจากนอก mcp-local (hub, mcp-websearch, python -I) — เอา i18n_tools.py ข้างไฟล์นี้มาเอง
+    import importlib.util as _ilu
+    import os as _os
+    import sys as _sys
+    try:
+        _spec = _ilu.spec_from_file_location(
+            "i18n_tools", _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "i18n_tools.py"))
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        _sys.modules.setdefault("i18n_tools", _mod)
+        TR = _mod.TR
+    except Exception:  # noqa: BLE001 — ไม่มีแคตตาล็อก = ข้อความไทยตามเดิม
+        def TR(text):
+            return text
 
 # พอร์ตของสแตกนี้ (รวมพอร์ตทดสอบ) ห้ามยิงบน loopback แม้ผู้ใช้อนุญาต allow_local
 STACK_PORTS = frozenset([8099, 8199, 8780, 8791, 8792, 8891, 8892] + list(range(8100, 8180)))
@@ -119,10 +135,10 @@ def _always_blocked(ip, port: int | None) -> bool:
 
 
 def _explain(host: str, addr: str) -> str:
-    return ("ปฏิเสธเป้าหมายในเครือข่ายภายใน: %s ชี้ไปที่ %s\n"
+    return (TR("ปฏิเสธเป้าหมายในเครือข่ายภายใน: %s ชี้ไปที่ %s\n"
             "  ที่อยู่ภายใน (localhost, 127.x, 10.x, 192.168.x, 172.16-31.x, 169.254.x, 100.64.x, "
             "IPv6 ภายใน) ถูกกันไว้เพราะโมเดลที่ยิงเข้าเครือข่ายในบ้าน บริการของเครื่องนี้ "
-            "หรือ metadata ของ cloud ได้เอง คือช่องโหว่ SSRF" % (host, addr))
+            "หรือ metadata ของ cloud ได้เอง คือช่องโหว่ SSRF") % (host, addr))
 
 
 def check_addr(host: str, addr: str, port: int | None, allow_local: bool) -> None:
@@ -130,10 +146,10 @@ def check_addr(host: str, addr: str, port: int | None, allow_local: bool) -> Non
     try:
         ip = ipaddress.ip_address(str(addr).split("%", 1)[0])
     except ValueError:
-        raise Blocked("อ่านที่อยู่ IP ของ %s ไม่ออก: %r" % (host, addr)) from None
+        raise Blocked(TR("อ่านที่อยู่ IP ของ %s ไม่ออก: %r") % (host, addr)) from None
     if _always_blocked(ip, port):
-        raise Blocked("ปฏิเสธ: %s (%s พอร์ต %s) เป็นบริการของสแตกนี้เองหรือ link-local "
-                      "ซึ่งกันไว้เสมอแม้ผู้ใช้อนุญาตที่อยู่ภายใน" % (host, addr, port))
+        raise Blocked(TR("ปฏิเสธ: %s (%s พอร์ต %s) เป็นบริการของสแตกนี้เองหรือ link-local "
+                      "ซึ่งกันไว้เสมอแม้ผู้ใช้อนุญาตที่อยู่ภายใน") % (host, addr, port))
     if not allow_local and ip_is_internal(ip):
         raise Blocked(_explain(host, str(addr)))
 
@@ -154,7 +170,7 @@ def check_target(url: str, allow_local: bool = False, add_scheme: bool = True) -
     """
     raw = str(url or "").strip().strip('"').strip("'")
     if not raw:
-        raise ValueError("ไม่ได้ระบุ url")
+        raise ValueError(TR("ไม่ได้ระบุ url"))
     if add_scheme:
         m = _SCHEME_RE.match(raw)
         if not m or re.match(r"^\d+(?:[/?#]|$)", raw[m.end():]):
@@ -163,15 +179,15 @@ def check_target(url: str, allow_local: bool = False, add_scheme: bool = True) -
     scheme = (parts.scheme or "").lower()
     if scheme not in ("http", "https"):
         raise Blocked(
-            "รับเฉพาะ http และ https เท่านั้น แต่ได้รับสคีม \"%s\" — file:// และสคีมอื่น "
-            "ถูกปฏิเสธเสมอ เพราะจะกลายเป็นช่องอ่านไฟล์ในเครื่องที่เลี่ยงการตรวจ path" % scheme)
+            TR("รับเฉพาะ http และ https เท่านั้น แต่ได้รับสคีม \"%s\" — file:// และสคีมอื่น "
+            "ถูกปฏิเสธเสมอ เพราะจะกลายเป็นช่องอ่านไฟล์ในเครื่องที่เลี่ยงการตรวจ path") % scheme)
     host = parts.hostname
     if not host:
-        raise ValueError("URL ไม่มีชื่อโฮสต์: %s" % raw[:200])
+        raise ValueError(TR("URL ไม่มีชื่อโฮสต์: %s") % raw[:200])
     try:
         port = parts.port or (443 if scheme == "https" else 80)
     except ValueError as exc:
-        raise ValueError("หมายเลขพอร์ตใน URL ไม่ถูกต้อง: %s" % exc) from None
+        raise ValueError(TR("หมายเลขพอร์ตใน URL ไม่ถูกต้อง: %s") % exc) from None
     try:
         addrs = resolve(host, port)
     except (socket.gaierror, OSError, UnicodeError, ValueError):
@@ -189,9 +205,9 @@ def _guarded_connect_factory(allow_local: bool):
         try:
             addrs = resolve(host, port)
         except (socket.gaierror, UnicodeError) as exc:
-            raise OSError("แปลงชื่อ %s ไม่ได้: %s" % (host, exc)) from None
+            raise OSError(TR("แปลงชื่อ %s ไม่ได้: %s") % (host, exc)) from None
         if not addrs:
-            raise OSError("แปลงชื่อ %s ไม่ได้" % host)
+            raise OSError(TR("แปลงชื่อ %s ไม่ได้") % host)
         # ตรวจ "ทุก" IP ก่อนต่อตัวไหนเลย ถ้ามีตัวใดเป็นที่อยู่ภายใน ถือว่าทั้งชื่อนี้ไม่น่าไว้ใจ
         for addr in addrs:
             check_addr(host, addr, port, allow_local)
@@ -201,7 +217,7 @@ def _guarded_connect_factory(allow_local: bool):
                 return socket.create_connection((addr, port), timeout, source_address)
             except OSError as exc:
                 last = exc
-        raise last or OSError("ต่อ %s ไม่ได้" % host)
+        raise last or OSError(TR("ต่อ %s ไม่ได้") % host)
     return _connect
 
 
@@ -233,7 +249,7 @@ class GuardedRedirect(urllib.request.HTTPRedirectHandler):
         try:
             check_target(newurl, self.allow_local, add_scheme=False)
         except ValueError as exc:
-            raise urllib.error.URLError("redirect ถูกปฏิเสธ: %s" % exc) from None
+            raise urllib.error.URLError(TR("redirect ถูกปฏิเสธ: %s") % exc) from None
         self.hops.append(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 

@@ -45,6 +45,9 @@ from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, Thread
 from pathlib import Path
 from unittest import mock
 
+# 2026-11: ข้อความของเครื่องมือ browser_* ตามภาษาของหน้าจอ — เทสต์ตรวจข้อความไทย จึงไม่อ่าน settings.json จริง (ไม่มีไฟล์ = ไทย)
+os.environ["QWEN_SETTINGS_FILE"] = os.path.join(tempfile.gettempdir(), "qwen-tests-%d-no-settings.json" % os.getpid())
+
 PROJECTS = Path(os.environ.get("QWEN_PROJECTS_DIR", r"C:\LLM\projects"))
 HUB = PROJECTS / "hub.py"
 HB_FILE = PROJECTS / "hub_browser.py"

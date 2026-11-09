@@ -62,6 +62,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 import guard  # noqa: E402
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 _PARENT = os.path.dirname(_HERE)
 if _PARENT not in sys.path:
@@ -361,7 +362,7 @@ def _run_starter(cmd: list[str]) -> tuple[int, str]:
             note = ""
         except subprocess.TimeoutExpired:
             proc.kill()
-            rc, note = 124, "หมดเวลา %d วินาที · " % int(START_TIMEOUT_S)
+            rc, note = 124, TR("หมดเวลา %d วินาที · ") % int(START_TIMEOUT_S)
         try:
             fh.seek(pos)
             out = fh.read().decode("utf-8", "replace")
@@ -377,8 +378,8 @@ def ensure_comfy(log: list) -> dict:
         return stats
     cmd = _start_cmd()
     if not cmd:
-        raise CreativeError("Creative Studio (ComfyUI ที่ %s:%d) ยังไม่เปิด และเปิดให้เองไม่ได้ในสภาพแวดล้อมนี้ — เปิด "
-                            "C:\\LLM\\Creative-Studio.cmd แล้วสั่งใหม่" % comfy_addr())
+        raise CreativeError(TR("Creative Studio (ComfyUI ที่ %s:%d) ยังไม่เปิด และเปิดให้เองไม่ได้ในสภาพแวดล้อมนี้ — เปิด "
+                            "C:\\LLM\\Creative-Studio.cmd แล้วสั่งใหม่") % comfy_addr())
     log.append("เปิด Creative Studio ให้ (start-creative-studio.ps1 -NoBrowser)")
     t0 = time.monotonic()
     rc, tail = _run_starter(cmd)
@@ -391,7 +392,7 @@ def ensure_comfy(log: list) -> dict:
         if rc not in (0, None):
             break
         time.sleep(1.0)
-    raise CreativeError("เปิด Creative Studio ไม่สำเร็จ (รหัส %s) %s — ดู C:\\LLM\\logs\\creative-studio.err.log" % (rc, tail))
+    raise CreativeError(TR("เปิด Creative Studio ไม่สำเร็จ (รหัส %s) %s — ดู C:\\LLM\\logs\\creative-studio.err.log") % (rc, tail))
 
 
 # ------------------------------------------------------------------ router: ปลดโมเดลแชตให้มีที่ว่าง
@@ -451,10 +452,10 @@ def make_room(log: list) -> tuple[int, list[str]]:
     """VRAM ว่างพอสำหรับ Wan? ไม่พอ = ปลดโมเดลแชตที่ว่าง แล้วรอ — คืน (VRAM ว่าง MiB, โมเดลที่ปลด) หรือ CreativeError"""
     dev = comfy_device(comfy_stats())
     if dev is None:
-        raise CreativeError("ComfyUI ไม่รายงาน GPU (อาจกำลังรันแบบ CPU) — ต่อ eGPU RTX 4090 แล้วเปิด Creative Studio ใหม่")
+        raise CreativeError(TR("ComfyUI ไม่รายงาน GPU (อาจกำลังรันแบบ CPU) — ต่อ eGPU RTX 4090 แล้วเปิด Creative Studio ใหม่"))
     if dev["total_mib"] < GPU_MIN_TOTAL_MIB:
-        raise CreativeError("GPU ที่ Creative Studio ใช้คือ %s (VRAM %s MiB) เล็กเกินสำหรับ Wan 2.2 — ต่อ eGPU RTX 4090 "
-                            "แล้วเปิด Creative Studio ใหม่" % (dev["name"], format(dev["total_mib"], ",")))
+        raise CreativeError(TR("GPU ที่ Creative Studio ใช้คือ %s (VRAM %s MiB) เล็กเกินสำหรับ Wan 2.2 — ต่อ eGPU RTX 4090 "
+                            "แล้วเปิด Creative Studio ใหม่") % (dev["name"], format(dev["total_mib"], ",")))
     free = real_free_mib(dev)
     if free >= GPU_NEED_MIB:
         return free, []
@@ -474,8 +475,8 @@ def make_room(log: list) -> tuple[int, list[str]]:
             break
         time.sleep(0.5)
     if free < GPU_NEED_MIB and busy:
-        raise CreativeError("VRAM ว่าง %s MiB (ต้องการ %s) และโมเดลแชต %s กำลังตอบอยู่จึงปลดไม่ได้ — รอให้ตอบเสร็จแล้วสั่งใหม่ "
-                            "(ยังไม่ได้เริ่มสร้างวิดีโอ)" % (format(free, ","), format(GPU_NEED_MIB, ","), ", ".join(busy)))
+        raise CreativeError(TR("VRAM ว่าง %s MiB (ต้องการ %s) และโมเดลแชต %s กำลังตอบอยู่จึงปลดไม่ได้ — รอให้ตอบเสร็จแล้วสั่งใหม่ "
+                            "(ยังไม่ได้เริ่มสร้างวิดีโอ)") % (format(free, ","), format(GPU_NEED_MIB, ","), ", ".join(busy)))
     if free < GPU_NEED_MIB:
         log.append("VRAM ว่าง %s MiB น้อยกว่าที่แนะนำ (%s) — ComfyUI จะทยอยโหลด/ปลดโมเดลเอง อาจช้ากว่าปกติ"
                    % (format(free, ","), format(GPU_NEED_MIB, ",")))
@@ -564,7 +565,7 @@ def _outputs_target(project: str, fname: str) -> str:
     target = guard.check_write(os.path.join(dirs.outputs, fname))
     expect = os.path.normcase(os.path.join(os.path.realpath(dirs.base), "outputs"))
     if os.path.normcase(os.path.realpath(dirs.outputs)) != expect or os.path.islink(dirs.outputs):
-        raise guard.Denied("ปลายทางต้องอยู่ในโฟลเดอร์ outputs ของโปรเจกต์นี้เท่านั้น (outputs ต้องเป็นโฟลเดอร์จริง ไม่ใช่ลิงก์/junction)")
+        raise guard.Denied(TR("ปลายทางต้องอยู่ในโฟลเดอร์ outputs ของโปรเจกต์นี้เท่านั้น (outputs ต้องเป็นโฟลเดอร์จริง ไม่ใช่ลิงก์/junction)"))
     return target
 
 
@@ -616,7 +617,7 @@ def _unique_stem(project: str, stem: str) -> str:
         n += 1
         cand = "%s-%d" % (stem, n)
         if n > 500:
-            raise CreativeError("ตั้งชื่อไฟล์ผลลัพธ์ไม่ได้ (ชื่อซ้ำมากเกินไป) — ส่ง name ใหม่")
+            raise CreativeError(TR("ตั้งชื่อไฟล์ผลลัพธ์ไม่ได้ (ชื่อซ้ำมากเกินไป) — ส่ง name ใหม่"))
     return cand
 
 
@@ -628,9 +629,9 @@ def _num(value, label: str, lo: float, hi: float, default: float, integer: bool 
     try:
         v = float(text)
     except ValueError:
-        raise CreativeError("%s ต้องเป็นตัวเลข (ได้ %r)" % (label, text[:40])) from None
+        raise CreativeError(TR("%s ต้องเป็นตัวเลข (ได้ %r)") % (label, text[:40])) from None
     if v < lo or v > hi:
-        raise CreativeError("%s ต้องอยู่ระหว่าง %s ถึง %s (ได้ %s)" % (label, lo, hi, text[:40]))
+        raise CreativeError(TR("%s ต้องอยู่ระหว่าง %s ถึง %s (ได้ %s)") % (label, lo, hi, text[:40]))
     return int(round(v)) if integer else v
 
 
@@ -641,7 +642,7 @@ def parse_seconds(value) -> tuple[int, float]:
         if text.endswith(word):
             text = text[: -len(word)].strip()
             break
-    seconds = _num(text, "seconds (ความยาว)", 0.5, 5.0, DEFAULT_SECONDS)
+    seconds = _num(text, TR("seconds (ความยาว)"), 0.5, 5.0, DEFAULT_SECONDS)
     frames = int(round(seconds * FPS))
     frames = 4 * int(round((frames - 1) / 4.0)) + 1
     frames = max(MIN_FRAMES, min(MAX_FRAMES, frames))
@@ -671,7 +672,7 @@ def parse_size(value, image_wh=None) -> tuple[int, int]:
         return (960, 960)
     m = re.fullmatch(r"(\d{2,4})x(\d{2,4})(?:p)?", text)
     if not m:
-        raise CreativeError("size ต้องเป็น กว้างxสูง เช่น 1280x704 หรือ landscape|portrait|square (ได้ %r)" % text[:40])
+        raise CreativeError(TR("size ต้องเป็น กว้างxสูง เช่น 1280x704 หรือ landscape|portrait|square (ได้ %r)") % text[:40])
     return _snap(int(m.group(1))), _snap(int(m.group(2)))
 
 
@@ -682,9 +683,9 @@ def parse_seed(value) -> int:
     try:
         v = int(float(text))
     except ValueError:
-        raise CreativeError("seed ต้องเป็นจำนวนเต็ม (ได้ %r)" % text[:40]) from None
+        raise CreativeError(TR("seed ต้องเป็นจำนวนเต็ม (ได้ %r)") % text[:40]) from None
     if v < 0 or v > 2 ** 53:
-        raise CreativeError("seed ต้องอยู่ระหว่าง 0 ถึง 2^53")
+        raise CreativeError(TR("seed ต้องอยู่ระหว่าง 0 ถึง 2^53"))
     return v
 
 
@@ -696,16 +697,16 @@ def resolve_image(image, project: str) -> dict | None:
     full = _docs.resolve_input(raw, project) if _docs is not None else raw
     p = guard.check_read(full)
     if not os.path.isfile(p):
-        raise CreativeError("ไม่พบไฟล์ภาพ %s (วางไว้ใน attachments ของโปรเจกต์ หรือส่ง path เต็ม)" % raw[:120])
+        raise CreativeError(TR("ไม่พบไฟล์ภาพ %s (วางไว้ใน attachments ของโปรเจกต์ หรือส่ง path เต็ม)") % raw[:120])
     ext = os.path.splitext(p)[1].lower()
     if ext not in IMAGE_EXTS:
-        raise CreativeError("ภาพตั้งต้นต้องเป็น png/jpg/jpeg/webp/bmp/gif (ได้ %s)" % (ext or "ไม่มีนามสกุล"))
+        raise CreativeError(TR("ภาพตั้งต้นต้องเป็น png/jpg/jpeg/webp/bmp/gif (ได้ %s)") % (ext or TR("ไม่มีนามสกุล")))
     size = os.path.getsize(p)
     if size > MAX_IMAGE_BYTES:
-        raise CreativeError("ไฟล์ภาพใหญ่เกิน %s" % _human(MAX_IMAGE_BYTES))
+        raise CreativeError(TR("ไฟล์ภาพใหญ่เกิน %s") % _human(MAX_IMAGE_BYTES))
     wh = image_size(p)
     if not wh:
-        raise CreativeError("อ่านขนาดของภาพไม่ได้ (ไฟล์อาจเสียหรือไม่ใช่รูปจริง): %s" % raw[:120])
+        raise CreativeError(TR("อ่านขนาดของภาพไม่ได้ (ไฟล์อาจเสียหรือไม่ใช่รูปจริง): %s") % raw[:120])
     return {"path": p, "shown": _display(p, project), "w": wh[0], "h": wh[1], "bytes": size}
 
 
@@ -715,12 +716,12 @@ def build_spec(project: str, prompt="", image="", seconds="", size="", seed="", 
     text = _CTRL_RE.sub("", _s(prompt)).strip()
     img = resolve_image(image, project)
     if not text and img is None:
-        raise CreativeError("ต้องมี prompt (บรรยายวิดีโอที่ต้องการ) หรือ image (ภาพตั้งต้น) อย่างน้อยหนึ่งอย่าง")
+        raise CreativeError(TR("ต้องมี prompt (บรรยายวิดีโอที่ต้องการ) หรือ image (ภาพตั้งต้น) อย่างน้อยหนึ่งอย่าง"))
     if len(text) > MAX_PROMPT_CHARS:
-        raise CreativeError("prompt ยาวเกิน %d ตัวอักษร" % MAX_PROMPT_CHARS)
+        raise CreativeError(TR("prompt ยาวเกิน %d ตัวอักษร") % MAX_PROMPT_CHARS)
     neg = _CTRL_RE.sub("", _s(negative)).strip()
     if len(neg) > MAX_NEGATIVE_CHARS:
-        raise CreativeError("negative ยาวเกิน %d ตัวอักษร" % MAX_NEGATIVE_CHARS)
+        raise CreativeError(TR("negative ยาวเกิน %d ตัวอักษร") % MAX_NEGATIVE_CHARS)
     frames, secs = parse_seconds(seconds)
     w, h = parse_size(size, (img["w"], img["h"]) if img else None)
     spec = {
@@ -789,21 +790,21 @@ def spec_detail(spec: dict) -> str:
 
 
 def review_text(spec: dict) -> str:
-    lines = ["[creative_video] สร้างวิดีโอด้วย AI Creative Studio (ComfyUI · Wan 2.2 TI2V 5B)",
-             "โปรเจกต์: %s" % spec["project"],
-             "ข้อความ (prompt): %s" % (spec["prompt"] or "(ไม่มี — ใช้ภาพตั้งต้นอย่างเดียว)"),
-             "ข้อความเชิงลบ: %s" % ("(ค่าเริ่มต้นของ Wan) " if spec["negative_default"] else "") + spec["negative"]]
+    lines = [TR("[creative_video] สร้างวิดีโอด้วย AI Creative Studio (ComfyUI · Wan 2.2 TI2V 5B)"),
+             TR("โปรเจกต์: %s") % spec["project"],
+             TR("ข้อความ (prompt): %s") % (spec["prompt"] or TR("(ไม่มี — ใช้ภาพตั้งต้นอย่างเดียว)")),
+             TR("ข้อความเชิงลบ: %s") % (TR("(ค่าเริ่มต้นของ Wan) ") if spec["negative_default"] else "") + spec["negative"]]
     if spec["image"]:
-        lines.append("ภาพตั้งต้น: %s (%dx%d) -> ภาพ→วิดีโอ" % (spec["image_shown"], spec["image_wh"][0], spec["image_wh"][1]))
+        lines.append(TR("ภาพตั้งต้น: %s (%dx%d) -> ภาพ→วิดีโอ") % (spec["image_shown"], spec["image_wh"][0], spec["image_wh"][1]))
     else:
-        lines.append("ภาพตั้งต้น: ไม่มี -> ข้อความ→วิดีโอ")
-    lines.append("ขนาด %dx%d · ความยาว %.1f วินาที (%d เฟรม @%d fps) · steps %d · cfg %g · seed %d"
+        lines.append(TR("ภาพตั้งต้น: ไม่มี -> ข้อความ→วิดีโอ"))
+    lines.append(TR("ขนาด %dx%d · ความยาว %.1f วินาที (%d เฟรม @%d fps) · steps %d · cfg %g · seed %d")
                  % (spec["width"], spec["height"], spec["seconds"], spec["frames"], spec["fps"], spec["steps"],
                     spec["cfg"], spec["seed"]))
-    lines.append("ไฟล์ผลลัพธ์: outputs/%s.mp4 (และ .webm ต้นฉบับ) ของโปรเจกต์นี้" % spec["stem"])
-    lines.append("GPU: ปลดโมเดลแชตที่ว่างอยู่ออกจาก VRAM ชั่วคราวระหว่างสร้าง (โหลดกลับเองเมื่อคุยต่อ ~10-40 วินาที) "
-                 "และเปิด Creative Studio ให้ถ้ายังไม่เปิด")
-    lines.append("เวลาโดยประมาณ 5-7 นาที (วัดจริงบน RTX 4090: ~6 วินาที/step + โหลดโมเดล ~1 นาที · ยาว/ใหญ่/steps มากใช้เวลามากขึ้น)")
+    lines.append(TR("ไฟล์ผลลัพธ์: outputs/%s.mp4 (และ .webm ต้นฉบับ) ของโปรเจกต์นี้") % spec["stem"])
+    lines.append(TR("GPU: ปลดโมเดลแชตที่ว่างอยู่ออกจาก VRAM ชั่วคราวระหว่างสร้าง (โหลดกลับเองเมื่อคุยต่อ ~10-40 วินาที) "
+                 "และเปิด Creative Studio ให้ถ้ายังไม่เปิด"))
+    lines.append(TR("เวลาโดยประมาณ 5-7 นาที (วัดจริงบน RTX 4090: ~6 วินาที/step + โหลดโมเดล ~1 นาที · ยาว/ใหญ่/steps มากใช้เวลามากขึ้น)"))
     return "\n".join(lines)
 
 
@@ -842,7 +843,7 @@ def upload_image(path: str, sha: str) -> str:
     with open(path, "rb") as fh:
         blob = fh.read(MAX_IMAGE_BYTES + 1)
     if len(blob) > MAX_IMAGE_BYTES:
-        raise CreativeError("ไฟล์ภาพใหญ่เกิน %s" % _human(MAX_IMAGE_BYTES))
+        raise CreativeError(TR("ไฟล์ภาพใหญ่เกิน %s") % _human(MAX_IMAGE_BYTES))
     boundary = "----qwen" + _secrets.token_hex(12)
     ctype = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
              ".bmp": "image/bmp", ".gif": "image/gif"}.get(ext, "application/octet-stream")
@@ -856,7 +857,7 @@ def upload_image(path: str, sha: str) -> str:
     st, doc = _http(host, port, "POST", "/upload/image", body,
                     headers={"Content-Type": "multipart/form-data; boundary=" + boundary}, timeout=60.0)
     if st != 200 or not isinstance(doc, dict) or not doc.get("name"):
-        raise CreativeError("อัปโหลดภาพตั้งต้นให้ ComfyUI ไม่สำเร็จ (สถานะ %s)" % st)
+        raise CreativeError(TR("อัปโหลดภาพตั้งต้นให้ ComfyUI ไม่สำเร็จ (สถานะ %s)") % st)
     sub = _s(doc.get("subfolder")).strip()
     return (sub + "/" + doc["name"]) if sub else _s(doc["name"])
 
@@ -882,11 +883,11 @@ def submit(graph: dict, client_id: str) -> str:
                                             _clean(nid, 8), msg))
             detail = (detail + " · " if detail else "") + "; ".join(bits)
     if st is None:
-        raise CreativeError("ส่งงานให้ ComfyUI ไม่ได้ (ต่อไม่ติด)")
+        raise CreativeError(TR("ส่งงานให้ ComfyUI ไม่ได้ (ต่อไม่ติด)"))
     hint = ""
     if "unet_name" in detail or "clip_name" in detail or "vae_name" in detail or "not in list" in detail:
-        hint = " — ไฟล์โมเดล Wan 2.2 อาจยังไม่ครบ ตรวจด้วย creative_status"
-    raise CreativeError("ComfyUI ปฏิเสธ workflow (สถานะ %s): %s%s" % (st, detail or "ไม่มีรายละเอียด", hint))
+        hint = TR(" — ไฟล์โมเดล Wan 2.2 อาจยังไม่ครบ ตรวจด้วย creative_status")
+    raise CreativeError(TR("ComfyUI ปฏิเสธ workflow (สถานะ %s): %s%s") % (st, detail or TR("ไม่มีรายละเอียด"), hint))
 
 
 def _history(prompt_id: str) -> dict | None:
@@ -926,7 +927,7 @@ def fetch_output(item: dict) -> bytes:
                                                    quote(_s(item.get("type") or "output"), safe=""))
     st, blob = _comfy("GET", q, timeout=120.0, raw=True, max_bytes=MAX_OUTPUT_BYTES)
     if st != 200 or not blob:
-        raise CreativeError("ดึงไฟล์ผลลัพธ์จาก ComfyUI ไม่ได้ (สถานะ %s)" % st)
+        raise CreativeError(TR("ดึงไฟล์ผลลัพธ์จาก ComfyUI ไม่ได้ (สถานะ %s)") % st)
     return blob
 
 
@@ -1091,12 +1092,12 @@ def _collect(job: Job, entry: dict) -> None:
     """ผลลัพธ์จาก /history -> outputs ของโปรเจกต์ (webm จาก ComfyUI + mp4 จาก ffmpeg)"""
     items = _video_outputs(entry)
     if not items:
-        raise CreativeError("ComfyUI ทำงานเสร็จแต่ไม่มีไฟล์วิดีโอในผลลัพธ์")
+        raise CreativeError(TR("ComfyUI ทำงานเสร็จแต่ไม่มีไฟล์วิดีโอในผลลัพธ์"))
     blob = fetch_output(items[0])
     with guard.project_scope(job.project):
         stem = _unique_stem(job.project, job.spec["stem"])
         if stem != job.spec["stem"]:
-            job.log.append("ชื่อ %s ถูกใช้ไประหว่างรอ จึงใช้ %s แทน" % (job.spec["stem"], stem))
+            job.log.append(TR("ชื่อ %s ถูกใช้ไประหว่างรอ จึงใช้ %s แทน") % (job.spec["stem"], stem))
         webm = _outputs_target(job.project, stem + ".webm")
         _write_atomic(webm, blob)
         job.files = [stem + ".webm"]
@@ -1114,9 +1115,9 @@ def _after_gpu(job: Job) -> None:
         return
     unloaded, busy, _why = unload_idle_models()
     if unloaded:
-        job.log.append("ปลดโมเดลแชตที่โหลดระหว่างงาน (%s) ให้ router โหลดใหม่เต็มๆ ตอนคุยครั้งถัดไป" % ", ".join(unloaded))
+        job.log.append(TR("ปลดโมเดลแชตที่โหลดระหว่างงาน (%s) ให้ router โหลดใหม่เต็มๆ ตอนคุยครั้งถัดไป") % ", ".join(unloaded))
     if busy:
-        job.log.append("โมเดล %s กำลังตอบอยู่ ไม่แตะ" % ", ".join(busy))
+        job.log.append(TR("โมเดล %s กำลังตอบอยู่ ไม่แตะ") % ", ".join(busy))
 
 
 def _watch(job: Job) -> None:
@@ -1126,13 +1127,13 @@ def _watch(job: Job) -> None:
     ถ้า ComfyUI ยังถือ VRAM อยู่ตอนนั้น โมเดลแชตจะถูกจัดชั้นลง CPU (ช้ามาก) ไปจนกว่าจะโหลดใหม่"""
     missing = 0
     last_queue_check = time.monotonic()
-    state, error = "error", "เฝ้างานจบโดยไม่มีผล"
+    state, error = "error", TR("เฝ้างานจบโดยไม่มีผล")
     try:
         while True:
             if job.cancel_ev.is_set():
                 _comfy("POST", "/interrupt", {}, timeout=10.0)
                 _comfy("POST", "/queue", {"delete": [job.prompt_id]}, timeout=10.0)
-                state, error = "cancelled", "ยกเลิกตามคำสั่ง"
+                state, error = "cancelled", TR("ยกเลิกตามคำสั่ง")
                 break
             entry = _history(job.prompt_id)
             if entry:
@@ -1142,18 +1143,18 @@ def _watch(job: Job) -> None:
                     for m in status.get("messages") or []:
                         if isinstance(m, list) and len(m) > 1 and m[0] == "execution_error" and isinstance(m[1], dict):
                             msg = "%s: %s" % (_clean(m[1].get("node_type"), 40), _clean(m[1].get("exception_message"), 300))
-                    state, error = "error", "ComfyUI ทำงานผิดพลาด — %s" % (msg or "ไม่มีรายละเอียด")
+                    state, error = "error", TR("ComfyUI ทำงานผิดพลาด — %s") % (msg or TR("ไม่มีรายละเอียด"))
                     break
                 try:
                     _collect(job, entry)
                     state, error = "done", ""
                 except (CreativeError, guard.Denied, OSError) as exc:
-                    state, error = "error", "เก็บไฟล์ผลลัพธ์ไม่สำเร็จ: %s" % exc
+                    state, error = "error", TR("เก็บไฟล์ผลลัพธ์ไม่สำเร็จ: %s") % exc
                 break
             if entry is None:
                 missing += 1                    # ComfyUI ไม่ตอบ (ล่ม/ถูกปิด?) — ให้โอกาสราว 1 นาที
                 if missing > 30:
-                    state, error = "error", "ติดต่อ ComfyUI ไม่ได้ระหว่างรอผล (ถูกปิดไป?)"
+                    state, error = "error", TR("ติดต่อ ComfyUI ไม่ได้ระหว่างรอผล (ถูกปิดไป?)")
                     break
             else:
                 missing = 0
@@ -1162,16 +1163,16 @@ def _watch(job: Job) -> None:
                     if _in_queue(job.prompt_id) is False:
                         time.sleep(POLL_S)      # history อาจตามคิวช้าไปหนึ่งจังหวะ
                         if not _history(job.prompt_id):
-                            state, error = "error", "งานหายจากคิวของ ComfyUI โดยไม่มีผล (ถูก interrupt หรือหน่วยความจำไม่พอ)"
+                            state, error = "error", TR("งานหายจากคิวของ ComfyUI โดยไม่มีผล (ถูก interrupt หรือหน่วยความจำไม่พอ)")
                             break
                         continue
             if job.elapsed() > JOB_MAX_S:
                 _comfy("POST", "/interrupt", {}, timeout=10.0)
-                state, error = "error", "งานนานเกิน %d นาที จึงสั่งหยุด" % int(JOB_MAX_S // 60)
+                state, error = "error", TR("งานนานเกิน %d นาที จึงสั่งหยุด") % int(JOB_MAX_S // 60)
                 break
             time.sleep(POLL_S)
     except Exception as exc:                   # noqa: BLE001 — เธรดเฝ้างานต้องจบด้วยสถานะเสมอ
-        state, error = "error", "เฝ้างานล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        state, error = "error", TR("เฝ้างานล้มเหลว: %s: %s") % (type(exc).__name__, exc)
     try:
         _after_gpu(job)
     except Exception:                          # noqa: BLE001
@@ -1182,15 +1183,15 @@ def _watch(job: Job) -> None:
 def _rehydrate(job: Job) -> None:
     """งานที่เธรดเฝ้าหาย (MCP รีสตาร์ต): ตรวจ /history หนึ่งรอบ — เสร็จแล้วก็เก็บไฟล์ให้ ยังไม่เสร็จ/ไม่รู้ = รายงานตามนั้น"""
     if not job.prompt_id:
-        _finish(job, "error", "ไม่มีรหัสงานของ ComfyUI (MCP รีสตาร์ตก่อนส่งงาน)")
+        _finish(job, "error", TR("ไม่มีรหัสงานของ ComfyUI (MCP รีสตาร์ตก่อนส่งงาน)"))
         return
     entry = _history(job.prompt_id)
     if entry is None:
-        job.log.append("ติดต่อ ComfyUI ไม่ได้ จึงยังไม่รู้ผลของงานนี้")
+        job.log.append(TR("ติดต่อ ComfyUI ไม่ได้ จึงยังไม่รู้ผลของงานนี้"))
         return
     if not entry:
         if _in_queue(job.prompt_id) is False:
-            _finish(job, "error", "งานไม่อยู่ในคิวและไม่มีผลใน ComfyUI (เธรดเฝ้างานหายไประหว่าง MCP รีสตาร์ต)")
+            _finish(job, "error", TR("งานไม่อยู่ในคิวและไม่มีผลใน ComfyUI (เธรดเฝ้างานหายไประหว่าง MCP รีสตาร์ต)"))
         else:
             job.state = "running"
             threading.Thread(target=_watch, args=(job,), daemon=True, name="creative-rehydrate-%s" % job.id).start()
@@ -1199,7 +1200,7 @@ def _rehydrate(job: Job) -> None:
         _collect(job, entry)
         _finish(job, "done")
     except (CreativeError, guard.Denied, OSError) as exc:
-        _finish(job, "error", "เก็บไฟล์ผลลัพธ์ไม่สำเร็จ: %s" % exc)
+        _finish(job, "error", TR("เก็บไฟล์ผลลัพธ์ไม่สำเร็จ: %s") % exc)
 
 
 def run_job(spec: dict, project: str, surface: str) -> str:
@@ -1208,9 +1209,9 @@ def run_job(spec: dict, project: str, surface: str) -> str:
         if _RUNNING:
             other = _RUNNING[0]
             mine = other.project == slug
-            return ("ERROR: GPU กำลังสร้างวิดีโออยู่ (%s) — รอให้เสร็จก่อนแล้วสั่งใหม่%s"
-                    % ("งาน %s ของโปรเจกต์นี้ ผ่านไป %s" % (other.id, _mmss(other.elapsed())) if mine else "งานของอีกโปรเจกต์",
-                       " ถามสถานะด้วย %s" % _call_hint(surface, "status", other.id) if mine else ""))
+            return (TR("ERROR: GPU กำลังสร้างวิดีโออยู่ (%s) — รอให้เสร็จก่อนแล้วสั่งใหม่%s")
+                    % (TR("งาน %s ของโปรเจกต์นี้ ผ่านไป %s") % (other.id, _mmss(other.elapsed())) if mine else TR("งานของอีกโปรเจกต์"),
+                       TR(" ถามสถานะด้วย %s") % _call_hint(surface, "status", other.id) if mine else ""))
         job = Job("cv-" + _secrets.token_hex(2), slug, spec)
         _RUNNING.append(job)
     call_t0 = time.monotonic()                  # งบเวลานับจากต้นการเรียก (หน้าแชตรอผลเครื่องมือได้ ~300 วินาที)
@@ -1232,12 +1233,12 @@ def run_job(spec: dict, project: str, surface: str) -> str:
                                         "unloaded": job.unloaded})
     except (CreativeError, guard.Denied) as exc:
         if job.unloaded:
-            job.log.append("โมเดลแชตที่ปลดไว้ (%s) จะถูกโหลดกลับเองเมื่อคุยครั้งถัดไป" % ", ".join(job.unloaded))
+            job.log.append(TR("โมเดลแชตที่ปลดไว้ (%s) จะถูกโหลดกลับเองเมื่อคุยครั้งถัดไป") % ", ".join(job.unloaded))
         _finish(job, "error", str(exc))
-        return "ERROR: %s" % exc + ("\n  [หมายเหตุ] %s" % job.log[-1] if job.unloaded else "")
+        return "ERROR: %s" % exc + (TR("\n  [หมายเหตุ] %s") % job.log[-1] if job.unloaded else "")
     except Exception as exc:                   # noqa: BLE001
         _finish(job, "error", "%s: %s" % (type(exc).__name__, exc))
-        return "ERROR: creative_video ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: creative_video ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
     with _JOBS_LOCK:
         _JOBS[job.id] = job
     threading.Thread(target=_watch, args=(job,), daemon=True, name="creative-watch-%s" % job.id).start()
@@ -1257,77 +1258,77 @@ def _call_hint(surface: str, what: str, jid: str = "") -> str:
 
 def status_text(job: Job, surface: str = "full") -> str:
     sp = job.spec
-    head = "%dx%d · %.1f วินาที (%d เฟรม, %d fps) · steps %d · seed %d" % (
+    head = TR("%dx%d · %.1f วินาที (%d เฟรม, %d fps) · steps %d · seed %d") % (
         sp.get("width", 0), sp.get("height", 0), float(sp.get("seconds", 0)), sp.get("frames", 0), sp.get("fps", FPS),
         sp.get("steps", 0), sp.get("seed", 0))
-    notes = ["[หมายเหตุ] " + n for n in job.log[-6:]]
+    notes = [TR("[หมายเหตุ] ") + n for n in job.log[-6:]]
     if job.state == "done":
-        lines = ["สร้างวิดีโอเสร็จแล้ว (งาน %s): %s" % (job.id, out_link(job.files[0]) if job.files else "(ไม่มีไฟล์)"),
-                 "  %s · ใช้เวลา %s" % (head, _mmss(job.elapsed()))]
+        lines = [TR("สร้างวิดีโอเสร็จแล้ว (งาน %s): %s") % (job.id, out_link(job.files[0]) if job.files else TR("(ไม่มีไฟล์)")),
+                 TR("  %s · ใช้เวลา %s") % (head, _mmss(job.elapsed()))]
         for extra in job.files[1:]:
-            lines.append("  ไฟล์ต้นฉบับจาก ComfyUI: %s" % out_link(extra))
+            lines.append(TR("  ไฟล์ต้นฉบับจาก ComfyUI: %s") % out_link(extra))
         if sp.get("image_shown"):
-            lines.append("  ภาพตั้งต้น: %s" % sp["image_shown"])
-        lines.append("  เก็บที่ outputs/ ของโปรเจกต์นี้")
+            lines.append(TR("  ภาพตั้งต้น: %s") % sp["image_shown"])
+        lines.append(TR("  เก็บที่ outputs/ ของโปรเจกต์นี้"))
         lines.extend(notes)
-        lines.append("ส่งลิงก์ข้างบนให้ผู้ใช้ตามที่เขียนไว้ทุกตัวอักษร (เปิดดู/ดาวน์โหลดได้ทันที)")
+        lines.append(TR("ส่งลิงก์ข้างบนให้ผู้ใช้ตามที่เขียนไว้ทุกตัวอักษร (เปิดดู/ดาวน์โหลดได้ทันที)"))
         return "\n".join(lines)
     if job.state in ("error", "cancelled"):
-        lines = ["%s (งาน %s): %s" % ("ยกเลิกแล้ว" if job.state == "cancelled" else "ERROR: สร้างวิดีโอไม่สำเร็จ", job.id,
-                                       job.error or "-"), "  %s · ผ่านไป %s" % (head, _mmss(job.elapsed()))]
+        lines = [TR("%s (งาน %s): %s") % (TR("ยกเลิกแล้ว") if job.state == "cancelled" else TR("ERROR: สร้างวิดีโอไม่สำเร็จ"), job.id,
+                                       job.error or "-"), TR("  %s · ผ่านไป %s") % (head, _mmss(job.elapsed()))]
         lines.extend(notes)
         return "\n".join(lines)
-    lines = ["กำลังสร้างวิดีโอ (งาน %s) — ผ่านไป %s ปกติใช้ 5-7 นาที" % (job.id, _mmss(job.elapsed())),
+    lines = [TR("กำลังสร้างวิดีโอ (งาน %s) — ผ่านไป %s ปกติใช้ 5-7 นาที") % (job.id, _mmss(job.elapsed())),
              "  %s" % head]
     lines.extend(notes)
-    lines.append("ถามความคืบหน้าด้วย %s (ยังไม่เสร็จอย่าเรียกซ้ำถี่ๆ บอกผู้ใช้แล้วจบเทิร์นได้) · ยกเลิกด้วย %s"
+    lines.append(TR("ถามความคืบหน้าด้วย %s (ยังไม่เสร็จอย่าเรียกซ้ำถี่ๆ บอกผู้ใช้แล้วจบเทิร์นได้) · ยกเลิกด้วย %s")
                  % (_call_hint(surface, "status", job.id), _call_hint(surface, "cancel", job.id)))
     return "\n".join(lines)
 
 
 def overview_text(project: str, surface: str) -> str:
-    lines = ["AI Creative Studio (ComfyUI + Wan 2.2 TI2V 5B) — สถานะ"]
+    lines = [TR("AI Creative Studio (ComfyUI + Wan 2.2 TI2V 5B) — สถานะ")]
     stats = comfy_stats()
     if stats is None:
-        lines.append("  ComfyUI: ยังไม่เปิด (%s:%d) — creative_video จะเปิดให้เองเมื่อสั่งงาน" % comfy_addr())
+        lines.append(TR("  ComfyUI: ยังไม่เปิด (%s:%d) — creative_video จะเปิดให้เองเมื่อสั่งงาน") % comfy_addr())
         gpu = _nvidia_smi_4090()
         if gpu:
-            lines.append("  GPU (nvidia-smi): %s · VRAM ว่าง %s / %s MiB%s" % (
+            lines.append(TR("  GPU (nvidia-smi): %s · VRAM ว่าง %s / %s MiB%s") % (
                 gpu["name"], format(gpu["free_mib"], ","), format(gpu["total_mib"], ","),
-                "" if gpu["total_mib"] >= GPU_MIN_TOTAL_MIB else " — เล็กเกินสำหรับ Wan ต้องต่อ eGPU RTX 4090"))
+                "" if gpu["total_mib"] >= GPU_MIN_TOTAL_MIB else TR(" — เล็กเกินสำหรับ Wan ต้องต่อ eGPU RTX 4090")))
     else:
         dev = comfy_device(stats)
         ver = _clean((stats.get("system") or {}).get("comfyui_version"), 30) if isinstance(stats.get("system"), dict) else ""
-        lines.append("  ComfyUI: เปิดอยู่ (%s:%d)%s" % (*comfy_addr(), " · เวอร์ชัน %s" % ver if ver else ""))
+        lines.append(TR("  ComfyUI: เปิดอยู่ (%s:%d)%s") % (*comfy_addr(), TR(" · เวอร์ชัน %s") % ver if ver else ""))
         if dev:
-            lines.append("  GPU: %s · VRAM ว่าง %s / %s MiB%s" % (
+            lines.append(TR("  GPU: %s · VRAM ว่าง %s / %s MiB%s") % (
                 dev["name"], format(real_free_mib(dev), ","), format(dev["total_mib"], ","),
-                "" if dev["total_mib"] >= GPU_MIN_TOTAL_MIB else " — เล็กเกินสำหรับ Wan ต้องต่อ eGPU RTX 4090"))
+                "" if dev["total_mib"] >= GPU_MIN_TOTAL_MIB else TR(" — เล็กเกินสำหรับ Wan ต้องต่อ eGPU RTX 4090")))
         else:
-            lines.append("  GPU: ComfyUI ไม่รายงานการ์ด (โหมด CPU?)")
+            lines.append(TR("  GPU: ComfyUI ไม่รายงานการ์ด (โหมด CPU?)"))
     rows = installed_models()
     missing = [n for n, ok, _b in rows if not ok]
-    lines.append("  โมเดล Wan 2.2: %s" % ("ครบ 3 ไฟล์ (%s)" % ", ".join("%s %s" % (n, _human(b)) for n, ok, b in rows)
-                                         if not missing else "ขาด %s — รัน C:\\LLM\\Download-Missing-Models.cmd" % ", ".join(missing)))
+    lines.append(TR("  โมเดล Wan 2.2: %s") % (TR("ครบ 3 ไฟล์ (%s)") % ", ".join("%s %s" % (n, _human(b)) for n, ok, b in rows)
+                                         if not missing else TR("ขาด %s — รัน C:\\LLM\\Download-Missing-Models.cmd") % ", ".join(missing)))
     with _JOBS_LOCK:
         running = list(_RUNNING)
     slug = guard.project_slug(project)
     if running:
         r = running[0]
-        lines.append("  GPU กำลังสร้างวิดีโอ: %s" % ("งาน %s ของโปรเจกต์นี้ (ผ่านไป %s)" % (r.id, _mmss(r.elapsed()))
-                                                   if r.project == slug else "งานของอีกโปรเจกต์"))
+        lines.append(TR("  GPU กำลังสร้างวิดีโอ: %s") % (TR("งาน %s ของโปรเจกต์นี้ (ผ่านไป %s)") % (r.id, _mmss(r.elapsed()))
+                                                   if r.project == slug else TR("งานของอีกโปรเจกต์")))
     jobs = _list_jobs(project)
     if jobs:
-        lines.append("งานของโปรเจกต์นี้ (ล่าสุดก่อน):")
+        lines.append(TR("งานของโปรเจกต์นี้ (ล่าสุดก่อน):"))
         for j in jobs:
             when = datetime.fromtimestamp(j.started).strftime("%d/%m %H:%M") if j.started else "?"
-            what = {"done": "เสร็จ -> %s" % (out_link(j.files[0]) if j.files else "-"),
-                    "error": "ผิดพลาด: %s" % (j.error[:120] or "-"), "cancelled": "ยกเลิก",
-                    "running": "กำลังทำ (%s)" % _mmss(j.elapsed()), "starting": "กำลังเริ่ม"}.get(j.state, j.state)
-            lines.append("  %s · %s · %s · %s" % (j.id, when, _clean(j.spec.get("prompt"), 60) or "(ภาพ→วิดีโอ)", what))
-        lines.append("รายละเอียดงาน: %s" % _call_hint(surface, "status", "<id>"))
+            what = {"done": TR("เสร็จ -> %s") % (out_link(j.files[0]) if j.files else "-"),
+                    "error": TR("ผิดพลาด: %s") % (j.error[:120] or "-"), "cancelled": TR("ยกเลิก"),
+                    "running": TR("กำลังทำ (%s)") % _mmss(j.elapsed()), "starting": TR("กำลังเริ่ม")}.get(j.state, j.state)
+            lines.append("  %s · %s · %s · %s" % (j.id, when, _clean(j.spec.get("prompt"), 60) or TR("(ภาพ→วิดีโอ)"), what))
+        lines.append(TR("รายละเอียดงาน: %s") % _call_hint(surface, "status", "<id>"))
     else:
-        lines.append("ยังไม่มีงานสร้างวิดีโอในโปรเจกต์นี้")
+        lines.append(TR("ยังไม่มีงานสร้างวิดีโอในโปรเจกต์นี้"))
     return "\n".join(lines)
 
 
@@ -1342,14 +1343,14 @@ def creative_status(id: str = "", project: str = "", surface: str = "full", **_)
                 return overview_text(project, surface)
             job = _load(project, jid)
             if job is None:
-                return "ไม่พบงาน %s ในโปรเจกต์นี้ — ดูรายการด้วย %s" % (jid[:24], _call_hint(surface, "list"))
+                return TR("ไม่พบงาน %s ในโปรเจกต์นี้ — ดูรายการด้วย %s") % (jid[:24], _call_hint(surface, "list"))
             if not job.done_ev.is_set():
                 job.done_ev.wait(STATUS_WAIT_S)     # ถามซ้ำถี่ = หน่วงไว้ กันโมเดลวนเรียกไม่หยุด
             return status_text(job, surface)
     except guard.Denied as exc:
-        return "ปฏิเสธ: %s" % exc
+        return TR("ปฏิเสธ: %s") % exc
     except Exception as exc:                   # noqa: BLE001
-        return "ERROR: creative_status ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: creative_status ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 def creative_cancel(id: str = "", project: str = "", surface: str = "full", **_) -> str:  # noqa: A002
@@ -1357,20 +1358,20 @@ def creative_cancel(id: str = "", project: str = "", surface: str = "full", **_)
         with guard.project_scope(project):
             jid = _s(id).strip().lower()
             if not jid:
-                return "ERROR: ต้องระบุ id ของงาน (ดูได้จาก %s)" % _call_hint(surface, "list")
+                return TR("ERROR: ต้องระบุ id ของงาน (ดูได้จาก %s)") % _call_hint(surface, "list")
             job = _load(project, jid)
             if job is None:
-                return "ไม่พบงาน %s ในโปรเจกต์นี้" % jid[:24]
+                return TR("ไม่พบงาน %s ในโปรเจกต์นี้") % jid[:24]
             if job.done_ev.is_set():
-                return "งาน %s จบไปแล้ว (%s) ไม่มีอะไรให้ยกเลิก" % (job.id, job.state)
+                return TR("งาน %s จบไปแล้ว (%s) ไม่มีอะไรให้ยกเลิก") % (job.id, job.state)
             job.cancel_ev.set()
             guard.audit("creative_cancel", {"id": job.id, "project": job.project})
             job.done_ev.wait(15.0)
-            return status_text(job, surface) if job.done_ev.is_set() else "สั่งยกเลิกงาน %s แล้ว กำลังหยุด" % job.id
+            return status_text(job, surface) if job.done_ev.is_set() else TR("สั่งยกเลิกงาน %s แล้ว กำลังหยุด") % job.id
     except guard.Denied as exc:
-        return "ปฏิเสธ: %s" % exc
+        return TR("ปฏิเสธ: %s") % exc
     except Exception as exc:                   # noqa: BLE001
-        return "ERROR: creative_cancel ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: creative_cancel ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 def creative_video(prompt: str = "", image: str = "", seconds: str = "", size: str = "", seed: str = "",
@@ -1385,27 +1386,27 @@ def creative_video(prompt: str = "", image: str = "", seconds: str = "", size: s
             token = _s(confirm_token).strip()
             if not token or not guard.consume_confirm(token, ACTION, detail):
                 if token:
-                    return ("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือค่าที่ส่งมาเปลี่ยนไป"
+                    return (TR("confirm_token ใช้ไม่ได้ (หมดอายุ ไม่ได้ยืนยันผ่าน local_confirm หรือค่าที่ส่งมาเปลี่ยนไป"
                             "หลังขอ — seed ที่สุ่มให้จะเปลี่ยนทุกครั้งที่เรียกใหม่) ยังไม่ได้ทำอะไร — เรียก creative_video "
-                            "ใหม่โดยไม่ใส่ token")
+                            "ใหม่โดยไม่ใส่ token"))
                 tok = guard.need_confirm(ACTION, detail, review=review_text(spec))
                 guard.audit("creative_request", {"project": spec["project"], "prompt_chars": len(spec["prompt"]),
                                                  "image": bool(spec["image"]), "frames": spec["frames"],
                                                  "size": [spec["width"], spec["height"]], "ref": guard.token_ref(tok)})
-                human = "%s · %dx%d · %.1f วินาที · outputs/%s.mp4" % (
-                    ("ภาพ→วิดีโอ จาก %s" % spec["image_shown"]) if spec["image"] else "ข้อความ→วิดีโอ",
+                human = TR("%s · %dx%d · %.1f วินาที · outputs/%s.mp4") % (
+                    (TR("ภาพ→วิดีโอ จาก %s") % spec["image_shown"]) if spec["image"] else TR("ข้อความ→วิดีโอ"),
                     spec["width"], spec["height"], spec["seconds"], spec["stem"])
-                return guard.confirm_hint(tok, "สร้างวิดีโอด้วย Creative Studio (ใช้ GPU หลายนาที)", human)
+                return guard.confirm_hint(tok, TR("สร้างวิดีโอด้วย Creative Studio (ใช้ GPU หลายนาที)"), human)
             _memo_forget(spec, seed, name)
             return run_job(spec, project, surface)
     except guard.Denied as exc:
-        return "ปฏิเสธ: %s" % exc
+        return TR("ปฏิเสธ: %s") % exc
     except guard.ReviewTooLarge as exc:
         return "ERROR: %s" % exc
     except CreativeError as exc:
         return "ERROR: %s" % exc
     except Exception as exc:                   # noqa: BLE001
-        return "ERROR: creative_video ล้มเหลว: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: creative_video ล้มเหลว: %s: %s") % (type(exc).__name__, exc)
 
 
 # ------------------------------------------------------------------ ผิว /mcp

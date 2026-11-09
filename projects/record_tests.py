@@ -36,6 +36,10 @@ def main(argv):
     if "--pattern" in argv:
         i = argv.index("--pattern")
         pattern = argv[i + 1] if i + 1 < len(argv) else pattern
+    # Tool messages follow the UI language in settings.json, and the tests check the Thai source texts:
+    # point the lookup at a file that does not exist (= Thai) so a non-Thai UI does not fail the suite.
+    os.environ["QWEN_SETTINGS_FILE"] = os.path.join(tempfile.gettempdir(),
+                                                    "qwen-tests-%d-no-settings.json" % os.getpid())
     suite = unittest.TestLoader().discover(str(TESTS), pattern=pattern)
     t0 = time.time()
     res = unittest.TextTestRunner(stream=sys.stderr, verbosity=1).run(suite)

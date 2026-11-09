@@ -56,6 +56,7 @@ if _HERE_DIR not in sys.path:
 
 import guard  # noqa: E402
 from guard import Denied  # noqa: E402
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # token ของบริการในเครื่อง (สัญญา C1/C3) — แนบไปกับทุกคำขอที่ยิง llama-server
 # ตอนนี้ llama-server ยังไม่บังคับ --api-key (ไม่สน header นี้) แต่ถ้าวันหนึ่ง launcher เปิด
@@ -194,7 +195,7 @@ def _ensure_key() -> str:
         env = _s(os.environ.get(KEY_ENV)).strip()
         if env:
             if len(env) < MIN_KEY_CHARS:
-                raise Denied("คีย์ใน %s สั้นเกินไป (ต้องอย่างน้อย %d ตัวอักษร)"
+                raise Denied(TR("คีย์ใน %s สั้นเกินไป (ต้องอย่างน้อย %d ตัวอักษร)")
                              % (KEY_ENV, MIN_KEY_CHARS))
             _KEY = env
             guard.audit("gateway_key", {"source": "env", "var": KEY_ENV})   # ไม่ลงค่า
@@ -214,8 +215,8 @@ def _ensure_key() -> str:
         existing, readable = _read_key_file(path)
         if not readable:
             # fail closed: ยอม 401 ทุกใบดีกว่าสร้างคีย์ใหม่ทับของเดิมที่อาจยังมีคนถืออยู่
-            raise Denied("อ่านไฟล์คีย์ %s ไม่ได้ (ไฟล์เสียหรือไม่ใช่ UTF-8) "
-                         "ให้ลบไฟล์นี้ทิ้งแล้วเริ่ม gateway ใหม่ ระบบจะสร้างคีย์ใหม่ให้" % path)
+            raise Denied(TR("อ่านไฟล์คีย์ %s ไม่ได้ (ไฟล์เสียหรือไม่ใช่ UTF-8) "
+                         "ให้ลบไฟล์นี้ทิ้งแล้วเริ่ม gateway ใหม่ ระบบจะสร้างคีย์ใหม่ให้") % path)
         if existing:
             _KEY = existing
             guard.audit("gateway_key", {"path": path, "created": False})
@@ -231,7 +232,7 @@ def _ensure_key() -> str:
             # โปรเซสอื่นชิงสร้างไฟล์ไปก่อนในจังหวะเดียวกัน ใช้ของเขา
             other, ok = _read_key_file(path)
             if not ok or not other:
-                raise Denied("ไฟล์คีย์ %s ถูกสร้างพร้อมกันโดยโปรเซสอื่นแต่อ่านไม่ได้" % path)
+                raise Denied(TR("ไฟล์คีย์ %s ถูกสร้างพร้อมกันโดยโปรเซสอื่นแต่อ่านไม่ได้") % path)
             _KEY = other
             return _KEY
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
@@ -255,19 +256,19 @@ def _key_source() -> str:
     ดูจากสถานะในหน่วยความจำอย่างเดียวพอ
     """
     if _s(os.environ.get(KEY_ENV)).strip():
-        return "ตัวแปรสภาพแวดล้อม %s" % KEY_ENV
+        return TR("ตัวแปรสภาพแวดล้อม %s") % KEY_ENV
     with _KEY_LOCK:
         if _KEY:
-            return "ไฟล์ %s" % KEY_PATH
+            return TR("ไฟล์ %s") % KEY_PATH
     # เครื่องมือ gateway_status รันในโปรเซส MCP ซึ่งไม่ได้โหลดคีย์ (_KEY ว่าง) จึงเคยรายงานผิดว่า
     # "ยังไม่ได้ตั้งค่า" ทั้งที่ gateway จริงทำงานอยู่ด้วยไฟล์คีย์ — เช็กแค่ "มีไฟล์ไหม" (ไม่อ่านค่า)
     # os.path.isfile ไม่แตะ guard และไม่เปิดไฟล์ จึงไม่เสี่ยงทำให้คีย์หลุดหรือทำให้ audit.log บวม
     try:
         if os.path.isfile(str(KEY_PATH)):
-            return "ไฟล์ %s (ยังไม่ได้โหลดในโปรเซสนี้)" % KEY_PATH
+            return TR("ไฟล์ %s (ยังไม่ได้โหลดในโปรเซสนี้)") % KEY_PATH
     except OSError:
         pass
-    return "ยังไม่ได้ตั้งค่า — ตั้ง %s ก่อนเริ่ม gateway" % KEY_ENV
+    return TR("ยังไม่ได้ตั้งค่า — ตั้ง %s ก่อนเริ่ม gateway") % KEY_ENV
 
 
 def _key_ok(given: str) -> bool:
@@ -427,13 +428,13 @@ def _http_json(url: str, payload: dict | None, timeout: float) -> tuple[dict | N
             detail = exc.read().decode("utf-8", "replace")[:400]
         except OSError:
             detail = ""
-        return None, "HTTP %s จาก llama-server: %s" % (exc.code, detail)
+        return None, TR("HTTP %s จาก llama-server: %s") % (exc.code, detail)
     except urllib.error.URLError as exc:
-        return None, "ต่อ llama-server ที่ %s ไม่ได้: %s" % (UPSTREAM, exc.reason)
+        return None, TR("ต่อ llama-server ที่ %s ไม่ได้: %s") % (UPSTREAM, exc.reason)
     except (TimeoutError, OSError) as exc:
-        return None, "คุยกับ llama-server ไม่สำเร็จ: %s" % exc
+        return None, TR("คุยกับ llama-server ไม่สำเร็จ: %s") % exc
     except ValueError as exc:
-        return None, "llama-server ตอบไม่ใช่ JSON: %s" % exc
+        return None, TR("llama-server ตอบไม่ใช่ JSON: %s") % exc
 
 
 def _model_name(force: bool = False) -> tuple[str, str]:
@@ -468,7 +469,7 @@ def _model_name(force: bool = False) -> tuple[str, str]:
             loaded = name
     picked = preferred or loaded or first
     if not picked:
-        return "", "llama-server ไม่ได้บอกชื่อโมเดลมาเลย"
+        return "", TR("llama-server ไม่ได้บอกชื่อโมเดลมาเลย")
     with _MODEL_LOCK:
         _MODEL = picked
     return picked, ""
@@ -498,7 +499,7 @@ def _chat(messages: list, max_tokens: int, thinking: bool) -> tuple[str, str, st
         return "", "", err
     choices = (data or {}).get("choices") or []
     if not choices:
-        return "", "", "llama-server ไม่ได้ส่ง choices กลับมา"
+        return "", "", TR("llama-server ไม่ได้ส่ง choices กลับมา")
     ch = choices[0] if isinstance(choices[0], dict) else {}
     msg = ch.get("message") if isinstance(ch.get("message"), dict) else {}
     return _s(msg.get("content")), _s(ch.get("finish_reason")), ""
@@ -635,11 +636,11 @@ def _process(job: dict, kind: str) -> None:
     if job["status"] != "error":
         job["status"] = "done"
         if job["finish_reason"] == "length" and hit_cap:
-            job["note"] = ("Extend Mode หยุดที่ %d ท่อนตามเพดาน คำตอบยังไม่จบ "
-                           "ถ้าต้องการต่อให้เรียก /v1/job/%s/continue"
+            job["note"] = (TR("Extend Mode หยุดที่ %d ท่อนตามเพดาน คำตอบยังไม่จบ "
+                           "ถ้าต้องการต่อให้เรียก /v1/job/%s/continue")
                            % (MAX_SEGMENTS, job["id"]))
         elif job["finish_reason"] == "length":
-            job["note"] = "คำตอบถูกตัดกลางคัน เรียก /v1/job/%s/continue เพื่อต่อได้" % job["id"]
+            job["note"] = TR("คำตอบถูกตัดกลางคัน เรียก /v1/job/%s/continue เพื่อต่อได้") % job["id"]
         else:
             job["note"] = ""
         _session_commit(job)
@@ -765,35 +766,35 @@ class _Handler(BaseHTTPRequestHandler):
             # BaseHTTPRequestHandler ไม่ถอด chunked ให้ ถ้ารับไว้จะ desync เหมือนกัน
             self._body_done = True
             self.close_connection = True
-            return None, "ไม่รองรับ Transfer-Encoding ให้ส่งพร้อม Content-Length"
+            return None, TR("ไม่รองรับ Transfer-Encoding ให้ส่งพร้อม Content-Length")
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             self._body_done = True
             self.close_connection = True
-            return None, "Content-Length ไม่ถูกต้อง"
+            return None, TR("Content-Length ไม่ถูกต้อง")
         if length <= 0:
             self._body_done = True
             return {}, ""
         if length > MAX_BODY:
             self._body_done = True
             self.close_connection = True      # ยังไม่ได้อ่าน body ที่ค้าง ต้องไม่ keep-alive ต่อ
-            return None, "body ใหญ่เกิน %d ไบต์" % MAX_BODY
+            return None, TR("body ใหญ่เกิน %d ไบต์") % MAX_BODY
         try:
             raw = self.rfile.read(length).decode("utf-8", "replace")
             self._body_done = True
             data = json.loads(raw)
         except (OSError, ValueError) as exc:
             self._body_done = True
-            return None, "อ่าน body เป็น JSON ไม่ได้: %s" % exc
-        return (data, "") if isinstance(data, dict) else (None, "body ต้องเป็น JSON object")
+            return None, TR("อ่าน body เป็น JSON ไม่ได้: %s") % exc
+        return (data, "") if isinstance(data, dict) else (None, TR("body ต้องเป็น JSON object"))
 
     def _auth(self) -> bool:
         """ทุก endpoint ยกเว้น /health ต้องมี X-Api-Key ที่ถูกต้อง"""
         if _key_ok(_s(self.headers.get("X-Api-Key")).strip()):
             return True
         self._drain()          # ต้องทิ้ง body ก่อน ไม่งั้นคำขอถัดไปบนคอนเนกชันเดิมเพี้ยน
-        self._send(401, {"error": "ต้องมี header X-Api-Key ที่ถูกต้อง",
+        self._send(401, {"error": TR("ต้องมี header X-Api-Key ที่ถูกต้อง"),
                          "key_source": _key_source()})     # บอกที่มา ไม่ใช่ค่า (S02)
         self._audit(401, {"reason": "bad_key"})   # ไม่บันทึกค่าที่ส่งมาผิด
         return False
@@ -816,14 +817,14 @@ class _Handler(BaseHTTPRequestHandler):
         if host not in ("127.0.0.1:%d" % port, "localhost:%d" % port):
             self._drain()
             self.close_connection = True
-            self._send(403, {"error": "Host ไม่ถูกต้อง"})
+            self._send(403, {"error": TR("Host ไม่ถูกต้อง")})
             self._audit(403, {"reason": "bad_host"})
             return True
         if self.headers.get("Origin") is None:
             return False
         self._drain()
         self.close_connection = True
-        self._send(403, {"error": "gateway ไม่รับคำขอจากหน้าเว็บ (มี header Origin)"})
+        self._send(403, {"error": TR("gateway ไม่รับคำขอจากหน้าเว็บ (มี header Origin)")})
         self._audit(403, {"reason": "browser_origin"})
         return True
 
@@ -841,7 +842,7 @@ class _Handler(BaseHTTPRequestHandler):
             return self._sessions_list()
         if len(parts) == 3 and parts[:2] == ["v1", "job"]:
             return self._job_get(parts[2])
-        self._send(404, {"error": "ไม่รู้จัก endpoint นี้"})
+        self._send(404, {"error": TR("ไม่รู้จัก endpoint นี้")})
         self._audit(404)
 
     def do_POST(self) -> None:             # noqa: N802
@@ -855,7 +856,7 @@ class _Handler(BaseHTTPRequestHandler):
         if len(parts) == 4 and parts[:2] == ["v1", "job"] and parts[3] == "continue":
             return self._continue(parts[2])
         self._drain()                      # 404 บน POST ก็ยังมี body ค้างอยู่
-        self._send(404, {"error": "ไม่รู้จัก endpoint นี้"})
+        self._send(404, {"error": TR("ไม่รู้จัก endpoint นี้")})
         self._audit(404)
 
     def do_DELETE(self) -> None:           # noqa: N802
@@ -867,7 +868,7 @@ class _Handler(BaseHTTPRequestHandler):
             return
         if len(parts) == 3 and parts[:2] == ["v1", "session"]:
             return self._session_delete(parts[2])
-        self._send(404, {"error": "ไม่รู้จัก endpoint นี้"})
+        self._send(404, {"error": TR("ไม่รู้จัก endpoint นี้")})
         self._audit(404)
 
     # ---------- handlers ----------
@@ -902,10 +903,10 @@ class _Handler(BaseHTTPRequestHandler):
             return self._audit(400)
         prompt = _s((data or {}).get("prompt")).strip()
         if not prompt:
-            self._send(400, {"error": "ต้องมีฟิลด์ prompt"})
+            self._send(400, {"error": TR("ต้องมีฟิลด์ prompt")})
             return self._audit(400)
         if len(prompt) > MAX_PROMPT_CHARS:
-            self._send(400, {"error": "prompt ยาวเกิน %d ตัวอักษร" % MAX_PROMPT_CHARS})
+            self._send(400, {"error": TR("prompt ยาวเกิน %d ตัวอักษร") % MAX_PROMPT_CHARS})
             return self._audit(400)
         session = _s((data or {}).get("session")).strip()[:64]
         max_tokens = _clamp_int((data or {}).get("max_tokens"), 1, MAX_MAX_TOKENS,
@@ -919,8 +920,8 @@ class _Handler(BaseHTTPRequestHandler):
         with _LOCK:
             waiting = len(_ORDER)
         if waiting >= MAX_QUEUED:
-            self._send(429, {"error": "คิวเต็มแล้ว (รออยู่ %d งาน เพดาน %d) "
-                                      "รอให้งานเดิมเสร็จก่อนแล้วค่อยส่งใหม่"
+            self._send(429, {"error": TR("คิวเต็มแล้ว (รออยู่ %d งาน เพดาน %d) "
+                                      "รอให้งานเดิมเสร็จก่อนแล้วค่อยส่งใหม่")
                                       % (waiting, MAX_QUEUED),
                              "queue_depth": waiting})
             return self._audit(429, {"queue_depth": waiting, "reason": "queue_full"})
@@ -929,8 +930,8 @@ class _Handler(BaseHTTPRequestHandler):
         _Q.put(("prompt", job["id"]))
         pos = _queue_position(job["id"])
         pub = _job_public(job)
-        pub["message"] = ("เข้าคิวแล้ว ลำดับที่ %d ติดตามผลที่ /v1/job/%s" % (pos, job["id"])
-                          if pos else "กำลังทำอยู่ ติดตามผลที่ /v1/job/%s" % job["id"])
+        pub["message"] = (TR("เข้าคิวแล้ว ลำดับที่ %d ติดตามผลที่ /v1/job/%s") % (pos, job["id"])
+                          if pos else TR("กำลังทำอยู่ ติดตามผลที่ /v1/job/%s") % job["id"])
         self._send(202, pub)
         # S02/สมุดงาน: ลง audit ได้ไม่เกิน 200 ตัวอักษรแรกของ prompt
         self._audit(202, {"job": job["id"], "session": session or None,
@@ -942,7 +943,7 @@ class _Handler(BaseHTTPRequestHandler):
         with _LOCK:
             job = _JOBS.get(_s(jid).strip())
         if not job:
-            self._send(404, {"error": "ไม่พบงาน %s" % jid})
+            self._send(404, {"error": TR("ไม่พบงาน %s") % jid})
             return self._audit(404, {"job": jid})
         self._send(200, _job_public(job))
         self._audit(200, {"job": job["id"], "job_status": job["status"]})
@@ -955,19 +956,19 @@ class _Handler(BaseHTTPRequestHandler):
         with _LOCK:
             job = _JOBS.get(_s(jid).strip())
             if not job:
-                self._send(404, {"error": "ไม่พบงาน %s" % jid})
+                self._send(404, {"error": TR("ไม่พบงาน %s") % jid})
                 return self._audit(404, {"job": jid})
             if job["status"] in ("queued", "running"):
-                self._send(409, {"error": "งาน %s ยังทำไม่เสร็จ รอให้จบก่อนแล้วค่อยต่อ" % job["id"]})
+                self._send(409, {"error": TR("งาน %s ยังทำไม่เสร็จ รอให้จบก่อนแล้วค่อยต่อ") % job["id"]})
                 return self._audit(409, {"job": job["id"]})
             if job["status"] == "error":
-                self._send(409, {"error": "งาน %s จบด้วยข้อผิดพลาด ต่อไม่ได้" % job["id"]})
+                self._send(409, {"error": TR("งาน %s จบด้วยข้อผิดพลาด ต่อไม่ได้") % job["id"]})
                 return self._audit(409, {"job": job["id"]})
             force = _truthy((data or {}).get("force"))
             if job["finish_reason"] != "length" and not force:
                 # ต่อคำตอบที่จบสมบูรณ์แล้วมักได้ข้อความงอกแปลกๆ ถ้าจงใจให้ส่ง force=true
-                self._send(409, {"error": "คำตอบจบสมบูรณ์แล้ว (finish_reason=%s) "
-                                          "ถ้ายังต้องการต่อจริงให้ส่ง force=true"
+                self._send(409, {"error": TR("คำตอบจบสมบูรณ์แล้ว (finish_reason=%s) "
+                                          "ถ้ายังต้องการต่อจริงให้ส่ง force=true")
                                           % (job["finish_reason"] or "?")})
                 return self._audit(409, {"job": job["id"], "reason": "not_truncated"})
             # ไม่มีการรีเซ็ต segments ตรงนี้: /continue เป็นคำสั่งที่ผู้ใช้กดเอง จึงต่อได้
@@ -986,7 +987,7 @@ class _Handler(BaseHTTPRequestHandler):
             _ORDER.append(job["id"])
         _Q.put(("continue", job["id"]))
         pub = _job_public(job)
-        pub["message"] = "สั่งต่อคำตอบแล้ว อีกหนึ่งท่อน ติดตามที่ /v1/job/%s" % job["id"]
+        pub["message"] = TR("สั่งต่อคำตอบแล้ว อีกหนึ่งท่อน ติดตามที่ /v1/job/%s") % job["id"]
         self._send(202, pub)
         self._audit(202, {"job": job["id"], "session": job["session"] or None,
                           "action": "continue"})
@@ -1009,7 +1010,7 @@ class _Handler(BaseHTTPRequestHandler):
         with _SESS_LOCK:
             gone = _SESSIONS.pop(sid, None)
         if gone is None:
-            self._send(404, {"error": "ไม่พบ session %s" % sid})
+            self._send(404, {"error": TR("ไม่พบ session %s") % sid})
             return self._audit(404, {"session": sid})
         _save_sessions()
         self._send(200, {"deleted": sid, "messages_removed": len(gone["messages"])})
@@ -1032,16 +1033,16 @@ def gateway_status() -> str:
             sessions = len(_SESSIONS)
         lines = [
             "Remote Prompt Gateway",
-            "  ผูกที่        : %s:%d (loopback เท่านั้น)" % (HOST, PORT),
-            "  llama-server  : %s" % (("พร้อม โมเดล %s" % model) if model else "ไม่พร้อม (%s)" % err),
-            "  คิว           : รออยู่ %d งาน, กำลังทำ %s" % (depth, running or "-"),
-            "  งานในหน่วยความจำ: %d" % jobs,
+            TR("  ผูกที่        : %s:%d (loopback เท่านั้น)") % (HOST, PORT),
+            "  llama-server  : %s" % ((TR("พร้อม โมเดล %s") % model) if model else TR("ไม่พร้อม (%s)") % err),
+            TR("  คิว           : รออยู่ %d งาน, กำลังทำ %s") % (depth, running or "-"),
+            TR("  งานในหน่วยความจำ: %d") % jobs,
             "  session       : %d" % sessions,
-            "  คีย์           : %s (ไม่แสดงค่าในนี้)" % _key_source(),
+            TR("  คีย์           : %s (ไม่แสดงค่าในนี้)") % _key_source(),
         ]
         return "\n".join(lines)
     except Exception as exc:                 # noqa: BLE001 — สัญญาคือไม่โยน
-        return "ERROR: อ่านสถานะ gateway ไม่ได้: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: อ่านสถานะ gateway ไม่ได้: %s: %s") % (type(exc).__name__, exc)
 
 
 def gateway_sessions() -> str:
@@ -1058,13 +1059,13 @@ def gateway_sessions() -> str:
                  for sid, rec in _SESSIONS.items()),
                 key=lambda r: r[2], reverse=True)
         if not items:
-            return "ยังไม่มี session ใน gateway"
-        lines = ["session ของ gateway (%d รายการ)" % len(items)]
+            return TR("ยังไม่มี session ใน gateway")
+        lines = [TR("session ของ gateway (%d รายการ)") % len(items)]
         for sid, n, upd in items:
-            lines.append("  %-24s %2d ข้อความ  ใช้งานล่าสุด %s" % (sid[:24], n, upd or "-"))
+            lines.append(TR("  %-24s %2d ข้อความ  ใช้งานล่าสุด %s") % (sid[:24], n, upd or "-"))
         return "\n".join(lines)
     except Exception as exc:                 # noqa: BLE001
-        return "ERROR: อ่านรายชื่อ session ไม่ได้: %s: %s" % (type(exc).__name__, exc)
+        return TR("ERROR: อ่านรายชื่อ session ไม่ได้: %s: %s") % (type(exc).__name__, exc)
 
 
 # server.py วน MODULES แล้วอ่าน TOOLS/IMPL จากแต่ละโมดูล ไฟล์นี้เคยไม่มีทั้งสองตัว
@@ -1094,13 +1095,13 @@ def serve(port: int = PORT) -> str:
     try:
         _ensure_key()
     except Denied as exc:
-        return "ERROR: สร้างไฟล์คีย์ไม่ได้: %s" % exc
+        return TR("ERROR: สร้างไฟล์คีย์ไม่ได้: %s") % exc
     _load_sessions()
     _start_worker()
     try:
         httpd = ThreadingHTTPServer((HOST, port), _Handler)
     except OSError as exc:
-        return "ERROR: เปิดพอร์ต %d ไม่ได้: %s" % (port, exc)
+        return TR("ERROR: เปิดพอร์ต %d ไม่ได้: %s") % (port, exc)
 
     bound = httpd.server_address[1]
     guard.audit("gateway_start", {"bind": "%s:%d" % (HOST, bound), "upstream": UPSTREAM})
@@ -1118,7 +1119,7 @@ def serve(port: int = PORT) -> str:
         httpd.server_close()
         _save_sessions()
         guard.audit("gateway_stop", {"bind": "%s:%d" % (HOST, bound)})
-    return "ปิด gateway ที่พอร์ต %d แล้ว (session ถูกบันทึกลงดิสก์เรียบร้อย)" % bound
+    return TR("ปิด gateway ที่พอร์ต %d แล้ว (session ถูกบันทึกลงดิสก์เรียบร้อย)") % bound
 
 
 if __name__ == "__main__":

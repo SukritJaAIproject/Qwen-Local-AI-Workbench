@@ -61,6 +61,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import guard
+from i18n_tools import TR, pick as _i18n_pick  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # ตั้ง env ได้เพื่อให้เทสต์/อินสแตนซ์ทดสอบใช้โฟลเดอร์จำลอง (เหมือน QWEN_MCP_PROJECT_DATA ของ guard)
 SKILLS_DIR = Path(os.environ.get("QWEN_SKILLS_DIR") or r"C:\LLM\skills")
@@ -157,22 +158,22 @@ def _scalar(val: str, ln: int):
         try:
             out = json.loads(v)
         except ValueError:
-            raise SkillError("บรรทัด %d: สตริงในเครื่องหมาย \" ไม่ถูกต้อง (ต้องปิดให้ครบ ใช้ \\\" แทน \" ข้างใน)" % ln)
+            raise SkillError(TR("บรรทัด %d: สตริงในเครื่องหมาย \" ไม่ถูกต้อง (ต้องปิดให้ครบ ใช้ \\\" แทน \" ข้างใน)") % ln)
         if not isinstance(out, str):
-            raise SkillError("บรรทัด %d: ต้องเป็นสตริง" % ln)
+            raise SkillError(TR("บรรทัด %d: ต้องเป็นสตริง") % ln)
         return out
     if v.startswith("'"):
         if len(v) < 2 or not v.endswith("'"):
-            raise SkillError("บรรทัด %d: สตริงในเครื่องหมาย ' ไม่ได้ปิด" % ln)
+            raise SkillError(TR("บรรทัด %d: สตริงในเครื่องหมาย ' ไม่ได้ปิด") % ln)
         inner = v[1:-1]
         if re.search(r"(?<!')'(?!')", inner.replace("''", "")):
-            raise SkillError("บรรทัด %d: ใช้ '' แทน ' ข้างในสตริง" % ln)
+            raise SkillError(TR("บรรทัด %d: ใช้ '' แทน ' ข้างในสตริง") % ln)
         return inner.replace("''", "'")
     if v.startswith("[") or v.startswith("{"):
         try:
             return json.loads(v)
         except ValueError:
-            raise SkillError("บรรทัด %d: รายการแบบบรรทัดเดียวต้องเป็น JSON ที่ถูกต้อง" % ln)
+            raise SkillError(TR("บรรทัด %d: รายการแบบบรรทัดเดียวต้องเป็น JSON ที่ถูกต้อง") % ln)
     low = v.lower()
     if low in ("true", "false"):
         return low == "true"
@@ -225,16 +226,16 @@ def _parse_map(lines: list, i: int, indent: int, ln0: int):
         if ind < indent:
             return out, i
         if ind > indent:
-            raise SkillError("บรรทัด %d: ย่อหน้าไม่ตรงกับบรรทัดก่อนหน้า" % (ln0 + i))
+            raise SkillError(TR("บรรทัด %d: ย่อหน้าไม่ตรงกับบรรทัดก่อนหน้า") % (ln0 + i))
         content = line[ind:].rstrip()
         m = _KEY_RE.match(content)
         if not m:
             if content.startswith("-"):
                 return out, i                  # รายการที่ย่อหน้าเท่ากับ key ของมัน (ผู้เรียกจัดการ)
-            raise SkillError("บรรทัด %d: ต้องเป็นรูป key: value" % (ln0 + i))
+            raise SkillError(TR("บรรทัด %d: ต้องเป็นรูป key: value") % (ln0 + i))
         key, val = m.group(1), (m.group(2) or "").strip()
         if key in out:
-            raise SkillError("บรรทัด %d: key '%s' ซ้ำ" % (ln0 + i, key))
+            raise SkillError(TR("บรรทัด %d: key '%s' ซ้ำ") % (ln0 + i, key))
         i += 1
         if val in ("|", "|-", "|+", ">", ">-", ">+"):
             out[key], i = _block_scalar(lines, i, indent, val[0], ln0)
@@ -244,7 +245,7 @@ def _parse_map(lines: list, i: int, indent: int, ln0: int):
             if j < len(lines) and _indent(lines[j]) >= indent and lines[j][_indent(lines[j]):].startswith("-"):
                 out[key], i = _parse_list(lines, j, _indent(lines[j]), ln0)
             elif j < len(lines) and _indent(lines[j]) > indent:
-                raise SkillError("บรรทัด %d: mapping ซ้อนกันไม่รองรับ (ใช้รายการ \"- \" หรือ JSON บรรทัดเดียว)"
+                raise SkillError(TR("บรรทัด %d: mapping ซ้อนกันไม่รองรับ (ใช้รายการ \"- \" หรือ JSON บรรทัดเดียว)")
                                  % (ln0 + j))
             else:
                 out[key] = ""
@@ -264,22 +265,22 @@ def _parse_list(lines: list, i: int, indent: int, ln0: int):
         content = line[ind:].rstrip()
         if ind != indent or not (content == "-" or content.startswith("- ")):
             if ind > indent:
-                raise SkillError("บรรทัด %d: ย่อหน้าในรายการไม่ตรง" % (ln0 + i))
+                raise SkillError(TR("บรรทัด %d: ย่อหน้าในรายการไม่ตรง") % (ln0 + i))
             break
         rest = content[1:].lstrip(" ")
         if not rest:
-            raise SkillError("บรรทัด %d: รายการว่าง" % (ln0 + i))
+            raise SkillError(TR("บรรทัด %d: รายการว่าง") % (ln0 + i))
         col = ind + (len(content) - len(rest))
         if _KEY_RE.match(rest):
             if kind == "scalar":
-                raise SkillError("บรรทัด %d: รายการผสม mapping กับค่าเดี่ยวไม่ได้" % (ln0 + i))
+                raise SkillError(TR("บรรทัด %d: รายการผสม mapping กับค่าเดี่ยวไม่ได้") % (ln0 + i))
             kind = "map"
             lines[i] = " " * col + rest       # เขียนบรรทัดนี้ใหม่ให้เป็น key แรกของ mapping ที่คอลัมน์ col
             item, i = _parse_map(lines, i, col, ln0)
             items.append(item)
         else:
             if kind == "map":
-                raise SkillError("บรรทัด %d: รายการผสม mapping กับค่าเดี่ยวไม่ได้" % (ln0 + i))
+                raise SkillError(TR("บรรทัด %d: รายการผสม mapping กับค่าเดี่ยวไม่ได้") % (ln0 + i))
             kind = "scalar"
             items.append(_scalar(rest, ln0 + i))
             i += 1
@@ -290,18 +291,18 @@ def parse_frontmatter(text: str):
     """คืน (meta, body) — text ต้องขึ้นต้นด้วยบรรทัด --- และมี --- ปิด"""
     lines = text.split("\n")
     if not lines or lines[0].strip() != "---":
-        raise SkillError("บรรทัด 1: ต้องขึ้นต้นด้วย --- (frontmatter)")
+        raise SkillError(TR("บรรทัด 1: ต้องขึ้นต้นด้วย --- (frontmatter)"))
     end = next((k for k in range(1, len(lines)) if lines[k].strip() == "---"), None)
     if end is None:
-        raise SkillError("ไม่พบ --- ปิด frontmatter")
+        raise SkillError(TR("ไม่พบ --- ปิด frontmatter"))
     head = lines[1:end]
     for k, line in enumerate(head):
         if "\t" in line[:_indent(line) + 1] and line.strip():
-            raise SkillError("บรรทัด %d: ใช้ช่องว่างย่อหน้า ห้ามใช้แท็บ" % (k + 2))
+            raise SkillError(TR("บรรทัด %d: ใช้ช่องว่างย่อหน้า ห้ามใช้แท็บ") % (k + 2))
     meta, i = _parse_map(head, 0, 0, 2)
     i = _next_sig(head, i)
     if i < len(head):
-        raise SkillError("บรรทัด %d: อ่าน frontmatter ต่อไม่ได้" % (i + 2))
+        raise SkillError(TR("บรรทัด %d: อ่าน frontmatter ต่อไม่ได้") % (i + 2))
     return meta, "\n".join(lines[end + 1:])
 
 
@@ -310,13 +311,13 @@ def _str(meta: dict, key: str, limit: int, where: str, required: bool = False) -
     v = meta.get(key)
     if v is None or v == "":
         if required:
-            raise SkillError("%s: ต้องมี %s" % (where, key))
+            raise SkillError(TR("%s: ต้องมี %s") % (where, key))
         return ""
     if not isinstance(v, str):
-        raise SkillError("%s: %s ต้องเป็นข้อความ" % (where, key))
+        raise SkillError(TR("%s: %s ต้องเป็นข้อความ") % (where, key))
     v = v.strip()
     if len(v) > limit:
-        raise SkillError("%s: %s ยาวเกิน %d ตัวอักษร" % (where, key, limit))
+        raise SkillError(TR("%s: %s ยาวเกิน %d ตัวอักษร") % (where, key, limit))
     return v
 
 
@@ -324,35 +325,35 @@ def _sections_ok(body: str, names: set) -> None:
     """เปิด/ปิดส่วนต้องจับคู่กันครบ และทุกชื่อที่อ้างต้องมีจริง — จับพิมพ์ผิดตั้งแต่ตอนโหลด ไม่ใช่ตอนผู้ใช้กด"""
     for m in _TAG_RE.finditer(body):
         if m.group(2) not in names:
-            raise SkillError("แม่แบบอ้าง {{%s%s}} ซึ่งไม่ใช่อาร์กิวเมนต์หรือชื่อสงวน" % (m.group(1), m.group(2)))
+            raise SkillError(TR("แม่แบบอ้าง {{%s%s}} ซึ่งไม่ใช่อาร์กิวเมนต์หรือชื่อสงวน") % (m.group(1), m.group(2)))
     for m in _VAR_RE.finditer(body):
         if m.group(1) not in names:
-            raise SkillError("แม่แบบอ้าง {{%s}} ซึ่งไม่ใช่อาร์กิวเมนต์หรือชื่อสงวน" % m.group(1))
+            raise SkillError(TR("แม่แบบอ้าง {{%s}} ซึ่งไม่ใช่อาร์กิวเมนต์หรือชื่อสงวน") % m.group(1))
     for truthy in (True, False):
         ctx = {n: ("x" if truthy else "") for n in names}
         left = _resolve_sections(_prep(body), ctx)
         if _TAG_RE.search(left):
-            raise SkillError("แท็กส่วน {{#x}} / {{^x}} / {{/x}} เปิด-ปิดไม่ครบคู่ (หรือซ้อนชื่อเดียวกัน)")
+            raise SkillError(TR("แท็กส่วน {{#x}} / {{^x}} / {{/x}} เปิด-ปิดไม่ครบคู่ (หรือซ้อนชื่อเดียวกัน)"))
         stray = [s for s in _ANY_MUSTACHE_RE.findall(_VAR_RE.sub("", left))]
         if stray:
-            raise SkillError("แม่แบบมี %s ที่อ่านไม่ออก" % stray[0][:40])
+            raise SkillError(TR("แม่แบบมี %s ที่อ่านไม่ออก") % stray[0][:40])
 
 
 def build_skill(folder: str, text: str) -> Skill:
     if _BAD_CHARS_RE.search(text):
-        raise SkillError("มีอักขระควบคุมทิศทาง (bidi) หรือ NUL — ปฏิเสธเพื่อกันข้อความซ่อน")
+        raise SkillError(TR("มีอักขระควบคุมทิศทาง (bidi) หรือ NUL — ปฏิเสธเพื่อกันข้อความซ่อน"))
     text = text.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
     meta, body = parse_frontmatter(text)
     where = "SKILL.md"
     name = _str(meta, "name", 64, where) or folder
     if not NAME_RE.match(name):
-        raise SkillError("name '%s' ต้องเป็น a-z 0-9 - (ยาวไม่เกิน 64)" % name[:70])
+        raise SkillError(TR("name '%s' ต้องเป็น a-z 0-9 - (ยาวไม่เกิน 64)") % name[:70])
     if name != folder:
-        raise SkillError("name '%s' ต้องตรงกับชื่อโฟลเดอร์ '%s'" % (name, folder))
+        raise SkillError(TR("name '%s' ต้องตรงกับชื่อโฟลเดอร์ '%s'") % (name, folder))
     title_th = _str(meta, "title_th", 120, where)
     title_en = _str(meta, "title_en", 120, where)
     if not (title_th or title_en):
-        raise SkillError("ต้องมี title_th หรือ title_en อย่างน้อยหนึ่งอย่าง")
+        raise SkillError(TR("ต้องมี title_th หรือ title_en อย่างน้อยหนึ่งอย่าง"))
     description = _str(meta, "description", 600, where, required=True)
     description_en = _str(meta, "description_en", 600, where)
     # ลำดับในรายการ (น้อยขึ้นก่อน) — WebUI คงลำดับที่เซิร์ฟเวอร์ส่งภายในเซิร์ฟเวอร์เดียวกัน
@@ -360,41 +361,41 @@ def build_skill(folder: str, text: str) -> Skill:
     try:
         order = int(str(order_raw).strip())
     except ValueError:
-        raise SkillError("order ต้องเป็นจำนวนเต็ม")
+        raise SkillError(TR("order ต้องเป็นจำนวนเต็ม"))
     if not 0 <= order <= 10_000:
-        raise SkillError("order ต้องอยู่ระหว่าง 0-10000")
+        raise SkillError(TR("order ต้องอยู่ระหว่าง 0-10000"))
     raw_args = meta.get("arguments")
     if raw_args in (None, ""):
         raw_args = []
     if not isinstance(raw_args, list):
-        raise SkillError("arguments ต้องเป็นรายการ")
+        raise SkillError(TR("arguments ต้องเป็นรายการ"))
     if len(raw_args) > MAX_ARGS:
-        raise SkillError("arguments เกิน %d ตัว" % MAX_ARGS)
+        raise SkillError(TR("arguments เกิน %d ตัว") % MAX_ARGS)
     args, seen = [], set()
     for n, item in enumerate(raw_args, 1):
         w = "arguments[%d]" % n
         if not isinstance(item, dict):
-            raise SkillError("%s ต้องเป็น mapping {name, description, required}" % w)
+            raise SkillError(TR("%s ต้องเป็น mapping {name, description, required}") % w)
         aname = _str(item, "name", 32, w, required=True)
         if not ARG_RE.match(aname):
-            raise SkillError("%s: name '%s' ต้องขึ้นต้นด้วยตัวอักษรอังกฤษ ตามด้วย A-Z a-z 0-9 _ "
-                             "(หน้าเว็บใช้เป็น id ของช่องกรอก)" % (w, aname))
+            raise SkillError(TR("%s: name '%s' ต้องขึ้นต้นด้วยตัวอักษรอังกฤษ ตามด้วย A-Z a-z 0-9 _ "
+                             "(หน้าเว็บใช้เป็น id ของช่องกรอก)") % (w, aname))
         if aname in seen:
-            raise SkillError("%s: name '%s' ซ้ำ" % (w, aname))
+            raise SkillError(TR("%s: name '%s' ซ้ำ") % (w, aname))
         seen.add(aname)
         req = item.get("required", False)
         if not isinstance(req, bool):
-            raise SkillError("%s: required ต้องเป็น true หรือ false" % w)
+            raise SkillError(TR("%s: required ต้องเป็น true หรือ false") % w)
         comp = _str(item, "complete", 20, w)
         if comp and comp not in COMPLETE_KINDS:
-            raise SkillError("%s: complete ต้องเป็น %s" % (w, " หรือ ".join(COMPLETE_KINDS)))
+            raise SkillError(TR("%s: complete ต้องเป็น %s") % (w, TR(" หรือ ").join(COMPLETE_KINDS)))
         args.append(Arg(name=aname, description=_str(item, "description", 300, w),
                         description_en=_str(item, "description_en", 300, w), required=req,
                         default=_str(item, "default", 200, w), default_en=_str(item, "default_en", 200, w),
                         complete=comp))
     body = body.strip("\n")
     if not body.strip():
-        raise SkillError("เนื้อแม่แบบว่าง")
+        raise SkillError(TR("เนื้อแม่แบบว่าง"))
     _sections_ok(body, set(seen) | set(RESERVED))
     return Skill(name=name, title_th=title_th, title_en=title_en, description=description,
                  description_en=description_en, body=body, arguments=args, folder=folder, order=order)
@@ -475,10 +476,10 @@ def _load_enabled(base: Path):
     try:
         data = json.loads(p.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
-        return {}, "%s: อ่านไม่ได้ (%s) — เปิดทุก skill" % (ENABLED_NAME, type(exc).__name__)
+        return {}, TR("%s: อ่านไม่ได้ (%s) — เปิดทุก skill") % (ENABLED_NAME, type(exc).__name__)
     out = {}
     if not isinstance(data, dict):
-        return {}, "%s: ต้องเป็น object — เปิดทุก skill" % ENABLED_NAME
+        return {}, TR("%s: ต้องเป็น object — เปิดทุก skill") % ENABLED_NAME
     rules = dict(data.get("projects") or {}) if isinstance(data.get("projects"), dict) else {}
     if isinstance(data.get("default"), dict):
         rules.setdefault("\x00default", data["default"])
@@ -517,32 +518,32 @@ def load_skills(force: bool = False):
         except OSError:
             continue
         if len(skills) >= MAX_SKILLS:
-            errors[e.name] = "เกินจำนวน skill สูงสุด %d" % MAX_SKILLS
+            errors[e.name] = TR("เกินจำนวน skill สูงสุด %d") % MAX_SKILLS
             continue
         if not NAME_RE.match(e.name):
-            errors[e.name] = "ชื่อโฟลเดอร์ต้องเป็น a-z 0-9 -"
+            errors[e.name] = TR("ชื่อโฟลเดอร์ต้องเป็น a-z 0-9 -")
             continue
         md = os.path.join(e.path, "SKILL.md")
         if not os.path.isfile(md):
-            errors[e.name] = "ไม่มี SKILL.md"
+            errors[e.name] = TR("ไม่มี SKILL.md")
             continue
         if not _inside(base, md):
-            errors[e.name] = "SKILL.md ชี้ออกนอกโฟลเดอร์ skills (ลิงก์/junction) — ข้าม"
+            errors[e.name] = TR("SKILL.md ชี้ออกนอกโฟลเดอร์ skills (ลิงก์/junction) — ข้าม")
             continue
         try:
             if os.path.getsize(md) > MAX_SKILL_BYTES:
-                raise SkillError("ไฟล์ใหญ่เกิน %d KB" % (MAX_SKILL_BYTES // 1024))
+                raise SkillError(TR("ไฟล์ใหญ่เกิน %d KB") % (MAX_SKILL_BYTES // 1024))
             with open(md, "rb") as fh:
                 raw = fh.read(MAX_SKILL_BYTES + 1)
             try:
                 text = raw.decode("utf-8")
             except UnicodeDecodeError:
-                raise SkillError("ต้องเป็น UTF-8")
+                raise SkillError(TR("ต้องเป็น UTF-8"))
             skills[e.name] = build_skill(e.name, text)
         except SkillError as exc:
             errors[e.name] = str(exc)
         except OSError as exc:
-            errors[e.name] = "อ่านไม่ได้: %s" % type(exc).__name__
+            errors[e.name] = TR("อ่านไม่ได้: %s") % type(exc).__name__
     enabled, en_err = _load_enabled(base)
     with _LOCK:
         _CACHE.update(sig=sig, skills=skills, errors=errors, enabled=enabled, enabled_error=en_err)
@@ -571,7 +572,7 @@ def ui_lang() -> str:
     lang = "th"
     try:
         v = json.loads(HUB_SETTINGS.read_text(encoding="utf-8-sig")).get("lang")
-        if v in ("th", "en"):
+        if v in ("th", "en", "ja", "zh"):
             lang = v
     except (OSError, ValueError, AttributeError):
         pass
@@ -580,7 +581,12 @@ def ui_lang() -> str:
 
 
 def _msg(lang: str, th: str, en: str) -> str:
-    return en if lang == "en" else th
+    """Thai/English pair in the UI language — Japanese/Chinese come from the catalogue (i18n_tools), English otherwise."""
+    if lang == "th":
+        return th
+    if lang in ("ja", "zh"):
+        return _i18n_pick(lang, th, en)
+    return en
 
 
 def _title(s: Skill, lang: str) -> str:

@@ -28,11 +28,161 @@
 
   /* ---- ข้อมูลรอบตัว ---------------------------------------------------------- */
   function enh() { return window.qwenEnhance || null; }
+  var LANGS = ["th", "en", "ja", "zh"];
   function lang() {
-    try { var l = enh() && enh().lang(); if (l === "en" || l === "th") return l; } catch (e) {}
-    return document.documentElement.lang === "en" ? "en" : "th";
+    try { var l = enh() && enh().lang(); if (LANGS.indexOf(l) >= 0) return l; } catch (e) {}
+    var d = document.documentElement.lang;
+    return LANGS.indexOf(d) >= 0 ? d : "th";
   }
-  function T(th, en) { return lang() === "en" ? en : th; }
+  // 2026-11 ญี่ปุ่น/จีนตัวย่อ ตามข้อความอังกฤษ — คีย์ที่ไม่มีได้อังกฤษ
+  var JZ = {
+      "Queued. It will be sent when Qwen finishes this task.": [
+          "キューに入れました。Qwen がこのタスクを終えたら送信されます。",
+          "已加入队列。Qwen 完成当前任务后会发送。"
+      ],
+      "Queued.": [
+          "キューに入れました。",
+          "已加入队列。"
+      ],
+      "Couldn't send the queued message. The queue is paused; press Resume to try again.": [
+          "キューのメッセージを送信できませんでした。キューは一時停止中です。「再開」を押してもう一度お試しください。",
+          "无法发送队列中的消息。队列已暂停；按“继续”重试。"
+      ],
+      "Queue paused after Stop — these messages have not been sent": [
+          "停止後にキューを一時停止しました — 以下のメッセージはまだ送信されていません",
+          "按停止后队列已暂停 — 下面的消息尚未发送"
+      ],
+      "Sending the next message…": [
+          "次のメッセージを送信中…",
+          "正在发送下一条消息…"
+      ],
+      "Will be sent when Qwen finishes this task": [
+          "Qwen がこのタスクを終えたら送信されます",
+          "Qwen 完成当前任务后发送"
+      ],
+      "Waiting — there is a draft in the message box": [
+          "待機中 — メッセージ欄に下書きがあります",
+          "等待中 — 输入框里有未发送的草稿"
+      ],
+      "Waiting for the interjected message to be sent first": [
+          "割り込みメッセージが先に送信されるのを待っています",
+          "等待先发送插入的消息"
+      ],
+      "Waiting for connection recovery to finish the previous task": [
+          "接続復旧が前のタスクを終えるのを待っています",
+          "等待连接恢复完成上一个任务"
+      ],
+      "The previous task was interrupted and needs review — press Send now when ready": [
+          "前のタスクは中断され確認が必要です — 準備ができたら「今すぐ送信」を押してください",
+          "上一个任务被中断，需要检查 — 准备好后按“立即发送”"
+      ],
+      "Waiting for the open dialog to close": [
+          "開いているダイアログが閉じるのを待っています",
+          "等待打开的对话框关闭"
+      ],
+      "About to send the next message": [
+          "まもなく次のメッセージを送信します",
+          "即将发送下一条消息"
+      ],
+      "Qwen is working — press Enter to queue this message. It will be sent when this task finishes (the task keeps running).": [
+          "Qwen は作業中です — Enter でこのメッセージをキューに入れます。このタスクが終わると送信されます（タスクは続行します）。",
+          "Qwen 正在工作 — 按 Enter 把这条消息加入队列。当前任务完成后会发送（任务不会被中断）。"
+      ],
+      "Message queue": [
+          "メッセージキュー",
+          "消息队列"
+      ],
+      "Resume": [
+          "再開",
+          "继续"
+      ],
+      "Resume sending the queue": [
+          "キューの送信を再開",
+          "继续发送队列"
+      ],
+      "Queue resumed": [
+          "キューを再開しました",
+          "队列已继续"
+      ],
+      "Clear": [
+          "クリア",
+          "清空"
+      ],
+      "Remove every queued message": [
+          "キュー内のメッセージをすべて削除",
+          "删除队列中的所有消息"
+      ],
+      "Queue cleared": [
+          "キューをクリアしました",
+          "队列已清空"
+      ],
+      "Interject": [
+          "今すぐ割り込む",
+          "立即插入"
+      ],
+      "Another interjected message is already waiting": [
+          "別の割り込みメッセージがすでに待機中です",
+          "已有另一条插入的消息在等待"
+      ],
+      "Show this message to Qwen right after its current step (the rest of that step is skipped)": [
+          "現在のステップの直後にこのメッセージを Qwen に見せます（そのステップの残りはスキップされます）",
+          "让 Qwen 在当前步骤后立即看到这条消息（该步骤剩余部分会被跳过）"
+      ],
+      "Send now": [
+          "今すぐ送信",
+          "立即发送"
+      ],
+      "Send this message now": [
+          "このメッセージを今すぐ送信",
+          "现在发送这条消息"
+      ],
+      "Edit": [
+          "編集",
+          "编辑"
+      ],
+      "Move this message back to the message box": [
+          "このメッセージをメッセージ欄に戻す",
+          "把这条消息移回输入框"
+      ],
+      "Remove": [
+          "削除",
+          "移除"
+      ],
+      "Remove this message from the queue": [
+          "このメッセージをキューから削除",
+          "从队列中移除这条消息"
+      ],
+      "Removed from the queue": [
+          "キューから削除しました",
+          "已从队列移除"
+      ],
+      "The message box has a draft — send or clear it first": [
+          "メッセージ欄に下書きがあります — 先に送信するか消してください",
+          "输入框里有草稿 — 请先发送或清除"
+      ],
+      "Couldn't interject; the message stays queued": [
+          "割り込めませんでした。メッセージはキューに残ります",
+          "无法插入；消息仍留在队列中"
+      ],
+      "Interjected. Qwen will see it after the current step.": [
+          "割り込みました。Qwen は現在のステップの後にこれを見ます。",
+          "已插入。Qwen 会在当前步骤后看到它。"
+      ],
+      "The queue is full ({n} messages)": [
+          "キューがいっぱいです（{n} 件）",
+          "队列已满（{n} 条）"
+      ],
+      "{n} queued · ": [
+          "キュー {n} 件 · ",
+          "队列 {n} 条 · "
+      ]
+  };
+  function T(th, en) {
+    var l = lang();
+    if (l === "th") return th;
+    var x = l !== "en" && Object.prototype.hasOwnProperty.call(JZ, en) ? JZ[en] : null;
+    return x ? x[l === "ja" ? 0 : 1] : en;
+  }
   function route() {
     try { var r = enh() && enh().route(); if (r) return r; } catch (e) {}
     var m = /^#\/chat\/([^/?]+)/.exec(location.hash || "");
@@ -207,7 +357,7 @@
     if (!mod && inOpenFence(text, typeof ta.selectionStart === "number" ? ta.selectionStart : text.length)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (!enqueue(key, text.trim())) { say(T("คิวเต็มแล้ว (สูงสุด " + MAX_ITEMS + " ข้อความ)", "The queue is full (" + MAX_ITEMS + " messages)"), true); return; }
+    if (!enqueue(key, text.trim())) { say(T("คิวเต็มแล้ว (สูงสุด {n} ข้อความ)", "The queue is full ({n} messages)").replace("{n}", MAX_ITEMS), true); return; }
     delete store.paused[key];                              // ส่งข้อความใหม่ = ปลดคิวที่พักไว้หลังกดหยุด
     save();
     setComposer(ta, "");
@@ -405,7 +555,7 @@
     h.className = "qw-queue-h";
     var dot = document.createElement("span"); dot.className = "qw-queue-dot"; dot.setAttribute("aria-hidden", "true");
     var t = document.createElement("span"); t.className = "qw-queue-t";
-    t.textContent = T("คิว " + q.length + " ข้อความ · ", q.length + " queued · ") + headline(key, q, isBusy);
+    t.textContent = T("คิว {n} ข้อความ · ", "{n} queued · ").replace("{n}", q.length) + headline(key, q, isBusy);
     h.appendChild(dot); h.appendChild(t);
     if (store.paused[key]) {
       var resume = btn("go", T("ส่งต่อ", "Resume"), T("ส่งข้อความในคิวต่อ", "Resume sending the queue"), function () {

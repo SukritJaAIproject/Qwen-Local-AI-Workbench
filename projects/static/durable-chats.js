@@ -8,7 +8,40 @@
   var requestedId = "";
   try { requestedId = (window.top.location.hash.match(/^#\/chat\/([A-Za-z0-9_-]+)$/) || [])[1] || ""; } catch (e) {}
   function thai() { return window.qwenEnhance && window.qwenEnhance.lang() === "th"; }
-  function label(en, th) { return thai() ? th : en; }
+  function uiLang() { try { return window.qwenEnhance && window.qwenEnhance.lang() || document.documentElement.lang || "en"; } catch (e) { return "en"; } }
+  // 2026-11 ญี่ปุ่น/จีนตัวย่อ ตามข้อความอังกฤษ — คีย์ที่ไม่มีได้อังกฤษ
+  var JZ = {
+      " (restored)": [
+          " (復元)",
+          "（已恢复）"
+      ],
+      "History backup: retry": [
+          "履歴のバックアップ: 再試行",
+          "历史备份：重试"
+      ],
+      "History protected": [
+          "履歴は保護されています",
+          "历史已受保护"
+      ],
+      "History saved": [
+          "履歴を保存しました",
+          "历史已保存"
+      ],
+      "Saving history…": [
+          "履歴を保存中…",
+          "正在保存历史…"
+      ],
+      "Chat history is saved on this computer and restored when missing from this browser.": [
+          "チャット履歴はこのコンピューターに保存され、このブラウザーにない場合に復元されます。",
+          "对话历史保存在这台电脑上，当此浏览器中缺失时会自动恢复。"
+      ]
+  };
+  function label(en, th) {
+    var l = uiLang();
+    if (l === "th") return th;
+    var x = (l === "ja" || l === "zh") && Object.prototype.hasOwnProperty.call(JZ, en) ? JZ[en] : null;
+    return x ? x[l === "ja" ? 0 : 1] : en;
+  }
   function api(path, data) {
     var options = data === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data)};
     return fetchOriginal.call(window, "/_qwen/chats/" + path, options).then(function (response) {

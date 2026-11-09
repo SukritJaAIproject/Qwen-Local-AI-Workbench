@@ -45,6 +45,7 @@ from datetime import datetime, timezone
 
 import guard
 from guard import Denied
+from i18n_tools import TR  # 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (th/en/ja/zh)
 
 # token ของบริการในเครื่อง (สัญญา C1/C2): MCP 8791/8792 ตอบ 401 ถ้าไม่มี Authorization
 # secrets_util อยู่ที่ C:\LLM (โฟลเดอร์แม่) ต่อท้าย sys.path ไม่แทรกหน้า กันชื่อไปทับ stdlib
@@ -103,11 +104,11 @@ def _safe(fn):
         try:
             return fn(*args, **kwargs)
         except Denied as exc:
-            return "ERROR: ถูกปฏิเสธโดยนโยบายความปลอดภัย: %s" % exc
+            return TR("ERROR: ถูกปฏิเสธโดยนโยบายความปลอดภัย: %s") % exc
         except TypeError as exc:
-            return "ERROR: อาร์กิวเมนต์ไม่ถูกต้องสำหรับ %s: %s" % (fn.__name__, exc)
+            return TR("ERROR: อาร์กิวเมนต์ไม่ถูกต้องสำหรับ %s: %s") % (fn.__name__, exc)
         except Exception as exc:                # noqa: BLE001 - กันทุกกรณี
-            return "ERROR: %s ล้มเหลว: %s: %s" % (fn.__name__, type(exc).__name__, exc)
+            return TR("ERROR: %s ล้มเหลว: %s: %s") % (fn.__name__, type(exc).__name__, exc)
     return wrapper
 
 
@@ -146,12 +147,12 @@ def _utc_now() -> str:
 def _fmt_elapsed(seconds: float) -> str:
     seconds = max(0, int(seconds))
     if seconds < 60:
-        return "%dวิ" % seconds
+        return TR("%dวิ") % seconds
     if seconds < 3600:
-        return "%dน %dวิ" % (seconds // 60, seconds % 60)
+        return TR("%dน %dวิ") % (seconds // 60, seconds % 60)
     if seconds < 86400:
-        return "%dชม %dน" % (seconds // 3600, (seconds % 3600) // 60)
-    return "%dวัน %dชม" % (seconds // 86400, (seconds % 86400) // 3600)
+        return TR("%dชม %dน") % (seconds // 3600, (seconds % 3600) // 60)
+    return TR("%dวัน %dชม") % (seconds // 86400, (seconds % 86400) // 3600)
 
 
 def _epoch_or_none(value):
@@ -179,7 +180,7 @@ def _fmt_when(epoch) -> str:
     """เวลาแบบท้องถิ่น — ผู้ใช้อ่านตารางนี้เทียบกับนาฬิกาบนผนัง ไม่ใช่ UTC"""
     epoch = _epoch_or_none(epoch)
     if epoch is None:
-        return "ยังไม่เคยรัน"
+        return TR("ยังไม่เคยรัน")
     return datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -297,29 +298,29 @@ def _probe(url: str):
             code = getattr(resp, "status", 0) or 0
             raw = resp.read(MAX_BODY)
     except urllib.error.HTTPError as exc:
-        return None, "ตอบ HTTP %s" % exc.code, int((time.monotonic() - t0) * 1000)
+        return None, TR("ตอบ HTTP %s") % exc.code, int((time.monotonic() - t0) * 1000)
     except urllib.error.URLError as exc:
-        return None, "ต่อไม่ติด (%s)" % _short(exc.reason, 60), int((time.monotonic() - t0) * 1000)
+        return None, TR("ต่อไม่ติด (%s)") % _short(exc.reason, 60), int((time.monotonic() - t0) * 1000)
     except Exception as exc:                    # noqa: BLE001 - timeout/reset/อะไรก็ตาม
-        return None, "ผิดพลาด %s" % _short(exc, 60), int((time.monotonic() - t0) * 1000)
+        return None, TR("ผิดพลาด %s") % _short(exc, 60), int((time.monotonic() - t0) * 1000)
     ms = int((time.monotonic() - t0) * 1000)
     try:
         data = json.loads(raw.decode("utf-8", "replace"))
     except ValueError:
-        return None, "คำตอบไม่ใช่ JSON (HTTP %s)" % code, ms
+        return None, TR("คำตอบไม่ใช่ JSON (HTTP %s)") % code, ms
     return data, "", ms
 
 
 def _v_status_ok(data) -> tuple[bool, str]:
     """llama-server และ MCP ทั้งสองตัวตอบ {"status": "ok", ...} เหมือนกัน"""
     if not isinstance(data, dict):
-        return False, "คำตอบไม่ใช่ออบเจกต์ JSON"
+        return False, TR("คำตอบไม่ใช่ออบเจกต์ JSON")
     status = str(data.get("status", "")).strip().lower()
     if status != "ok":
-        return False, "status = %s" % (_short(status, 40) or "(ไม่มี)")
+        return False, "status = %s" % (_short(status, 40) or TR("(ไม่มี)"))
     tools = data.get("tools")
     if isinstance(tools, list):
-        return True, "status ok · เครื่องมือ %d รายการ" % len(tools)
+        return True, TR("status ok · เครื่องมือ %d รายการ") % len(tools)
     return True, "status ok"
 
 
@@ -327,8 +328,8 @@ def _v_projects(data) -> tuple[bool, str]:
     """hub ไม่มี /health เราจึงถือว่า "ตอบรายการโปรเจกต์ได้" คือยังปกติ"""
     projects = data.get("projects") if isinstance(data, dict) else None
     if not isinstance(projects, list):
-        return False, "JSON ไม่มีรายการ projects"
-    return True, "%d โปรเจกต์" % len(projects)
+        return False, TR("JSON ไม่มีรายการ projects")
+    return True, TR("%d โปรเจกต์") % len(projects)
 
 
 CHECKS = (
@@ -345,30 +346,30 @@ def job_heartbeat():
     ทุกการตรวจถูกครอบ try แยกกัน ตัวที่ล้มจึงหยุดได้แค่ตัวเอง อีกสามตัวยังถูกตรวจครบ
     และเราบันทึกผล "รายบริการ" ไม่ใช่ boolean รวม จะได้รู้ว่าใครล้ม ไม่ใช่แค่ว่ามีคนล้ม
     """
-    checks, rows, down = {}, [("บริการ", "สถานะ", "เวลา", "รายละเอียด")], []
+    checks, rows, down = {}, [(TR("บริการ"), TR("สถานะ"), TR("เวลา"), TR("รายละเอียด"))], []
     for key, label, url, validator in CHECKS:
         try:
             data, err, ms = _probe(url)
             if data is None:
-                ok, detail = False, err or "ไม่ทราบสาเหตุ"
+                ok, detail = False, err or TR("ไม่ทราบสาเหตุ")
             else:
                 ok, detail = validator(data)
         except Exception as exc:                # noqa: BLE001 - ห้ามให้ตัวเดียวล้มทั้งรอบ
-            ok, detail, ms = False, "ตัวตรวจเองพัง: %s" % _short(exc, 60), 0
+            ok, detail, ms = False, TR("ตัวตรวจเองพัง: %s") % _short(exc, 60), 0
         checks[key] = {"label": label, "url": url, "status": "ok" if ok else "error",
                        "ms": ms, "detail": detail}
-        rows.append((label, "ok" if ok else "ล้ม", "%dms" % ms, detail))
+        rows.append((label, "ok" if ok else TR("ล้ม"), "%dms" % ms, detail))
         if not ok:
             down.append(label)
 
     good = len(CHECKS) - len(down)
     if down:
         status = "error"
-        message = "บริการปกติ %d/%d — ล้ม: %s" % (good, len(CHECKS), ", ".join(down))
+        message = TR("บริการปกติ %d/%d — ล้ม: %s") % (good, len(CHECKS), ", ".join(down))
     else:
         status = "ok"
-        message = "บริการปกติ %d/%d" % (good, len(CHECKS))
-    report = "\n".join(["ตรวจสุขภาพสแตก (heartbeat)", ""] + _table(rows, right=(2,)) +
+        message = TR("บริการปกติ %d/%d") % (good, len(CHECKS))
+    report = "\n".join([TR("ตรวจสุขภาพสแตก (heartbeat)"), ""] + _table(rows, right=(2,)) +
                        ["", message])
     return status, message, {"checks": checks, "up": good, "total": len(CHECKS)}, report
 
@@ -524,10 +525,10 @@ def _render_md(kept) -> str:
                                                   _md_tag(entry["id"]),
                                                   _md_safe(entry["text"])))
             if entry["tags"]:
-                parts.append("\nแท็ก: %s\n" % ", ".join(_md_tag(t) for t in entry["tags"]))
+                parts.append(TR("\nแท็ก: %s\n") % ", ".join(_md_tag(t) for t in entry["tags"]))
             parts.append("\n")
     if not kinds:
-        parts.append("(ยังไม่มีรายการที่ต้องจำในโปรเจกต์นี้)\n")
+        parts.append(TR("(ยังไม่มีรายการที่ต้องจำในโปรเจกต์นี้)\n"))
     return "".join(parts)
 
 
@@ -586,15 +587,15 @@ def _promote_one_inner(name: str, folder: str, now: datetime) -> tuple[str, str,
     if not os.path.exists(json_path):
         # ไม่มีต้นฉบับก็สร้างมุมมองใหม่ไม่ได้ ถ้ามี MEMORY.md อยู่ห้ามแตะเด็ดขาด
         if os.path.exists(md_path):
-            return "skipped", "มี MEMORY.md แต่ไม่มี memory.json จึงไม่แตะ", {}
-        return "skipped", "ยังไม่มีความจำ", {}
+            return "skipped", TR("มี MEMORY.md แต่ไม่มี memory.json จึงไม่แตะ"), {}
+        return "skipped", TR("ยังไม่มีความจำ"), {}
 
     entries, recognized = _load_entries(guard.check_read(json_path))
     if not recognized:
         # parse ผ่านแต่ไม่ใช่รูปแบบของ tools_memory ถ้าเดาว่า "0 รายการ" แล้วเขียนต่อ
         # MEMORY.md ที่มีของอยู่จะถูกล้างจนเหลือแต่หัวไฟล์ จึงไม่แตะอะไรเลยและบอกให้คนไปดู
-        return "skipped", ("memory.json อ่านได้แต่ไม่มีลิสต์ entries ตามรูปแบบของ tools_memory "
-                           "จึงไม่เขียนทับ MEMORY.md (กันข้อมูลหาย)"), {}
+        return "skipped", (TR("memory.json อ่านได้แต่ไม่มีลิสต์ entries ตามรูปแบบของ tools_memory "
+                           "จึงไม่เขียนทับ MEMORY.md (กันข้อมูลหาย)")), {}
     kept, counts = _promote_entries(entries, now)
     content = _render_md(kept)
 
@@ -604,15 +605,15 @@ def _promote_one_inner(name: str, folder: str, now: datetime) -> tuple[str, str,
             with open(guard.check_read(md_path), "r", encoding="utf-8") as fh:
                 old = fh.read()
         except OSError as exc:
-            return "error", "อ่าน MEMORY.md ไม่ได้: %s" % _short(exc, 80), counts
+            return "error", TR("อ่าน MEMORY.md ไม่ได้: %s") % _short(exc, 80), counts
 
-    summary = "%d → %d รายการ (ซ้ำ %d · progress เก่า %d · ความลับ %d)" % (
+    summary = TR("%d → %d รายการ (ซ้ำ %d · progress เก่า %d · ความลับ %d)") % (
         len(entries), len(kept), counts["dup"], counts["old_progress"], counts["secret"])
 
     # หัวใจของความ idempotent: เนื้อหาเท่าเดิมแปลว่าไม่ต้องทำอะไรเลย
     # ไม่เขียนทับ ไม่สร้าง .bak ใหม่ mtime ของไฟล์จึงไม่ขยับด้วย
     if old == content:
-        return "unchanged", summary + " ไม่มีอะไรเปลี่ยน", counts
+        return "unchanged", summary + TR(" ไม่มีอะไรเปลี่ยน"), counts
 
     target = guard.check_write(md_path)
     if old is not None:
@@ -636,8 +637,8 @@ def _promote_one_inner(name: str, folder: str, now: datetime) -> tuple[str, str,
     # audit เก็บแต่ตัวเลข ไม่เคยเก็บเนื้อความของโปรเจกต์ (S02/S04)
     guard.audit("memory_promote", {"project": name, "entries": len(entries),
                                    "kept": len(kept), **counts})
-    return "written", summary + (" เขียน MEMORY.md ใหม่" if old is not None
-                                 else " สร้าง MEMORY.md"), counts
+    return "written", summary + (TR(" เขียน MEMORY.md ใหม่") if old is not None
+                                 else TR(" สร้าง MEMORY.md")), counts
 
 
 def job_memory_promote():
@@ -647,11 +648,11 @@ def job_memory_promote():
     ที่นี่จึงไม่มีการเรียก LLM และไม่มีการส่งข้อมูลออกนอกเครื่องแม้แต่ไบต์เดียว
     """
     if scan_secret is None:
-        msg = "ไม่ทำงาน เพราะ import tools_memory ไม่ได้ (%s) จึงรับประกันการกรองความลับไม่ได้" % _MEM_ERR
-        return "error", msg, {}, "งานบ้านความจำ (memory_promote)\n\n" + msg
+        msg = TR("ไม่ทำงาน เพราะ import tools_memory ไม่ได้ (%s) จึงรับประกันการกรองความลับไม่ได้") % _MEM_ERR
+        return "error", msg, {}, TR("งานบ้านความจำ (memory_promote)\n\n") + msg
 
     now = datetime.now(timezone.utc)
-    rows = [("โปรเจกต์", "ผล", "รายละเอียด")]
+    rows = [(TR("โปรเจกต์"), TR("ผล"), TR("รายละเอียด"))]
     tally = {"written": 0, "unchanged": 0, "skipped": 0, "error": 0}
     secrets_dropped = 0
     bak_with_secret = []
@@ -661,7 +662,7 @@ def job_memory_promote():
         try:
             result, summary, counts = _promote_one(name, folder, now)
         except Denied as exc:
-            result, summary, counts = "error", "guard ปฏิเสธ: %s" % _short(exc, 80), {}
+            result, summary, counts = "error", TR("guard ปฏิเสธ: %s") % _short(exc, 80), {}
         except Exception as exc:                # noqa: BLE001 - โปรเจกต์เดียวพังต้องไม่ล้มทั้งรอบ
             result, summary, counts = "error", "%s: %s" % (type(exc).__name__, _short(exc, 80)), {}
         tally[result] = tally.get(result, 0) + 1
@@ -670,23 +671,23 @@ def job_memory_promote():
             bak_with_secret.append(name)
         if result == "error":
             failures.append(name)
-        rows.append((name, {"written": "เขียนใหม่", "unchanged": "เหมือนเดิม",
-                            "skipped": "ข้าม", "error": "ผิดพลาด"}[result], summary))
+        rows.append((name, {"written": TR("เขียนใหม่"), "unchanged": TR("เหมือนเดิม"),
+                            "skipped": TR("ข้าม"), "error": TR("ผิดพลาด")}[result], summary))
 
-    message = "เขียนใหม่ %d · เหมือนเดิม %d · ข้าม %d · ผิดพลาด %d" % (
+    message = TR("เขียนใหม่ %d · เหมือนเดิม %d · ข้าม %d · ผิดพลาด %d") % (
         tally["written"], tally["unchanged"], tally["skipped"], tally["error"])
     if secrets_dropped:
-        message += " · ตัดรายการที่ดูเหมือนมีความลับออก %d รายการ" % secrets_dropped
+        message += TR(" · ตัดรายการที่ดูเหมือนมีความลับออก %d รายการ") % secrets_dropped
     if bak_with_secret:
-        message += (" · เตือน: MEMORY.md.bak ของ %s ยังเก็บข้อความที่ดูเหมือนความลับไว้ ควรลบทิ้งเอง"
+        message += (TR(" · เตือน: MEMORY.md.bak ของ %s ยังเก็บข้อความที่ดูเหมือนความลับไว้ ควรลบทิ้งเอง")
                     % ", ".join(bak_with_secret))
     status = "error" if failures else "ok"
     extra = {"projects": sum(tally.values()), "secretsDropped": secrets_dropped,
              "written": tally["written"], "unchanged": tally["unchanged"],
              "skipped": tally["skipped"], "failed": failures,
              "bakWithSecret": bak_with_secret}
-    body = _table(rows) if len(rows) > 1 else ["(ไม่พบโปรเจกต์ใต้ %s)" % PROJECT_DATA]
-    report = "\n".join(["งานบ้านความจำ (memory_promote) — จัดระเบียบอย่างเดียว ไม่เรียก LLM", ""]
+    body = _table(rows) if len(rows) > 1 else [TR("(ไม่พบโปรเจกต์ใต้ %s)") % PROJECT_DATA]
+    report = "\n".join([TR("งานบ้านความจำ (memory_promote) — จัดระเบียบอย่างเดียว ไม่เรียก LLM"), ""]
                        + body + ["", message])
     return status, message, extra, report
 
@@ -753,22 +754,22 @@ def gpu_watch_decide(fp_now, fp_router, pending, apply_state, now_epoch: float):
     """
     pending = dict(pending or {})
     if not fp_now or not fp_router:
-        return "unknown", pending, "ตรวจ GPU ไม่ได้ หรือ router ยังไม่มี state"
+        return "unknown", pending, TR("ตรวจ GPU ไม่ได้ หรือ router ยังไม่มี state")
     if fp_now == fp_router:
         pending.pop("fp", None)
         pending.pop("seen", None)
-        return "same", pending, "ชุด GPU ตรงกับแผนของ router"
+        return "same", pending, TR("ชุด GPU ตรงกับแผนของ router")
     seen = int(pending.get("seen") or 0) + 1 if pending.get("fp") == fp_now else 1
     pending.update(fp=fp_now, seen=seen)
     if seen < GPU_WATCH_CONFIRM:
-        return "confirm", pending, "ชุด GPU เปลี่ยน (รอยืนยัน %d/%d)" % (seen, GPU_WATCH_CONFIRM)
+        return "confirm", pending, TR("ชุด GPU เปลี่ยน (รอยืนยัน %d/%d)") % (seen, GPU_WATCH_CONFIRM)
     if apply_state == "running":
-        return "busy", pending, "hub กำลังจัดแผน GPU อยู่"
+        return "busy", pending, TR("hub กำลังจัดแผน GPU อยู่")
     applied_at = _epoch_or_none(pending.get("applied_at"))
     if pending.get("applied_fp") == fp_now and applied_at and 0 <= now_epoch - applied_at < GPU_WATCH_COOLDOWN:
-        return "cooldown", pending, "เพิ่งสั่งจัดแผนชุดนี้ไป %d วินาทีที่แล้ว" % int(now_epoch - applied_at)
+        return "cooldown", pending, TR("เพิ่งสั่งจัดแผนชุดนี้ไป %d วินาทีที่แล้ว") % int(now_epoch - applied_at)
     pending.update(applied_fp=fp_now, applied_at=now_epoch)
-    return "apply", pending, "ชุด GPU เปลี่ยน → สั่งจัดแผนใหม่"
+    return "apply", pending, TR("ชุด GPU เปลี่ยน → สั่งจัดแผนใหม่")
 
 
 def _hub_apply() -> str:
@@ -822,12 +823,12 @@ def job_gpu_watch():
             if res2.startswith("error"):
                 status = "error"
         elif res == "busy":
-            message = "%s — hub กำลังทำอยู่แล้ว" % why
+            message = TR("%s — hub กำลังทำอยู่แล้ว") % why
         else:
-            message = "%s — สั่ง hub แล้ว" % why
+            message = TR("%s — สั่ง hub แล้ว") % why
         extra["applyResult"] = message
-    lines = ["เฝ้า eGPU (gpu_watch)", "", "GPU ตอนนี้ : %s" % (fp_now or "-"), "แผน router : %s" % (fp_router or "-"),
-             "ผล        : %s" % message]
+    lines = [TR("เฝ้า eGPU (gpu_watch)"), "", TR("GPU ตอนนี้ : %s") % (fp_now or "-"), TR("แผน router : %s") % (fp_router or "-"),
+             TR("ผล        : %s") % message]
     return status, message, extra, "\n".join(lines)
 
 
@@ -852,22 +853,22 @@ def run_job(job: str) -> str:
     """รันงานหนึ่งรอบแล้วบันทึกสถานะ คืนรายงานเป็นข้อความ (ไม่โยน exception)"""
     spec = JOBS.get(job)
     if spec is None:
-        return "ERROR: ไม่รู้จักงาน %r (มี: %s)" % (job, ", ".join(JOB_NAMES))
+        return TR("ERROR: ไม่รู้จักงาน %r (มี: %s)") % (job, ", ".join(JOB_NAMES))
     t0 = time.monotonic()
     try:
         status, message, extra, report = spec["fn"]()
     except Exception as exc:                    # noqa: BLE001 - งานพังก็ยังต้องบันทึกว่าพัง
         status = "error"
         message = "%s: %s" % (type(exc).__name__, _short(exc, 200))
-        extra, report = {}, "งาน %s ล้มเหลว: %s" % (job, message)
+        extra, report = {}, TR("งาน %s ล้มเหลว: %s") % (job, message)
     extra = dict(extra or {})
     extra["durationMs"] = int((time.monotonic() - t0) * 1000)
     try:
         rec = _record(job, status, message, extra)
-        tail = "\n\nสถานะ %s · ok ติดต่อกัน %d รอบ · ใช้เวลา %dms" % (
+        tail = TR("\n\nสถานะ %s · ok ติดต่อกัน %d รอบ · ใช้เวลา %dms") % (
             status, rec.get("consecutiveOk", 0), extra["durationMs"])
     except (Denied, OSError, ValueError) as exc:
-        tail = "\n\n(บันทึกสถานะลง %s ไม่ได้: %s)" % (STATE_PATH, _short(exc, 80))
+        tail = TR("\n\n(บันทึกสถานะลง %s ไม่ได้: %s)") % (STATE_PATH, _short(exc, 80))
     return report + tail
 
 
@@ -1028,22 +1029,22 @@ def schedule_status() -> str:
     """ตารางสถานะของงานตามเวลา — ใช้ตอบคำถาม "ระบบยังปกติไหม" ได้ทันที"""
     state = _load_state()
     alive, info = runner_info(state)
-    lines = ["ตัวตั้งเวลา qwenlocal", ""]
+    lines = [TR("ตัวตั้งเวลา qwenlocal"), ""]
     if alive:
-        lines.append("ตัวรัน: กำลังทำงาน pid %s (เริ่ม %s)" % (info.get("pid"), info.get("started", "?")))
+        lines.append(TR("ตัวรัน: กำลังทำงาน pid %s (เริ่ม %s)") % (info.get("pid"), info.get("started", "?")))
     else:
-        lines.append("ตัวรัน: ไม่ได้รันอยู่ — งานตามเวลาจะไม่ทำงานเอง "
-                     "(สั่งเองได้ด้วย schedule_run หรือรัน python scheduler.py)")
+        lines.append(TR("ตัวรัน: ไม่ได้รันอยู่ — งานตามเวลาจะไม่ทำงานเอง "
+                     "(สั่งเองได้ด้วย schedule_run หรือรัน python scheduler.py)"))
     lines.append("")
 
     now = time.time()
-    rows = [("งาน", "กำหนด", "รันล่าสุด", "สถานะ", "ok ติดต่อกัน", "ข้อความ")]
+    rows = [(TR("งาน"), TR("กำหนด"), TR("รันล่าสุด"), TR("สถานะ"), TR("ok ติดต่อกัน"), TR("ข้อความ"))]
     for job in JOB_NAMES:
         rec = state.get("jobs", {}).get(job) or {}
         epoch = _epoch_or_none(rec.get("lastRunEpoch"))
         when = _fmt_when(epoch)
         if epoch:
-            when += " (%sที่แล้ว)" % _fmt_elapsed(now - epoch)
+            when += TR(" (%sที่แล้ว)") % _fmt_elapsed(now - epoch)
         rows.append((job, JOBS[job]["when"], when,
                      rec.get("lastRunStatus", "-"),
                      str(rec.get("consecutiveOk", 0)),
@@ -1052,12 +1053,12 @@ def schedule_status() -> str:
 
     checks = (state.get("jobs", {}).get("heartbeat") or {}).get("checks")
     if isinstance(checks, dict) and checks:
-        lines += ["", "ผลตรวจรายบริการของ heartbeat รอบล่าสุด", ""]
-        crows = [("บริการ", "สถานะ", "เวลา", "รายละเอียด")]
+        lines += ["", TR("ผลตรวจรายบริการของ heartbeat รอบล่าสุด"), ""]
+        crows = [(TR("บริการ"), TR("สถานะ"), TR("เวลา"), TR("รายละเอียด"))]
         for key, _label, _url, _v in CHECKS:
             item = checks.get(key) or {}
             crows.append((item.get("label", key),
-                          "ok" if item.get("status") == "ok" else "ล้ม",
+                          "ok" if item.get("status") == "ok" else TR("ล้ม"),
                           "%sms" % item.get("ms", "?"),
                           item.get("detail", "-")))
         lines += _table(crows, right=(2,))
@@ -1071,23 +1072,23 @@ def schedule_run(job: str = "", confirm_token: str = "") -> str:
     """สั่งงานตามเวลาให้ทำงานทันที — สองขั้นตอนตามกฎ S03"""
     job_v = str(job or "").strip().lower()
     if job_v not in JOBS:
-        return ("ERROR: ไม่รู้จักงาน %r — ใช้ได้เฉพาะ %s" % (str(job), ", ".join(JOB_NAMES)))
+        return (TR("ERROR: ไม่รู้จักงาน %r — ใช้ได้เฉพาะ %s") % (str(job), ", ".join(JOB_NAMES)))
 
     if job_v == "heartbeat":
-        detail = ("รัน heartbeat หนึ่งรอบทันที: ยิง GET ไปที่ %d บริการในเครื่อง "
-                  "(timeout 5 วินาที ไม่ส่ง prompt ให้โมเดล) แล้วบันทึกผลลง %s"
+        detail = (TR("รัน heartbeat หนึ่งรอบทันที: ยิง GET ไปที่ %d บริการในเครื่อง "
+                  "(timeout 5 วินาที ไม่ส่ง prompt ให้โมเดล) แล้วบันทึกผลลง %s")
                   % (len(CHECKS), STATE_PATH))
     elif job_v == "gpu_watch":
-        detail = ("รัน gpu_watch หนึ่งรอบทันที: เทียบชุด GPU ตอนนี้ (nvidia-smi) กับแผนของ router "
-                  "ต่างกันจึงสั่ง hub จัดแผนใหม่ (ไม่ส่ง prompt ให้โมเดล)")
+        detail = (TR("รัน gpu_watch หนึ่งรอบทันที: เทียบชุด GPU ตอนนี้ (nvidia-smi) กับแผนของ router "
+                  "ต่างกันจึงสั่ง hub จัดแผนใหม่ (ไม่ส่ง prompt ให้โมเดล)"))
     else:
         try:
             count = len(_project_dirs())
         except Denied:
             count = 0
-        detail = ("รันงานบ้านความจำทันที: เขียน MEMORY.md ของโปรเจกต์ที่มีความจำใหม่ทั้งไฟล์ "
+        detail = (TR("รันงานบ้านความจำทันที: เขียน MEMORY.md ของโปรเจกต์ที่มีความจำใหม่ทั้งไฟล์ "
                   "(สำรองเป็น MEMORY.md.bak ก่อน, ไม่แตะ memory.json, ไม่เรียก LLM) "
-                  "ตอนนี้มี %d โปรเจกต์ในทะเบียน" % count)
+                  "ตอนนี้มี %d โปรเจกต์ในทะเบียน") % count)
 
     # ผูก action เข้ากับชื่องาน token ที่ขอไว้สำหรับ heartbeat จึงเอาไปสั่งงานบ้านไม่ได้
     action = "schedule_run:%s" % job_v
@@ -1100,10 +1101,10 @@ def schedule_run(job: str = "", confirm_token: str = "") -> str:
             ok = False
     if not ok:
         token = guard.need_confirm(action, detail)
-        head = "จะสั่งงาน %s (%s) ให้ทำงานทันที แต่ยังไม่ได้ทำ\n  %s\n\n" % (
+        head = TR("จะสั่งงาน %s (%s) ให้ทำงานทันที แต่ยังไม่ได้ทำ\n  %s\n\n") % (
             job_v, JOBS[job_v]["th"], detail)
         if token_in:
-            head = "(confirm_token ใช้ไม่ได้หรือหมดอายุแล้ว จึงยังไม่ทำ ขอ token ใหม่)\n\n" + head
+            head = TR("(confirm_token ใช้ไม่ได้หรือหมดอายุแล้ว จึงยังไม่ทำ ขอ token ใหม่)\n\n") + head
         return head + guard.confirm_hint(token, action, detail)
 
     guard.audit("schedule_run", {"job": job_v, "forced": True})

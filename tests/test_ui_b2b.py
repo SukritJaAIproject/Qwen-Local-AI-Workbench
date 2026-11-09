@@ -169,6 +169,9 @@ class EnhanceStaticTests(unittest.TestCase):
                 self.assertIn(ph, th[en], (en, ph))
         # ทุกคำในพจนานุกรมถูกใช้จริง (ป้ายที่เลือกด้วยเงื่อนไข เช่น "Stop and transcribe" ถูกนับตรงนี้)
         rest = self.block.replace(js_block(self.block, self.block.index("var TH_B2B = {")), "")
+        # 2026-11: ตารางญี่ปุ่น/จีนใช้คีย์อังกฤษชุดเดียวกัน — ตัดออกก่อนตรวจว่าคำถูกใช้จริงในโค้ด
+        for name in ("JA_B2B", "ZH_B2B"):
+            rest = rest.replace(js_block(rest, rest.index("var %s = {" % name)), "")
         # ป้ายที่ต่อจากคำนำหน้า + ตัวแปร เช่น L("Bypass permissions: " + state) ของส่วน Bypass permissions
         # (state = "OFF" / "ON" / "PAUSED") — คำในพจนานุกรมนับว่าใช้ ถ้าส่วนท้ายเป็นสตริงที่มีอยู่ในโค้ดของช่วงนี้
         # และคำนำหน้าทุกตัวต้องมีคำแปลอย่างน้อยหนึ่งคำ (ไม่งั้นป้ายนั้นขึ้นเป็นอังกฤษล้วน) — แก้ 2026-10-20
@@ -182,7 +185,7 @@ class EnhanceStaticTests(unittest.TestCase):
                                 for pre in composed), "คำ %r ไม่ได้ถูกใช้" % en)
         # พจนานุกรมแยกจาก TH ของตัวแปล — ไม่เขียนใส่ TH (คำซ้ำกับป้ายของ WebUI จะเพี้ยนความหมาย)
         self.assertNotRegex(self.block, r"\bTH\[[^\]]+\]\s*=")
-        self.assertIn('hasOwn(TH_B2B, en) ? TH_B2B[en] : en', self.block)
+        self.assertIn('function L(en) { var D = B2B[lang()]; return D && hasOwn(D, en) ? D[en] : en; }', self.block)
 
     def test_network_scope_and_safety(self):
         b = self.block
@@ -312,8 +315,8 @@ console.log(JSON.stringify(out));
 
     def test_office_chip_and_mic_contract(self):
         s = self.src
-        # ชิป Office บนหน้าเริ่มแชตทั้งสองภาษา + คำอธิบาย (title) ว่าการเขียนกลับต้องอนุญาต
-        self.assertEqual(len(re.findall(r'\["office", "Office", "', s)), 2)
+        # ชิป Office บนหน้าเริ่มแชตทั้งสี่ภาษา (2026-11: th/en/ja/zh) + คำอธิบาย (title) ว่าการเขียนกลับต้องอนุญาต
+        self.assertEqual(len(re.findall(r'\["office", "Office", "', s)), 4)
         self.assertIn("อ่านข้อมูลที่เลือกไว้ใน Excel ที่เปิดอยู่ แล้ว", s)
         self.assertIn("writing back always asks for your approval", s)
         self.assertIn("if (c[3]) b.title = c[3];", s)

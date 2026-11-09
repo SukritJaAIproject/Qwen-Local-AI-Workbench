@@ -75,6 +75,14 @@ os.environ["QWEN_MCP_PROJECT_DATA"] = PROJECT_DATA
 os.environ["QWEN_WEB_AUDIT_PATH"] = AUDIT_WEB
 os.environ["LLM_LOCAL_TOKEN_FILE"] = TOKEN_FILE
 os.environ["QWEN_MCP_PROJECTS_JSON"] = PROJECTS_JSON
+# 2026-11: ข้อความของเครื่องมือตามภาษาของหน้าจอ (i18n_tools อ่าน projects\settings.json) — เทสต์ตรวจข้อความไทย จึงชี้ไปที่ไฟล์
+# ที่ไม่มีอยู่ (= ไทย) ไม่งั้นเครื่องที่ตั้งหน้าจอเป็นอังกฤษ/ญี่ปุ่น/จีนล้มทั้งชุด; โมดูลที่ถูก import ไปก่อนแล้วก็ชี้ตามด้วย
+UI_SETTINGS = os.path.join(TMP, "ui-settings.json")
+os.environ["QWEN_SETTINGS_FILE"] = UI_SETTINGS
+if sys.modules.get("i18n_tools") is not None:
+    from pathlib import Path as _Path
+    sys.modules["i18n_tools"].SETTINGS_FILE = _Path(UI_SETTINGS)
+    sys.modules["i18n_tools"]._state.update(lang="th", mtime=None, checked=0.0)
 
 for _p in (MCP_LOCAL,):
     if _p not in sys.path:
@@ -218,7 +226,7 @@ def clean_env() -> dict:
     env.update({"PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1",
                 "QWEN_MCP_AUDIT_PATH": AUDIT_LOCAL, "QWEN_MCP_PROJECT_DATA": PROJECT_DATA,
                 "QWEN_WEB_AUDIT_PATH": AUDIT_WEB, "LLM_LOCAL_TOKEN_FILE": TOKEN_FILE,
-                "QWEN_MCP_PROJECTS_JSON": PROJECTS_JSON})
+                "QWEN_MCP_PROJECTS_JSON": PROJECTS_JSON, "QWEN_SETTINGS_FILE": UI_SETTINGS})
     return env
 
 

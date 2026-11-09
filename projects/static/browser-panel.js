@@ -15,7 +15,9 @@
   var API = "/_qwen/browser/";
   var LS_W = "qwen-bp-w", LS_OPEN = "qwen-bp-open";
   var NARROW = window.matchMedia("(max-width: 829.98px)");
-  var TH = document.documentElement.lang !== "en";
+  /* 2026-11: สี่ภาษาตาม <html lang> ของ shell — ข้อความแต่ละคีย์เรียง [ไทย, อังกฤษ, ญี่ปุ่น, จีนตัวย่อ] ไม่มีของภาษานั้น = อังกฤษ */
+  var LANG_IDX = { th: 0, en: 1, ja: 2, zh: 3 };
+  var LI = LANG_IDX[document.documentElement.lang] != null ? LANG_IDX[document.documentElement.lang] : 1;
   var S = {
     open: false, state: null, seq: 0, fw: 0, fh: 0, url: null, loopId: 0, pollTimer: 0, lastModelSeq: -1,
     userClosedAt: 0, w: 0, dragging: false, inputQ: Promise.resolve(), lastMove: 0, wheel: null, viewSent: "",
@@ -24,41 +26,51 @@
 
   /* ---- ข้อความ ---------------------------------------------------------------- */
   var STR = {
-    browser: ["เบราว์เซอร์", "Browser"],
-    open_panel: ["เปิดเบราว์เซอร์ในตัว", "Open the built-in browser"],
-    close_panel: ["ปิดแผงเบราว์เซอร์", "Close the browser panel"],
-    new_tab: ["แท็บใหม่", "New tab"],
-    close_tab: ["ปิดแท็บ", "Close tab"],
-    back: ["ย้อนกลับ", "Back"], forward: ["ไปข้างหน้า", "Forward"], reload: ["โหลดใหม่", "Reload"], stop: ["หยุดโหลด", "Stop loading"],
-    url_ph: ["พิมพ์ URL หรือชื่อเว็บ แล้วกด Enter", "Type a URL and press Enter"],
-    url_label: ["ที่อยู่เว็บ", "Address"],
-    more: ["ตัวเลือกเพิ่มเติม", "More options"],
-    window_mode: ["เปิดเป็นหน้าต่างจริง (สำหรับล็อกอิน)", "Open as a real window (for sign-in)"],
-    panel_mode: ["กลับมาใช้ในแผง", "Back to the panel"],
-    shutdown: ["ปิดเบราว์เซอร์", "Quit the browser"],
-    resize: ["ปรับความกว้างแผงเบราว์เซอร์", "Resize the browser panel"],
-    empty_t: ["ท่องเว็บกับ Qwen", "Browse with Qwen"],
+    browser: ["เบราว์เซอร์", "Browser", "ブラウザー", "浏览器"],
+    open_panel: ["เปิดเบราว์เซอร์ในตัว", "Open the built-in browser", "内蔵ブラウザーを開く", "打开内置浏览器"],
+    close_panel: ["ปิดแผงเบราว์เซอร์", "Close the browser panel", "ブラウザーパネルを閉じる", "关闭浏览器面板"],
+    new_tab: ["แท็บใหม่", "New tab", "新しいタブ", "新建标签页"],
+    close_tab: ["ปิดแท็บ", "Close tab", "タブを閉じる", "关闭标签页"],
+    back: ["ย้อนกลับ", "Back", "戻る", "后退"], forward: ["ไปข้างหน้า", "Forward", "進む", "前进"],
+    reload: ["โหลดใหม่", "Reload", "再読み込み", "重新加载"], stop: ["หยุดโหลด", "Stop loading", "読み込みを停止", "停止加载"],
+    url_ph: ["พิมพ์ URL หรือชื่อเว็บ แล้วกด Enter", "Type a URL and press Enter", "URL を入力して Enter", "输入网址后按 Enter"],
+    url_label: ["ที่อยู่เว็บ", "Address", "アドレス", "地址"],
+    more: ["ตัวเลือกเพิ่มเติม", "More options", "その他のオプション", "更多选项"],
+    window_mode: ["เปิดเป็นหน้าต่างจริง (สำหรับล็อกอิน)", "Open as a real window (for sign-in)", "実際のウィンドウで開く（サインイン用）", "以真实窗口打开（用于登录）"],
+    panel_mode: ["กลับมาใช้ในแผง", "Back to the panel", "パネルに戻す", "回到面板"],
+    shutdown: ["ปิดเบราว์เซอร์", "Quit the browser", "ブラウザーを終了", "退出浏览器"],
+    resize: ["ปรับความกว้างแผงเบราว์เซอร์", "Resize the browser panel", "ブラウザーパネルの幅を変更", "调整浏览器面板宽度"],
+    empty_t: ["ท่องเว็บกับ Qwen", "Browse with Qwen", "Qwen とウェブを見る", "和 Qwen 一起上网"],
     empty_s: ["พิมพ์ URL หรือบอก Qwen ให้เปิดเว็บ — Qwen อ่าน คลิก พิมพ์ กรอกฟอร์ม ลากวาง อัปโหลดและดาวน์โหลดไฟล์ในหน้านี้ได้ และคุณเห็นทุกอย่างที่ทำ",
-      "Type a URL or ask Qwen to open a site. Qwen can read, click, type, fill forms, drag, upload and download files here, and you see everything it does."],
-    examples: ["ตัวอย่าง", "Examples"],
-    ex1: ["เปิด google.com แล้วค้นหาข่าวเทคโนโลยีวันนี้ สรุปให้ 3 ข้อ", "Open google.com, search today's tech news and give me 3 points"],
-    ex2: ["เปิดหน้าเว็บที่อยู่ในแผงตอนนี้ แล้วสรุปเนื้อหาให้หน่อย", "Summarise the page that is open in the browser panel"],
-    ex3: ["ไปที่ youtube.com แล้วหาวิดีโอสอน Python สำหรับมือใหม่", "Go to youtube.com and find a beginner Python tutorial"],
-    starting: ["กำลังเปิดเบราว์เซอร์…", "Starting the browser…"],
-    start_btn: ["เริ่มใช้เบราว์เซอร์", "Start the browser"],
+      "Type a URL or ask Qwen to open a site. Qwen can read, click, type, fill forms, drag, upload and download files here, and you see everything it does.",
+      "URL を入力するか、Qwen にサイトを開くよう頼んでください。Qwen はここで読む、クリック、入力、フォーム記入、ドラッグ、ファイルのアップロードとダウンロードができ、あなたはそのすべてを見られます。",
+      "输入网址，或让 Qwen 打开网站。Qwen 可以在这里阅读、点击、输入、填表、拖放、上传和下载文件，你能看到它做的每一步。"],
+    examples: ["ตัวอย่าง", "Examples", "例", "示例"],
+    ex1: ["เปิด google.com แล้วค้นหาข่าวเทคโนโลยีวันนี้ สรุปให้ 3 ข้อ", "Open google.com, search today's tech news and give me 3 points",
+      "google.com を開いて今日のテクノロジーニュースを検索し、3 点にまとめて", "打开 google.com，搜索今天的科技新闻，总结 3 点"],
+    ex2: ["เปิดหน้าเว็บที่อยู่ในแผงตอนนี้ แล้วสรุปเนื้อหาให้หน่อย", "Summarise the page that is open in the browser panel",
+      "ブラウザーパネルで開いているページを要約して", "总结浏览器面板中打开的这个页面"],
+    ex3: ["ไปที่ youtube.com แล้วหาวิดีโอสอน Python สำหรับมือใหม่", "Go to youtube.com and find a beginner Python tutorial",
+      "youtube.com で初心者向けの Python チュートリアル動画を探して", "去 youtube.com 找一个 Python 入门教程视频"],
+    starting: ["กำลังเปิดเบราว์เซอร์…", "Starting the browser…", "ブラウザーを起動中…", "正在启动浏览器…"],
+    start_btn: ["เริ่มใช้เบราว์เซอร์", "Start the browser", "ブラウザーを起動", "启动浏览器"],
     window_note: ["เบราว์เซอร์เปิดเป็นหน้าต่างจริงอยู่ — ล็อกอินหรือทำในหน้าต่างนั้นได้เลย ภาพยังแสดงที่นี่ด้วย",
-      "The browser is open as a real window — sign in there. The view still mirrors here."],
-    qwen_doing: ["Qwen กำลังใช้เบราว์เซอร์", "Qwen is using the browser"],
-    dialog_q: ["หน้าเว็บถาม", "The page asks"],
-    ok: ["ตกลง", "OK"], cancel: ["ยกเลิก", "Cancel"], dismiss: ["ปิด", "Dismiss"], open_file: ["เปิดไฟล์", "Open file"],
-    err: ["เบราว์เซอร์มีปัญหา", "Browser problem"],
-    typing: ["คลิกในหน้าเว็บแล้วพิมพ์ได้เลย", "Click the page and type"],
-    view_label: ["หน้าเว็บในเบราว์เซอร์ของ Qwen", "Web page in Qwen's browser"],
-    blank: ["แท็บว่าง", "Blank tab"],
-    secure: ["การเชื่อมต่อเข้ารหัส (https)", "Encrypted connection (https)"],
-    insecure: ["ไม่เข้ารหัส (http) — อย่ากรอกข้อมูลสำคัญ", "Not encrypted (http) — don't enter sensitive data"]
+      "The browser is open as a real window — sign in there. The view still mirrors here.",
+      "ブラウザーは実際のウィンドウで開いています — そちらでサインインしてください。画面はここにも映ります。",
+      "浏览器正以真实窗口打开 — 请在那里登录。画面也会同步显示在这里。"],
+    qwen_doing: ["Qwen กำลังใช้เบราว์เซอร์", "Qwen is using the browser", "Qwen がブラウザーを使っています", "Qwen 正在使用浏览器"],
+    dialog_q: ["หน้าเว็บถาม", "The page asks", "ページからの確認", "网页询问"],
+    ok: ["ตกลง", "OK", "OK", "确定"], cancel: ["ยกเลิก", "Cancel", "キャンセル", "取消"], dismiss: ["ปิด", "Dismiss", "閉じる", "关闭"],
+    open_file: ["เปิดไฟล์", "Open file", "ファイルを開く", "打开文件"],
+    err: ["เบราว์เซอร์มีปัญหา", "Browser problem", "ブラウザーに問題があります", "浏览器出现问题"],
+    typing: ["คลิกในหน้าเว็บแล้วพิมพ์ได้เลย", "Click the page and type", "ページをクリックして入力", "点击网页后即可输入"],
+    view_label: ["หน้าเว็บในเบราว์เซอร์ของ Qwen", "Web page in Qwen's browser", "Qwen のブラウザーのウェブページ", "Qwen 浏览器中的网页"],
+    blank: ["แท็บว่าง", "Blank tab", "空のタブ", "空白标签页"],
+    secure: ["การเชื่อมต่อเข้ารหัส (https)", "Encrypted connection (https)", "暗号化された接続 (https)", "加密连接 (https)"],
+    insecure: ["ไม่เข้ารหัส (http) — อย่ากรอกข้อมูลสำคัญ", "Not encrypted (http) — don't enter sensitive data",
+      "暗号化されていません (http) — 重要な情報を入力しないでください", "未加密 (http) — 不要输入敏感信息"]
   };
-  function t(k) { var v = STR[k]; return v ? v[TH ? 0 : 1] : k; }
+  function t(k) { var v = STR[k]; return v ? (v[LI] != null ? v[LI] : v[1]) : k; }
 
   /* ---- ไอคอน (เส้นแบบเดียวกับไอคอนของ shell) ----------------------------------------- */
   var IC = {
