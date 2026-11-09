@@ -561,9 +561,10 @@ skipped (+5 integrator tests in test_integ_b2b.py); stack started with the launc
 MCP/hub/STT by design); live auth spot checks 34/34; E2E on project1 (8103, Qwen3-4B) screenshots `shots/integ-b2b-*.png`.
 
 ### 13a. STT service (8795, owner voice)
-- 2026-11: the hub (`stt_forward`) and `tools_stt` send `hint=<UI language>`; `Engine.allowed_for(hint)` adds ja/zh
-  (`HINT_LANGS`) to `--languages` for that request, and the hint is the fallback language as before — a Thai or English
-  UI keeps the th,en set, so short Thai words misdetected as ja/zh still come back as Thai. `/v1/status` lists
+- 2026-11: the hub (`stt_forward`) and `tools_stt` send `hint=<UI language>` for a Japanese or Chinese UI only;
+  `Engine.allowed_for(hint)` adds ja/zh (`HINT_LANGS`) to `--languages` for that request, and the hint is the fallback
+  language. A Thai or English UI sends no hint, so the fallback stays Thai (the owner uses the English UI and speaks
+  Thai) and short Thai words misdetected as ja/zh still come back as Thai. `/v1/status` lists
   `hint_languages`. Tests run in Thai whatever the machine's UI is (`QWEN_SETTINGS_FILE` in `test_security_common`,
   `record_tests.py`, `test_browser_panel`).
 - `%USERPROFILE%\anaconda3\envs\flexxfast\python.exe -X utf8 C:\LLM\stt\stt_server.py --port 8795` (launcher step 1e, WMI clean env +
