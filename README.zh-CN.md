@@ -183,7 +183,7 @@ Qwen Local AI Workbench 用一个简洁、以聊天为中心的界面包装了 l
 ## 参与和许可证
 
 欢迎提交 Issue、Pull Request，或在 [Discussions](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/discussions)
-提问和交流想法。开发流程见 [CONTRIBUTING.md](CONTRIBUTING.md)；安全问题请按 [SECURITY.md](SECURITY.md) 的方式私下报告。
+提问和交流想法，请使用英文或泰文。开发流程见 [CONTRIBUTING.md](CONTRIBUTING.md)；安全问题请按 [SECURITY.md](SECURITY.md) 的方式私下报告。
 
 本项目采用 MIT 许可证（[LICENSE](LICENSE)）。模型、llama.cpp、Tesseract 等组件按 [THIRD_PARTY.md](THIRD_PARTY.md) 所列，
 各自遵循其许可证。这是一个独立的个人项目，与 Alibaba Cloud / Qwen 团队、OpenAI、ggml / llama.cpp 项目和 Microsoft

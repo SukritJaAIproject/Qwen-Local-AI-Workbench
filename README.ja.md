@@ -195,7 +195,7 @@ Qwen Local AI Workbench は、llama.cpp のサーバーと内蔵 WebUI を、チ
 ## 参加とライセンス
 
 Issue、Pull Request、[Discussions](https://github.com/SukritJaAIproject/Qwen-Local-AI-Workbench/discussions) での質問や
-アイデアを歓迎します。開発の手順は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。セキュリティの問題は
+アイデアを歓迎します。英語またはタイ語で書いてください。開発の手順は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。セキュリティの問題は
 [SECURITY.md](SECURITY.md) の方法で非公開で報告してください。
 
 MIT ライセンスです（[LICENSE](LICENSE)）。モデル、llama.cpp、Tesseract などの部品は、[THIRD_PARTY.md](THIRD_PARTY.md) に
